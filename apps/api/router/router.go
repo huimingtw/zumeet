@@ -36,8 +36,15 @@ func New(h *handler.Handler, cfg *config.AppConfig) *gin.Engine {
 	protected := v1.Group("")
 	protected.Use(middleware.Auth([]byte(cfg.JWTSecret), h.DB()))
 	{
-		// Populated in subsequent stages
-		_ = protected
+		tp := protected.Group("/tenant-profiles")
+		{
+			tp.GET("", h.ListTenantProfiles)
+			tp.POST("", h.CreateTenantProfile)
+			tp.GET("/:profileId", h.GetTenantProfile)
+			tp.PUT("/:profileId", h.UpdateTenantProfile)
+			tp.DELETE("/:profileId", h.DeleteTenantProfile)
+			tp.PATCH("/:profileId/status", h.ToggleTenantProfileStatus)
+		}
 	}
 
 	return r

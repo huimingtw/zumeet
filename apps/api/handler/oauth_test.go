@@ -22,13 +22,13 @@ func registerMockOAuth(t *testing.T, sub, email, name string) string {
 	return code
 }
 
-func postJSON(t *testing.T, path string, body any, cookies ...*http.Cookie) *httptest.ResponseRecorder {
+func jsonRequest(t *testing.T, method, path string, body any, cookies ...*http.Cookie) *httptest.ResponseRecorder {
 	t.Helper()
 	b, err := json.Marshal(body)
 	if err != nil {
 		t.Fatalf("marshal: %v", err)
 	}
-	req := httptest.NewRequest("POST", path, bytes.NewReader(b))
+	req := httptest.NewRequest(method, path, bytes.NewReader(b))
 	req.Header.Set("Content-Type", "application/json")
 	for _, c := range cookies {
 		req.AddCookie(c)
@@ -36,6 +36,14 @@ func postJSON(t *testing.T, path string, body any, cookies ...*http.Cookie) *htt
 	w := httptest.NewRecorder()
 	testR.ServeHTTP(w, req)
 	return w
+}
+
+func postJSON(t *testing.T, path string, body any, cookies ...*http.Cookie) *httptest.ResponseRecorder {
+	return jsonRequest(t, "POST", path, body, cookies...)
+}
+
+func patchJSON(t *testing.T, path string, body any, cookies ...*http.Cookie) *httptest.ResponseRecorder {
+	return jsonRequest(t, "PATCH", path, body, cookies...)
 }
 
 // callbackState hits /api/v1/auth/google/callback and returns the "state" query param
