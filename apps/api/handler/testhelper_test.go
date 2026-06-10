@@ -20,7 +20,6 @@ import (
 	"github.com/zumeet/api/handler"
 	"github.com/zumeet/api/middleware"
 	"github.com/zumeet/api/router"
-	"github.com/zumeet/api/service"
 )
 
 var (
@@ -48,7 +47,7 @@ func TestMain(m *testing.M) {
 	}
 	defer testPool.Close()
 
-	testH = handler.New(testPool, &noopOAuth{}, &noopStorage{}, &noopEmail{}, testCfg)
+	testH = handler.New(testPool, &handler.MockOAuthService{}, &noopStorage{}, &noopEmail{}, testCfg)
 	testR = router.New(testH, testCfg)
 
 	if err := appdb.TruncateTables(testPool); err != nil {
@@ -152,12 +151,6 @@ func buildProtectedRouter() *gin.Engine {
 }
 
 // ---- noop service implementations ----
-
-type noopOAuth struct{}
-
-func (n *noopOAuth) ExchangeToken(_ context.Context, _ string) (*service.OAuthUser, error) {
-	return &service.OAuthUser{ProviderUID: "test-uid", Email: "test@example.com"}, nil
-}
 
 type noopStorage struct{}
 

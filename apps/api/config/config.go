@@ -15,6 +15,7 @@ type AppConfig struct {
 	GoogleClientID     string
 	GoogleClientSecret string
 	GoogleRedirectURL  string
+	GoogleTokenURL     string // overridable for test mock
 
 	StorageEndpoint  string
 	StorageBucket    string
@@ -37,6 +38,7 @@ func Load() *AppConfig {
 		GoogleClientID:     getEnv("GOOGLE_CLIENT_ID", ""),
 		GoogleClientSecret: getEnv("GOOGLE_CLIENT_SECRET", ""),
 		GoogleRedirectURL:  getEnv("GOOGLE_REDIRECT_URL", "http://localhost:8080/api/v1/auth/google/callback"),
+		GoogleTokenURL:     getEnv("GOOGLE_TOKEN_URL", "https://oauth2.googleapis.com/token"),
 
 		StorageEndpoint:  getEnv("STORAGE_ENDPOINT", "localhost:9000"),
 		StorageBucket:    getEnv("STORAGE_BUCKET", "zumeet"),
