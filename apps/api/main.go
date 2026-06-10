@@ -24,7 +24,7 @@ func main() {
 	}
 	defer pool.Close()
 
-	h := handler.New(pool, nil, nil, nil)
+	h := handler.New(pool, nil, nil, nil, cfg)
 	r := router.New(h, cfg)
 
 	srv := &http.Server{
@@ -48,4 +48,5 @@ func main() {
 	if err := srv.Shutdown(ctx); err != nil {
 		log.Fatalf("shutdown: %v", err)
 	}
+	pool.Close()
 }

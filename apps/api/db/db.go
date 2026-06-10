@@ -2,10 +2,20 @@ package db
 
 import (
 	"context"
+	_ "embed"
 	"fmt"
+	"os"
+	"strings"
 
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
+
+//go:embed schema.sql
+var schemaSQL string
+
+//go:embed seed.sql
+var seedSQL string
 
 func Connect(databaseURL string) (*pgxpool.Pool, error) {
 	cfg, err := pgxpool.ParseConfig(databaseURL)
@@ -19,8 +29,48 @@ func Connect(databaseURL string) (*pgxpool.Pool, error) {
 	}
 
 	if err := pool.Ping(context.Background()); err != nil {
+		pool.Close()
 		return nil, fmt.Errorf("ping db: %w", err)
 	}
 
 	return pool, nil
+}
+
+// ConnectTest connects to the test database, applies schema and seed (idempotent).
+// Uses TEST_DATABASE_URL env var; defaults to local zumeet_test.
+func ConnectTest() (*pgxpool.Pool, error) {
+	url := os.Getenv("TEST_DATABASE_URL")
+	if url == "" {
+		url = "postgres://zumeet:secret@localhost:5432/zumeet_test"
+	}
+
+	// Use pgconn to execute multi-statement SQL (schema + seed)
+	pgConn, err := pgconn.Connect(context.Background(), url)
+	if err != nil {
+		return nil, fmt.Errorf("pgconn connect to test db: %w", err)
+	}
+	if err := pgConn.Exec(context.Background(), schemaSQL).Close(); err != nil {
+		pgConn.Close(context.Background())
+		return nil, fmt.Errorf("apply schema: %w", err)
+	}
+	if err := pgConn.Exec(context.Background(), seedSQL).Close(); err != nil {
+		pgConn.Close(context.Background())
+		return nil, fmt.Errorf("apply seed: %w", err)
+	}
+	pgConn.Close(context.Background())
+
+	return Connect(url)
+}
+
+// TruncateTables removes all user-generated data. Preserves locations (reference data).
+func TruncateTables(pool *pgxpool.Pool) error {
+	tables := strings.Join([]string{
+		"admin_actions", "admin_login_tokens", "admins",
+		"matches", "interests", "blocks", "reports",
+		"listing_photos", "listings",
+		"tenant_profile_locations", "tenant_profiles",
+		"refresh_tokens", "auth_identities", "user_roles", "users",
+	}, ", ")
+	_, err := pool.Exec(context.Background(), "TRUNCATE TABLE "+tables+" CASCADE")
+	return err
 }
