@@ -1,0 +1,26 @@
+services:
+  db:
+    environment:
+      POSTGRES_DB: zumeet_test
+    volumes:
+      - ./apps/api/db/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql
+      - ./apps/api/db/seed.sql:/docker-entrypoint-initdb.d/02_seed.sql
+
+  api:
+    environment:
+      APP_ENV: test
+      DATABASE_URL: postgres://zumeet:secret@db:5432/zumeet_test
+      # Internal mock endpoint; router only mounts this route when APP_ENV=test
+      GOOGLE_TOKEN_URL: http://api:8080/test/oauth/google
+
+  e2e:
+    image: mcr.microsoft.com/playwright:v1.49.0-jammy
+    working_dir: /app
+    volumes:
+      - ./apps/e2e:/app
+    depends_on:
+      - web
+    environment:
+      BASE_URL: http://web:3000
+      API_URL: http://api:8080
+    command: npx playwright test

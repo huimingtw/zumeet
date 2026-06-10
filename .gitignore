@@ -1,0 +1,33 @@
+CLAUDE.md
+
+# Environment files (never commit actual secrets)
+.env.local
+.env.test
+.env*.local
+!*.env.local.example
+!*.env.test.example
+
+# Go
+apps/api/api
+apps/api/*.exe
+
+# Node / Next.js
+apps/web/node_modules/
+apps/web/.next/
+apps/web/out/
+apps/e2e/node_modules/
+apps/e2e/test-results/
+apps/e2e/playwright-report/
+
+# Docker
+.docker/
+
+# Terraform
+infra/.terraform/
+infra/*.tfstate
+infra/*.tfstate.backup
+infra/.terraform.lock.hcl
+
+# OS
+.DS_Store
+Thumbs.db
