@@ -45,6 +45,18 @@ func New(h *handler.Handler, cfg *config.AppConfig) *gin.Engine {
 			tp.DELETE("/:profileId", h.DeleteTenantProfile)
 			tp.PATCH("/:profileId/status", h.ToggleTenantProfileStatus)
 		}
+
+		ls := protected.Group("/listings")
+		{
+			ls.GET("", h.ListLandlordListings)
+			ls.POST("", h.CreateListing)
+			ls.GET("/:listingId", h.GetListing)
+			ls.PUT("/:listingId", h.UpdateListing)
+			ls.PATCH("/:listingId/status", h.UpdateListingStatus)
+			ls.DELETE("/:listingId", h.DeleteListing)
+			ls.POST("/:listingId/photos", h.UploadListingPhoto)
+			ls.DELETE("/:listingId/photos/:photoId", h.DeleteListingPhoto)
+		}
 	}
 
 	return r
