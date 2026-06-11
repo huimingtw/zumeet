@@ -170,9 +170,9 @@ func (h *Handler) GoogleOAuthCallback(c *gin.Context) {
 
 // OnboardingRequest is the body for POST /api/v1/auth/onboarding.
 type OnboardingRequest struct {
-	Role            string `json:"role" binding:"required"`
-	AcceptedToS     bool   `json:"accepted_tos" binding:"required"`
-	OAuthState      string `json:"oauth_state" binding:"required"`
+	Role        string `json:"role"        binding:"required"`
+	AcceptedToS bool   `json:"accepted_tos"` // validated manually: bool zero-value breaks binding:"required"
+	OAuthState  string `json:"oauth_state"  binding:"required"`
 }
 
 // Onboarding creates user + user_role + auth_identity in a single transaction.
