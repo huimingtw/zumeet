@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/gin-gonic/gin"
+	"github.com/oklog/ulid/v2"
 	"github.com/zumeet/api/service"
 )
 
@@ -79,4 +80,52 @@ func (h *Handler) TestOAuthUserInfoEndpoint(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"sub": u.Sub, "email": u.Email, "name": u.Name})
+}
+
+// TestSeedSession creates a fully onboarded user and issues JWT cookies.
+// POST /test/auth/seed  body: {"email":"...","role":"tenant|landlord"}
+// Only mounted when APP_ENV=test.
+func (h *Handler) TestSeedSession(c *gin.Context) {
+	var req struct {
+		Email string `json:"email" binding:"required"`
+		Role  string `json:"role" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if req.Role != "tenant" && req.Role != "landlord" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "role must be tenant or landlord"})
+		return
+	}
+
+	ctx := c.Request.Context()
+	// upsert user
+	userID := ""
+	err := h.db.QueryRow(ctx,
+		`SELECT id FROM users WHERE email=$1 AND deleted_at IS NULL`, req.Email,
+	).Scan(&userID)
+	if err != nil {
+		// create new user
+		userID = ulid.Make().String()
+		_, err = h.db.Exec(ctx,
+			`INSERT INTO users (id, email, is_verified) VALUES ($1, $2, true)`, userID, req.Email)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		_, err = h.db.Exec(ctx,
+			`INSERT INTO user_roles (user_id, role) VALUES ($1, $2::user_role)
+			 ON CONFLICT DO NOTHING`, userID, req.Role)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+	}
+
+	if err := h.IssueTokenPair(c, userID, req.Email, []string{req.Role}); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"user_id": userID})
 }

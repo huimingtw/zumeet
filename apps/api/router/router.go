@@ -48,6 +48,7 @@ func New(h *handler.Handler, cfg *config.AppConfig, logger *zap.Logger) *gin.Eng
 	if cfg.AppEnv == "test" {
 		r.POST("/test/oauth/google", h.TestOAuthTokenEndpoint)
 		r.GET("/test/oauth/userinfo", h.TestOAuthUserInfoEndpoint)
+		r.POST("/test/auth/seed", h.TestSeedSession)
 	}
 
 	v1 := r.Group("/api/v1")

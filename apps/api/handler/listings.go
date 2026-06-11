@@ -39,26 +39,33 @@ type ListingRequest struct {
 	Attributes map[string]any `json:"attributes"`
 }
 
+type PhotoDetail struct {
+	ID        string `json:"id"`
+	PublicURL string `json:"public_url"`
+	Position  int    `json:"position"`
+}
+
 type ListingResponse struct {
-	ID                          string    `json:"id"`
-	LandlordID                  string    `json:"landlord_id"`
-	LocationID                  string    `json:"location_id"`
-	Rent                        int       `json:"rent"`
-	RoomType                    string    `json:"room_type"`
-	AreaPing                    float64   `json:"area_ping"`
-	AvailableFrom               time.Time `json:"available_from"`
-	MinLeaseMonths              int       `json:"min_lease_months"`
-	AllowPets                   bool      `json:"allow_pets"`
-	AllowSubsidy                bool      `json:"allow_subsidy"`
-	AllowTaxReceipt             bool      `json:"allow_tax_receipt"`
-	AllowHouseholdRegistration  bool      `json:"allow_household_registration"`
-	AllowCooking                bool      `json:"allow_cooking"`
-	HasParking                  bool      `json:"has_parking"`
-	AllowSmoking                bool      `json:"allow_smoking"`
-	Status                      string    `json:"status"`
-	Photos                      []string  `json:"photos"`
-	CreatedAt                   time.Time `json:"created_at"`
-	UpdatedAt                   time.Time `json:"updated_at"`
+	ID                          string        `json:"id"`
+	LandlordID                  string        `json:"landlord_id"`
+	LocationID                  string        `json:"location_id"`
+	Rent                        int           `json:"rent"`
+	RoomType                    string        `json:"room_type"`
+	AreaPing                    float64       `json:"area_ping"`
+	AvailableFrom               time.Time     `json:"available_from"`
+	MinLeaseMonths              int           `json:"min_lease_months"`
+	AllowPets                   bool          `json:"allow_pets"`
+	AllowSubsidy                bool          `json:"allow_subsidy"`
+	AllowTaxReceipt             bool          `json:"allow_tax_receipt"`
+	AllowHouseholdRegistration  bool          `json:"allow_household_registration"`
+	AllowCooking                bool          `json:"allow_cooking"`
+	HasParking                  bool          `json:"has_parking"`
+	AllowSmoking                bool          `json:"allow_smoking"`
+	Status                      string        `json:"status"`
+	Photos                      []string      `json:"photos"`
+	PhotoList                   []PhotoDetail `json:"photo_list"`
+	CreatedAt                   time.Time     `json:"created_at"`
+	UpdatedAt                   time.Time     `json:"updated_at"`
 }
 
 // CreateListing handles POST /api/v1/listings
@@ -613,7 +620,7 @@ func (h *Handler) fetchListingResponse(c *gin.Context, id string) (*ListingRespo
 
 	// attach active photos
 	rows, err := h.db.Query(c.Request.Context(),
-		`SELECT public_url FROM listing_photos
+		`SELECT id, public_url, position FROM listing_photos
 		 WHERE listing_id=$1 AND deleted_at IS NULL ORDER BY position`,
 		id,
 	)
@@ -622,12 +629,14 @@ func (h *Handler) fetchListingResponse(c *gin.Context, id string) (*ListingRespo
 	}
 	defer rows.Close()
 	r.Photos = []string{}
+	r.PhotoList = []PhotoDetail{}
 	for rows.Next() {
-		var url string
-		if err := rows.Scan(&url); err != nil {
+		var pd PhotoDetail
+		if err := rows.Scan(&pd.ID, &pd.PublicURL, &pd.Position); err != nil {
 			return nil, err
 		}
-		r.Photos = append(r.Photos, url)
+		r.Photos = append(r.Photos, pd.PublicURL)
+		r.PhotoList = append(r.PhotoList, pd)
 	}
 
 	return &r, nil
