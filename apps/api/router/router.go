@@ -56,7 +56,10 @@ func New(h *handler.Handler, cfg *config.AppConfig) *gin.Engine {
 			ls.DELETE("/:listingId", h.DeleteListing)
 			ls.POST("/:listingId/photos", h.UploadListingPhoto)
 			ls.DELETE("/:listingId/photos/:photoId", h.DeleteListingPhoto)
+			ls.GET("/:listingId/tenant-profiles", h.BrowseTenantProfilesForListing)
 		}
+
+		tp.GET("/:profileId/listings", h.BrowseListingsForProfile)
 	}
 
 	return r
