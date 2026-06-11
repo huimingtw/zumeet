@@ -1,9 +1,12 @@
 package router
 
 import (
+	"time"
+
+	"github.com/gin-contrib/cors"
+	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 
-	"github.com/gin-gonic/gin"
 	"github.com/zumeet/api/config"
 	"github.com/zumeet/api/handler"
 	"github.com/zumeet/api/middleware"
@@ -14,6 +17,18 @@ func New(h *handler.Handler, cfg *config.AppConfig, logger *zap.Logger) *gin.Eng
 	r.Use(gin.Recovery())
 	r.Use(middleware.RequestID())
 	r.Use(middleware.Logger(logger))
+
+	allowedOrigins := []string{"http://localhost:3000"}
+	if cfg.AppEnv == "production" {
+		allowedOrigins = []string{"https://app.zumeet.tw"}
+	}
+	r.Use(cors.New(cors.Config{
+		AllowOrigins:     allowedOrigins,
+		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Content-Type", "Authorization"},
+		AllowCredentials: true,
+		MaxAge:           12 * time.Hour,
+	}))
 
 	// Admin subdomain routes (admin.zumeet.tw)
 	// In tests / local dev, mount under /admin prefix as well

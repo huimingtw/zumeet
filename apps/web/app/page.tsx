@@ -1,6 +1,32 @@
+"use client";
+
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+
+import { api } from "@/lib/api";
+
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
 
 export default function LoginPage() {
+  const router = useRouter();
+
+  useEffect(() => {
+    // If already logged in, redirect to the appropriate dashboard
+    api
+      .get<{ roles: string[] }>("/profile/me")
+      .then((res) => {
+        const roles = res.data.roles ?? [];
+        if (roles.includes("landlord")) {
+          router.replace("/dashboard/landlord");
+        } else if (roles.includes("tenant")) {
+          router.replace("/dashboard/tenant");
+        }
+      })
+      .catch(() => {
+        // Not logged in — stay on this page
+      });
+  }, [router]);
+
   return (
     <div className="flex min-h-screen flex-col items-center justify-center px-4">
       <div className="w-full max-w-sm">

@@ -15,6 +15,7 @@ import (
 	"github.com/zumeet/api/db"
 	"github.com/zumeet/api/handler"
 	"github.com/zumeet/api/router"
+	"github.com/zumeet/api/service"
 )
 
 func main() {
@@ -42,7 +43,32 @@ func main() {
 	}
 	defer pool.Close()
 
-	h := handler.New(pool, nil, nil, nil, cfg)
+	oauthSvc := service.NewGoogleOAuthService(
+		cfg.GoogleClientID,
+		cfg.GoogleClientSecret,
+		cfg.GoogleRedirectURL,
+		cfg.GoogleTokenURL,
+	)
+
+	storageSvc, err := service.NewMinioStorageService(
+		cfg.StorageEndpoint,
+		cfg.StorageAccessKey,
+		cfg.StorageSecretKey,
+		cfg.StorageBucket,
+		cfg.StorageUseSSL,
+	)
+	if err != nil {
+		logger.Fatal("init storage", zap.Error(err))
+	}
+
+	var emailSvc service.EmailService
+	if cfg.ResendAPIKey != "" {
+		emailSvc = service.NewResendEmailService(cfg.ResendAPIKey, cfg.AdminFromEmail)
+	} else {
+		emailSvc = &service.NoopEmailService{}
+	}
+
+	h := handler.New(pool, oauthSvc, storageSvc, emailSvc, cfg)
 	r := router.New(h, cfg, logger)
 
 	srv := &http.Server{
