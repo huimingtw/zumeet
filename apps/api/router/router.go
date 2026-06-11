@@ -75,6 +75,11 @@ func New(h *handler.Handler, cfg *config.AppConfig) *gin.Engine {
 		}
 
 		protected.GET("/profile/me", h.GetMe)
+
+		protected.POST("/reports", h.CreateReport)
+		protected.POST("/blocks/:userId", h.BlockUser)
+		protected.DELETE("/blocks/:userId", h.UnblockUser)
+		protected.DELETE("/account", h.DeleteAccount)
 	}
 
 	return r
