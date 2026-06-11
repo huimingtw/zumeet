@@ -42,7 +42,7 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version-file: apps/api/go.mod
+          go-version: "1.25"
           cache: true
 
       - name: Apply schema

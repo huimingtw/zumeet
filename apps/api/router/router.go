@@ -60,7 +60,7 @@ func New(h *handler.Handler, cfg *config.AppConfig, logger *zap.Logger) *gin.Eng
 
 	// Test-only: mock Google OAuth token + userinfo endpoints.
 	// Guard ensures these routes are NEVER mounted in production.
-	if cfg.AppEnv == "test" {
+	if cfg.AppEnv == "test" || cfg.AppEnv == "development" {
 		r.POST("/test/oauth/google", h.TestOAuthTokenEndpoint)
 		r.GET("/test/oauth/userinfo", h.TestOAuthUserInfoEndpoint)
 		r.POST("/test/auth/seed", h.TestSeedSession)

@@ -524,6 +524,8 @@ function ProfileFormModal({ editingId, onClose, onSaved }: {
       budget_max: Number(form.budget_max),
       min_lease_months: Number(form.min_lease_months),
       min_area_ping: form.min_area_ping ? Number(form.min_area_ping) : null,
+      // Convert date-only string to RFC3339 for Go time.Time binding
+      available_from: form.available_from ? `${form.available_from}T00:00:00Z` : form.available_from,
     };
     try {
       if (editingId) {

@@ -627,6 +627,8 @@ function ListingFormModal({ editingId, onClose, onSaved }: {
       rent: Number(form.rent),
       area_ping: Number(form.area_ping),
       min_lease_months: Number(form.min_lease_months),
+      // Convert date-only string to RFC3339 for Go time.Time binding
+      available_from: form.available_from ? `${form.available_from}T00:00:00Z` : form.available_from,
     };
     try {
       if (editingId) {

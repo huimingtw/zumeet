@@ -137,6 +137,8 @@ func (h *Handler) CreateTenantProfile(c *gin.Context) {
 	defer tx.Rollback(c.Request.Context())
 
 	profileID := ulid.Make().String()
+	// New profiles are created active by default so users can browse listings immediately.
+	// Use PATCH /:profileId/status to toggle is_active after creation.
 	_, err = tx.Exec(c.Request.Context(),
 		`INSERT INTO tenant_profiles (
 			id, tenant_id, name, budget_min, budget_max, preferred_room_types,
@@ -149,7 +151,7 @@ func (h *Handler) CreateTenantProfile(c *gin.Context) {
 		req.AvailableFrom, req.MinLeaseMonths, req.MinAreaPing,
 		req.HasPets, req.PetDescription, req.NeedsSubsidy, req.NeedsTaxReceipt,
 		req.NeedsHouseholdRegistration, req.NeedsCooking, req.NeedsParking, req.Smoking,
-		req.Occupation, req.ContactInfo, req.IsActive,
+		req.Occupation, req.ContactInfo, true,
 	)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "INTERNAL_ERROR"})
