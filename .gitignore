@@ -1,4 +1,5 @@
 CLAUDE.md
+SPEC.md
 
 # Environment files (never commit actual secrets)
 .env.local
