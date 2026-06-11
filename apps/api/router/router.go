@@ -11,6 +11,32 @@ func New(h *handler.Handler, cfg *config.AppConfig) *gin.Engine {
 	r := gin.New()
 	r.Use(gin.Recovery())
 
+	// Admin subdomain routes (admin.zumeet.tw)
+	// In tests / local dev, mount under /admin prefix as well
+	adminGroup := r.Group("")
+	if cfg.AppEnv == "test" || cfg.AppEnv == "development" {
+		adminGroup = r.Group("/admin")
+	}
+	{
+		adminGroup.POST("/login", h.AdminLogin)
+		adminGroup.GET("/auth/callback", h.AdminAuthCallback)
+		adminGroup.POST("/logout", h.AdminLogout)
+
+		adminAuth := adminGroup.Group("")
+		adminAuth.Use(middleware.AdminAuth([]byte(cfg.AdminJWTSecret), h.DB()))
+		{
+			adminAuth.GET("/reports", h.AdminListReports)
+			adminAuth.POST("/reports/:reportId/resolve", h.AdminResolveReport)
+			adminAuth.GET("/users/:userId", h.AdminGetUser)
+			adminAuth.POST("/users/:userId/suspend", h.AdminSuspendUser)
+			adminAuth.POST("/users/:userId/unsuspend", h.AdminUnsuspendUser)
+			adminAuth.POST("/users/:userId/delete", h.AdminDeleteUser)
+			adminAuth.POST("/listings/:listingId/remove", h.AdminRemoveListing)
+			adminAuth.POST("/listings/:listingId/restore", h.AdminRestoreListing)
+			adminAuth.GET("/actions", h.AdminListActions)
+		}
+	}
+
 	r.GET("/healthz", h.HealthCheck)
 
 	// Test-only: mock Google OAuth token + userinfo endpoints.
