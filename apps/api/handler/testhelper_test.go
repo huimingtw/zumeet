@@ -11,6 +11,8 @@ import (
 	"testing"
 	"time"
 
+	"go.uber.org/zap"
+
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -48,7 +50,7 @@ func TestMain(m *testing.M) {
 	defer testPool.Close()
 
 	testH = handler.New(testPool, &handler.MockOAuthService{}, &noopStorage{}, &noopEmail{}, testCfg)
-	testR = router.New(testH, testCfg)
+	testR = router.New(testH, testCfg, zap.NewNop())
 
 	if err := appdb.TruncateTables(testPool); err != nil {
 		log.Fatalf("truncate: %v", err)

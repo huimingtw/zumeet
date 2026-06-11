@@ -1,15 +1,19 @@
 package router
 
 import (
+	"go.uber.org/zap"
+
 	"github.com/gin-gonic/gin"
 	"github.com/zumeet/api/config"
 	"github.com/zumeet/api/handler"
 	"github.com/zumeet/api/middleware"
 )
 
-func New(h *handler.Handler, cfg *config.AppConfig) *gin.Engine {
+func New(h *handler.Handler, cfg *config.AppConfig, logger *zap.Logger) *gin.Engine {
 	r := gin.New()
 	r.Use(gin.Recovery())
+	r.Use(middleware.RequestID())
+	r.Use(middleware.Logger(logger))
 
 	// Admin subdomain routes (admin.zumeet.tw)
 	// In tests / local dev, mount under /admin prefix as well
