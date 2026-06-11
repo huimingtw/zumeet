@@ -61,8 +61,20 @@ func New(h *handler.Handler, cfg *config.AppConfig) *gin.Engine {
 
 		tp.GET("/:profileId/listings", h.BrowseListingsForProfile)
 		tp.POST("/:profileId/listings/:listingId/interest", h.ExpressInterestAsTenant)
+		tp.GET("/:profileId/matches", h.GetProfileMatches)
+		tp.GET("/:profileId/interests/incoming", h.GetProfileIncomingInterests)
+		tp.GET("/:profileId/interests/outgoing", h.GetProfileOutgoingInterests)
 
 		ls.POST("/:listingId/tenant-profiles/:profileId/interest", h.ExpressInterestAsLandlord)
+
+		matches := protected.Group("/matches")
+		{
+			matches.GET("/mutual", h.GetAllMutualMatches)
+			matches.GET("/incoming", h.GetAllIncomingInterests)
+			matches.GET("/outgoing", h.GetAllOutgoingInterests)
+		}
+
+		protected.GET("/profile/me", h.GetMe)
 	}
 
 	return r
