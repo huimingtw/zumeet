@@ -60,6 +60,9 @@ func New(h *handler.Handler, cfg *config.AppConfig) *gin.Engine {
 		}
 
 		tp.GET("/:profileId/listings", h.BrowseListingsForProfile)
+		tp.POST("/:profileId/listings/:listingId/interest", h.ExpressInterestAsTenant)
+
+		ls.POST("/:listingId/tenant-profiles/:profileId/interest", h.ExpressInterestAsLandlord)
 	}
 
 	return r
