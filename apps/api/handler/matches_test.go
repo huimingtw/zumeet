@@ -7,6 +7,17 @@ import (
 	"testing"
 )
 
+func decodeItems(t *testing.T, w *httptest.ResponseRecorder) []map[string]any {
+	t.Helper()
+	var body struct {
+		Items []map[string]any `json:"items"`
+	}
+	if err := json.NewDecoder(w.Body).Decode(&body); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	return body.Items
+}
+
 func TestMatches_MutualContainsContactInfo(t *testing.T) {
 	truncate(t)
 	landlordID := seedUser(t, "mx-ll1@example.com", "landlord")
@@ -31,8 +42,7 @@ func TestMatches_MutualContainsContactInfo(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
 	}
-	var matches []map[string]any
-	json.NewDecoder(w.Body).Decode(&matches)
+	matches := decodeItems(t, w)
 	if len(matches) != 1 {
 		t.Fatalf("expected 1 match, got %d", len(matches))
 	}
@@ -45,8 +55,7 @@ func TestMatches_MutualContainsContactInfo(t *testing.T) {
 	req2.AddCookie(tCookie)
 	w2 := httptest.NewRecorder()
 	testR.ServeHTTP(w2, req2)
-	var profileMatches []map[string]any
-	json.NewDecoder(w2.Body).Decode(&profileMatches)
+	profileMatches := decodeItems(t, w2)
 	if len(profileMatches) != 1 {
 		t.Errorf("expected 1 profile match, got %d", len(profileMatches))
 	}
@@ -71,8 +80,7 @@ func TestMatches_Incoming_NoContactInfo(t *testing.T) {
 	w := httptest.NewRecorder()
 	testR.ServeHTTP(w, req)
 
-	var incoming []map[string]any
-	json.NewDecoder(w.Body).Decode(&incoming)
+	incoming := decodeItems(t, w)
 	if len(incoming) != 1 {
 		t.Fatalf("expected 1 incoming, got %d", len(incoming))
 	}
@@ -84,8 +92,7 @@ func TestMatches_Incoming_NoContactInfo(t *testing.T) {
 	req2.AddCookie(tCookie)
 	w2 := httptest.NewRecorder()
 	testR.ServeHTTP(w2, req2)
-	var profileIncoming []map[string]any
-	json.NewDecoder(w2.Body).Decode(&profileIncoming)
+	profileIncoming := decodeItems(t, w2)
 	if len(profileIncoming) != 1 {
 		t.Errorf("expected 1 profile incoming, got %d", len(profileIncoming))
 	}
@@ -108,8 +115,7 @@ func TestMatches_Outgoing_NoContactInfo(t *testing.T) {
 	w := httptest.NewRecorder()
 	testR.ServeHTTP(w, req)
 
-	var outgoing []map[string]any
-	json.NewDecoder(w.Body).Decode(&outgoing)
+	outgoing := decodeItems(t, w)
 	if len(outgoing) != 1 {
 		t.Fatalf("expected 1 outgoing, got %d", len(outgoing))
 	}
@@ -141,8 +147,7 @@ func TestMatches_MutualHiddenAfterBlock(t *testing.T) {
 	w := httptest.NewRecorder()
 	testR.ServeHTTP(w, req)
 
-	var matches []map[string]any
-	json.NewDecoder(w.Body).Decode(&matches)
+	matches := decodeItems(t, w)
 	if len(matches) != 0 {
 		t.Errorf("blocked match should be hidden, got %d matches", len(matches))
 	}
@@ -167,8 +172,7 @@ func TestMatches_IncomingMovesToMutual(t *testing.T) {
 	req.AddCookie(tCookie)
 	w := httptest.NewRecorder()
 	testR.ServeHTTP(w, req)
-	var incoming []map[string]any
-	json.NewDecoder(w.Body).Decode(&incoming)
+	incoming := decodeItems(t, w)
 	if len(incoming) != 1 {
 		t.Fatalf("expected 1 incoming before tenant responds, got %d", len(incoming))
 	}
@@ -181,8 +185,7 @@ func TestMatches_IncomingMovesToMutual(t *testing.T) {
 	req2.AddCookie(tCookie)
 	w2 := httptest.NewRecorder()
 	testR.ServeHTTP(w2, req2)
-	var incoming2 []map[string]any
-	json.NewDecoder(w2.Body).Decode(&incoming2)
+	incoming2 := decodeItems(t, w2)
 	if len(incoming2) != 0 {
 		t.Errorf("after match, incoming should be empty, got %d", len(incoming2))
 	}
@@ -191,8 +194,7 @@ func TestMatches_IncomingMovesToMutual(t *testing.T) {
 	req3.AddCookie(tCookie)
 	w3 := httptest.NewRecorder()
 	testR.ServeHTTP(w3, req3)
-	var mutual []map[string]any
-	json.NewDecoder(w3.Body).Decode(&mutual)
+	mutual := decodeItems(t, w3)
 	if len(mutual) != 1 {
 		t.Errorf("expected 1 mutual after match, got %d", len(mutual))
 	}

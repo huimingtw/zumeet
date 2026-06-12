@@ -17,20 +17,40 @@ type MutualMatchResponse struct {
 	ListingID       string    `json:"listing_id"`
 	ContactInfo     string    `json:"contact_info"`
 	MatchedAt       time.Time `json:"matched_at"`
+	LocationID      string    `json:"location_id,omitempty"`
+	Rent            int       `json:"rent,omitempty"`
+	RoomType        string    `json:"room_type,omitempty"`
+	AreaPing        float64   `json:"area_ping,omitempty"`
 }
 
 type IncomingInterestResponse struct {
+	ID              string    `json:"id,omitempty"`
 	TenantProfileID string    `json:"tenant_profile_id"`
 	ProfileName     string    `json:"profile_name,omitempty"`
 	ListingID       string    `json:"listing_id"`
 	CreatedAt       time.Time `json:"created_at"`
+	LocationID      string    `json:"location_id,omitempty"`
+	Rent            int       `json:"rent,omitempty"`
+	RoomType        string    `json:"room_type,omitempty"`
+	AreaPing        float64   `json:"area_ping,omitempty"`
+	BudgetMin       int       `json:"budget_min,omitempty"`
+	BudgetMax       int       `json:"budget_max,omitempty"`
+	InterestSent    bool      `json:"interest_sent"`
 }
 
 type OutgoingInterestResponse struct {
-	TenantProfileID string    `json:"tenant_profile_id"`
-	ProfileName     string    `json:"profile_name,omitempty"`
-	ListingID       string    `json:"listing_id"`
-	CreatedAt       time.Time `json:"created_at"`
+	ID                string    `json:"id,omitempty"`
+	TenantProfileID   string    `json:"tenant_profile_id"`
+	ProfileName       string    `json:"profile_name,omitempty"`
+	TenantProfileName string    `json:"tenant_profile_name,omitempty"`
+	ListingID         string    `json:"listing_id"`
+	CreatedAt         time.Time `json:"created_at"`
+	LocationID        string    `json:"location_id,omitempty"`
+	Rent              int       `json:"rent,omitempty"`
+	RoomType          string    `json:"room_type,omitempty"`
+	AreaPing          float64   `json:"area_ping,omitempty"`
+	BudgetMin         int       `json:"budget_min,omitempty"`
+	BudgetMax         int       `json:"budget_max,omitempty"`
 }
 
 // ---- profile-level endpoints ----
@@ -53,9 +73,11 @@ func (h *Handler) GetProfileMatches(c *Context) {
 	result := make([]MutualMatchResponse, 0)
 	if err := db.Raw(`
 		SELECT m.id AS match_id, m.tenant_profile_id, m.listing_id,
-		       l.contact_info, m.matched_at
+		       tp.name AS profile_name, l.contact_info, m.matched_at,
+		       l.location_id, l.rent, l.room_type::text AS room_type, l.area_ping
 		FROM matches m
 		JOIN listings l ON l.id = m.listing_id
+		JOIN tenant_profiles tp ON tp.id = m.tenant_profile_id
 		WHERE m.tenant_profile_id = $1
 		  AND m.status = 'active'
 		  AND m.deleted_at IS NULL
@@ -72,7 +94,7 @@ func (h *Handler) GetProfileMatches(c *Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
 		return
 	}
-	c.JSON(http.StatusOK, result)
+	c.JSON(http.StatusOK, gin.H{"items": result, "next_cursor": ""})
 }
 
 // GetProfileIncomingInterests handles GET /api/v1/tenant-profiles/:profileId/interests/incoming
@@ -93,9 +115,12 @@ func (h *Handler) GetProfileIncomingInterests(c *Context) {
 	db := h.orm.WithContext(c.Request.Context())
 	result := make([]IncomingInterestResponse, 0)
 	if err := db.Raw(`
-		SELECT i.tenant_profile_id, i.listing_id, i.created_at
+		SELECT l.id, i.tenant_profile_id, tp.name AS profile_name, i.listing_id, i.created_at,
+		       l.location_id, l.rent, l.room_type::text AS room_type, l.area_ping,
+		       false AS interest_sent
 		FROM interests i
 		JOIN listings l ON l.id = i.listing_id
+		JOIN tenant_profiles tp ON tp.id = i.tenant_profile_id
 		WHERE i.tenant_profile_id = $1
 		  AND i.actor_role = 'landlord'
 		  AND i.status = 'active'
@@ -121,7 +146,7 @@ func (h *Handler) GetProfileIncomingInterests(c *Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
 		return
 	}
-	c.JSON(http.StatusOK, result)
+	c.JSON(http.StatusOK, gin.H{"items": result, "next_cursor": ""})
 }
 
 // GetProfileOutgoingInterests handles GET /api/v1/tenant-profiles/:profileId/interests/outgoing
@@ -142,9 +167,12 @@ func (h *Handler) GetProfileOutgoingInterests(c *Context) {
 	db := h.orm.WithContext(c.Request.Context())
 	result := make([]OutgoingInterestResponse, 0)
 	if err := db.Raw(`
-		SELECT i.tenant_profile_id, i.listing_id, i.created_at
+		SELECT l.id, i.tenant_profile_id, tp.name AS profile_name, tp.name AS tenant_profile_name,
+		       i.listing_id, i.created_at,
+		       l.location_id, l.rent, l.room_type::text AS room_type, l.area_ping
 		FROM interests i
 		JOIN listings l ON l.id = i.listing_id
+		JOIN tenant_profiles tp ON tp.id = i.tenant_profile_id
 		WHERE i.tenant_profile_id = $1
 		  AND i.actor_role = 'tenant'
 		  AND i.status = 'active'
@@ -170,7 +198,7 @@ func (h *Handler) GetProfileOutgoingInterests(c *Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
 		return
 	}
-	c.JSON(http.StatusOK, result)
+	c.JSON(http.StatusOK, gin.H{"items": result, "next_cursor": ""})
 }
 
 // ---- cross-profile/listing aggregated endpoints ----
@@ -184,9 +212,11 @@ func (h *Handler) GetAllMutualMatches(c *Context) {
 	result := make([]MutualMatchResponse, 0)
 	if err := db.Raw(`
 		SELECT m.id AS match_id, m.tenant_profile_id, m.listing_id,
+		       tp.name AS profile_name,
 		       CASE WHEN m.tenant_id = $1 THEN l.contact_info
 		            ELSE tp.contact_info END AS contact_info,
-		       m.matched_at
+		       m.matched_at,
+		       l.location_id, l.rent, l.room_type::text AS room_type, l.area_ping
 		FROM matches m
 		JOIN listings l ON l.id = m.listing_id
 		JOIN tenant_profiles tp ON tp.id = m.tenant_profile_id
@@ -206,7 +236,7 @@ func (h *Handler) GetAllMutualMatches(c *Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
 		return
 	}
-	c.JSON(http.StatusOK, result)
+	c.JSON(http.StatusOK, gin.H{"items": result, "next_cursor": ""})
 }
 
 // GetAllIncomingInterests handles GET /api/v1/matches/incoming
@@ -218,7 +248,9 @@ func (h *Handler) GetAllIncomingInterests(c *Context) {
 	db := h.orm.WithContext(c.Request.Context())
 	result := make([]IncomingInterestResponse, 0)
 	if err := db.Raw(`
-		SELECT i.tenant_profile_id, i.listing_id, i.created_at
+		SELECT l.id, i.tenant_profile_id, tp.name AS profile_name, i.listing_id, i.created_at,
+		       l.location_id, l.rent, l.room_type::text AS room_type, l.area_ping,
+		       tp.budget_min, tp.budget_max, false AS interest_sent
 		FROM interests i
 		JOIN listings l ON l.id = i.listing_id
 		JOIN tenant_profiles tp ON tp.id = i.tenant_profile_id
@@ -252,7 +284,7 @@ func (h *Handler) GetAllIncomingInterests(c *Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
 		return
 	}
-	c.JSON(http.StatusOK, result)
+	c.JSON(http.StatusOK, gin.H{"items": result, "next_cursor": ""})
 }
 
 // GetAllOutgoingInterests handles GET /api/v1/matches/outgoing
@@ -262,7 +294,10 @@ func (h *Handler) GetAllOutgoingInterests(c *Context) {
 	db := h.orm.WithContext(c.Request.Context())
 	result := make([]OutgoingInterestResponse, 0)
 	if err := db.Raw(`
-		SELECT i.tenant_profile_id, i.listing_id, i.created_at
+		SELECT l.id, i.tenant_profile_id, tp.name AS profile_name, tp.name AS tenant_profile_name,
+		       i.listing_id, i.created_at,
+		       l.location_id, l.rent, l.room_type::text AS room_type, l.area_ping,
+		       tp.budget_min, tp.budget_max
 		FROM interests i
 		JOIN listings l ON l.id = i.listing_id
 		JOIN tenant_profiles tp ON tp.id = i.tenant_profile_id
@@ -296,5 +331,5 @@ func (h *Handler) GetAllOutgoingInterests(c *Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
 		return
 	}
-	c.JSON(http.StatusOK, result)
+	c.JSON(http.StatusOK, gin.H{"items": result, "next_cursor": ""})
 }
