@@ -11,12 +11,12 @@ import (
 // ---- response types ----
 
 type MutualMatchResponse struct {
-	MatchID          string    `json:"match_id"`
-	TenantProfileID  string    `json:"tenant_profile_id"`
-	ProfileName      string    `json:"profile_name,omitempty"` // tenant-side
-	ListingID        string    `json:"listing_id"`
-	ContactInfo      string    `json:"contact_info"`
-	MatchedAt        time.Time `json:"matched_at"`
+	MatchID         string    `json:"match_id"`
+	TenantProfileID string    `json:"tenant_profile_id"`
+	ProfileName     string    `json:"profile_name,omitempty"` // tenant-side
+	ListingID       string    `json:"listing_id"`
+	ContactInfo     string    `json:"contact_info"`
+	MatchedAt       time.Time `json:"matched_at"`
 }
 
 type IncomingInterestResponse struct {
@@ -36,7 +36,7 @@ type OutgoingInterestResponse struct {
 // ---- profile-level endpoints ----
 
 // GetProfileMatches handles GET /api/v1/tenant-profiles/:profileId/matches
-func (h *Handler) GetProfileMatches(c *gin.Context) {
+func (h *Handler) GetProfileMatches(c *Context) {
 	userID := middleware.MustUserID(c)
 	profileID := c.Param("profileId")
 
@@ -86,7 +86,7 @@ func (h *Handler) GetProfileMatches(c *gin.Context) {
 }
 
 // GetProfileIncomingInterests handles GET /api/v1/tenant-profiles/:profileId/interests/incoming
-func (h *Handler) GetProfileIncomingInterests(c *gin.Context) {
+func (h *Handler) GetProfileIncomingInterests(c *Context) {
 	userID := middleware.MustUserID(c)
 	profileID := c.Param("profileId")
 
@@ -145,7 +145,7 @@ func (h *Handler) GetProfileIncomingInterests(c *gin.Context) {
 }
 
 // GetProfileOutgoingInterests handles GET /api/v1/tenant-profiles/:profileId/interests/outgoing
-func (h *Handler) GetProfileOutgoingInterests(c *gin.Context) {
+func (h *Handler) GetProfileOutgoingInterests(c *Context) {
 	userID := middleware.MustUserID(c)
 	profileID := c.Param("profileId")
 
@@ -206,7 +206,7 @@ func (h *Handler) GetProfileOutgoingInterests(c *gin.Context) {
 // ---- cross-profile/listing aggregated endpoints ----
 
 // GetAllMutualMatches handles GET /api/v1/matches/mutual
-func (h *Handler) GetAllMutualMatches(c *gin.Context) {
+func (h *Handler) GetAllMutualMatches(c *Context) {
 	userID := middleware.MustUserID(c)
 
 	// Works for both tenant and landlord
@@ -250,7 +250,7 @@ func (h *Handler) GetAllMutualMatches(c *gin.Context) {
 }
 
 // GetAllIncomingInterests handles GET /api/v1/matches/incoming
-func (h *Handler) GetAllIncomingInterests(c *gin.Context) {
+func (h *Handler) GetAllIncomingInterests(c *Context) {
 	userID := middleware.MustUserID(c)
 
 	// Incoming for tenant: landlord expressed interest, tenant hasn't
@@ -306,7 +306,7 @@ func (h *Handler) GetAllIncomingInterests(c *gin.Context) {
 }
 
 // GetAllOutgoingInterests handles GET /api/v1/matches/outgoing
-func (h *Handler) GetAllOutgoingInterests(c *gin.Context) {
+func (h *Handler) GetAllOutgoingInterests(c *Context) {
 	userID := middleware.MustUserID(c)
 
 	rows, err := h.db.Query(c.Request.Context(), `

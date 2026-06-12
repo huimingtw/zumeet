@@ -70,7 +70,7 @@ func (h *Handler) verifyOAuthState(state string) (*oauthStateClaims, error) {
 }
 
 // GoogleOAuthRedirect redirects the browser to Google's authorization URL.
-func (h *Handler) GoogleOAuthRedirect(c *gin.Context) {
+func (h *Handler) GoogleOAuthRedirect(c *Context) {
 	// Generate random CSRF nonce
 	b := make([]byte, 16)
 	if _, err := rand.Read(b); err != nil {
@@ -98,7 +98,7 @@ func (h *Handler) GoogleOAuthRedirect(c *gin.Context) {
 //  2. Lookup auth_identities (google, sub) → existing user → issue tokens
 //  3. Lookup users.email (auto-link) → add identity → issue tokens
 //  4. New user → sign short-lived state → redirect to onboarding
-func (h *Handler) GoogleOAuthCallback(c *gin.Context) {
+func (h *Handler) GoogleOAuthCallback(c *Context) {
 	code := c.Query("code")
 	if code == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "missing code", "code": "BAD_REQUEST"})
@@ -176,7 +176,7 @@ type OnboardingRequest struct {
 }
 
 // Onboarding creates user + user_role + auth_identity in a single transaction.
-func (h *Handler) Onboarding(c *gin.Context) {
+func (h *Handler) Onboarding(c *Context) {
 	var req OnboardingRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error(), "code": "BAD_REQUEST"})
@@ -262,7 +262,7 @@ func (h *Handler) Onboarding(c *gin.Context) {
 }
 
 // loginUser loads user info, builds JWT roles, and issues a token pair.
-func (h *Handler) loginUser(c *gin.Context, userID string) error {
+func (h *Handler) loginUser(c *Context, userID string) error {
 	var email string
 	if err := h.db.QueryRow(c.Request.Context(),
 		`SELECT email FROM users WHERE id = $1 AND deleted_at IS NULL`,

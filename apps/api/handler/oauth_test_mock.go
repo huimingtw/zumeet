@@ -51,7 +51,7 @@ func (m *MockOAuthService) ExchangeToken(_ context.Context, code string) (*servi
 
 // TestOAuthTokenEndpoint mimics Google's token endpoint (POST /test/oauth/google).
 // Only mounted when APP_ENV=test.
-func (h *Handler) TestOAuthTokenEndpoint(c *gin.Context) {
+func (h *Handler) TestOAuthTokenEndpoint(c *Context) {
 	code := c.PostForm("code")
 	testOAuthMu.RLock()
 	_, ok := testOAuthUsers[code]
@@ -65,7 +65,7 @@ func (h *Handler) TestOAuthTokenEndpoint(c *gin.Context) {
 
 // TestOAuthUserInfoEndpoint mimics Google's userinfo endpoint.
 // Only mounted when APP_ENV=test.
-func (h *Handler) TestOAuthUserInfoEndpoint(c *gin.Context) {
+func (h *Handler) TestOAuthUserInfoEndpoint(c *Context) {
 	auth := c.GetHeader("Authorization")
 	if len(auth) < 8 {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "missing token"})
@@ -85,7 +85,7 @@ func (h *Handler) TestOAuthUserInfoEndpoint(c *gin.Context) {
 // TestSeedSession creates a fully onboarded user and issues JWT cookies.
 // POST /test/auth/seed  body: {"email":"...","role":"tenant|landlord"}
 // Only mounted when APP_ENV=test.
-func (h *Handler) TestSeedSession(c *gin.Context) {
+func (h *Handler) TestSeedSession(c *Context) {
 	var req struct {
 		Email string `json:"email" binding:"required"`
 		Role  string `json:"role" binding:"required"`

@@ -18,6 +18,10 @@ const (
 
 const userIDCtxKey = "user_id"
 
+type valueGetter interface {
+	Get(any) (any, bool)
+}
+
 type Claims struct {
 	UserID string   `json:"user_id"`
 	Email  string   `json:"email"`
@@ -104,7 +108,7 @@ func Auth(jwtSecret []byte, db *pgxpool.Pool) gin.HandlerFunc {
 	}
 }
 
-func UserIDFromContext(c *gin.Context) (string, bool) {
+func UserIDFromContext(c valueGetter) (string, bool) {
 	v, exists := c.Get(userIDCtxKey)
 	if !exists {
 		return "", false
@@ -113,7 +117,7 @@ func UserIDFromContext(c *gin.Context) (string, bool) {
 	return id, ok
 }
 
-func MustUserID(c *gin.Context) string {
+func MustUserID(c valueGetter) string {
 	id, _ := UserIDFromContext(c)
 	return id
 }

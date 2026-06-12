@@ -20,7 +20,7 @@ const adminMagicLinkTTL = 15 * time.Minute
 // ---- auth ----
 
 // AdminLoginRequest handles POST /login (admin subdomain)
-func (h *Handler) AdminLogin(c *gin.Context) {
+func (h *Handler) AdminLogin(c *Context) {
 	var req struct {
 		Email string `json:"email" form:"email"`
 	}
@@ -82,7 +82,7 @@ func (h *Handler) AdminLogin(c *gin.Context) {
 }
 
 // AdminAuthCallback handles GET /auth/callback?token=
-func (h *Handler) AdminAuthCallback(c *gin.Context) {
+func (h *Handler) AdminAuthCallback(c *Context) {
 	plainToken := c.Query("token")
 	if plainToken == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "missing token"})
@@ -154,7 +154,7 @@ func (h *Handler) AdminAuthCallback(c *gin.Context) {
 }
 
 // AdminLogout handles POST /logout
-func (h *Handler) AdminLogout(c *gin.Context) {
+func (h *Handler) AdminLogout(c *Context) {
 	http.SetCookie(c.Writer, &http.Cookie{
 		Name:     middleware.AdminTokenCookie,
 		Value:    "",
@@ -169,7 +169,7 @@ func (h *Handler) AdminLogout(c *gin.Context) {
 
 // ---- helpers ----
 
-func (h *Handler) requireAdmin(c *gin.Context, minLevel string) bool {
+func (h *Handler) requireAdmin(c *Context, minLevel string) bool {
 	level := middleware.AdminLevelFromContext(c)
 	if minLevel == "super_admin" && level != "super_admin" {
 		c.JSON(http.StatusForbidden, gin.H{"error": "super_admin required", "code": "forbidden"})
@@ -188,7 +188,7 @@ func notePtr(s string) *string {
 // ---- reports queue ----
 
 // AdminListReports handles GET /reports
-func (h *Handler) AdminListReports(c *gin.Context) {
+func (h *Handler) AdminListReports(c *Context) {
 	status := c.DefaultQuery("status", "pending")
 
 	rows, err := h.db.Query(c.Request.Context(), `
@@ -226,7 +226,7 @@ func (h *Handler) AdminListReports(c *gin.Context) {
 }
 
 // AdminResolveReport handles POST /reports/:reportId/resolve
-func (h *Handler) AdminResolveReport(c *gin.Context) {
+func (h *Handler) AdminResolveReport(c *Context) {
 	adminID := middleware.MustAdminID(c)
 	reportID := c.Param("reportId")
 
@@ -282,7 +282,7 @@ func (h *Handler) AdminResolveReport(c *gin.Context) {
 // ---- user actions ----
 
 // AdminGetUser handles GET /users/:userId
-func (h *Handler) AdminGetUser(c *gin.Context) {
+func (h *Handler) AdminGetUser(c *Context) {
 	targetID := c.Param("userId")
 
 	var email string
@@ -319,7 +319,7 @@ func (h *Handler) AdminGetUser(c *gin.Context) {
 }
 
 // AdminSuspendUser handles POST /users/:userId/suspend
-func (h *Handler) AdminSuspendUser(c *gin.Context) {
+func (h *Handler) AdminSuspendUser(c *Context) {
 	adminID := middleware.MustAdminID(c)
 	targetID := c.Param("userId")
 
@@ -354,7 +354,7 @@ func (h *Handler) AdminSuspendUser(c *gin.Context) {
 }
 
 // AdminUnsuspendUser handles POST /users/:userId/unsuspend
-func (h *Handler) AdminUnsuspendUser(c *gin.Context) {
+func (h *Handler) AdminUnsuspendUser(c *Context) {
 	adminID := middleware.MustAdminID(c)
 	targetID := c.Param("userId")
 
@@ -389,7 +389,7 @@ func (h *Handler) AdminUnsuspendUser(c *gin.Context) {
 }
 
 // AdminDeleteUser handles POST /users/:userId/delete (super_admin only)
-func (h *Handler) AdminDeleteUser(c *gin.Context) {
+func (h *Handler) AdminDeleteUser(c *Context) {
 	adminID := middleware.MustAdminID(c)
 	if !h.requireAdmin(c, "super_admin") {
 		return
@@ -443,7 +443,7 @@ func (h *Handler) AdminDeleteUser(c *gin.Context) {
 // ---- listing actions ----
 
 // AdminRemoveListing handles POST /listings/:listingId/remove
-func (h *Handler) AdminRemoveListing(c *gin.Context) {
+func (h *Handler) AdminRemoveListing(c *Context) {
 	adminID := middleware.MustAdminID(c)
 	listingID := c.Param("listingId")
 
@@ -478,7 +478,7 @@ func (h *Handler) AdminRemoveListing(c *gin.Context) {
 }
 
 // AdminRestoreListing handles POST /listings/:listingId/restore
-func (h *Handler) AdminRestoreListing(c *gin.Context) {
+func (h *Handler) AdminRestoreListing(c *Context) {
 	adminID := middleware.MustAdminID(c)
 	listingID := c.Param("listingId")
 
@@ -513,7 +513,7 @@ func (h *Handler) AdminRestoreListing(c *gin.Context) {
 }
 
 // AdminListActions handles GET /actions
-func (h *Handler) AdminListActions(c *gin.Context) {
+func (h *Handler) AdminListActions(c *Context) {
 	rows, err := h.db.Query(c.Request.Context(), `
 		SELECT id, admin_id, action::text, target_type, target_id, note, created_at
 		FROM admin_actions

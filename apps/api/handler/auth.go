@@ -28,7 +28,7 @@ func hashToken(plain string) string {
 	return hex.EncodeToString(sum[:])
 }
 
-func (h *Handler) setTokenCookies(c *gin.Context, accessToken, refreshToken string) {
+func (h *Handler) setTokenCookies(c *Context, accessToken, refreshToken string) {
 	domain := ""
 	secure := false
 	if h.cfg.AppEnv == "production" {
@@ -57,7 +57,7 @@ func (h *Handler) setTokenCookies(c *gin.Context, accessToken, refreshToken stri
 	})
 }
 
-func (h *Handler) clearTokenCookies(c *gin.Context) {
+func (h *Handler) clearTokenCookies(c *Context) {
 	domain := ""
 	secure := false
 	if h.cfg.AppEnv == "production" {
@@ -88,7 +88,7 @@ func (h *Handler) clearTokenCookies(c *gin.Context) {
 
 // IssueTokenPair generates a new access + refresh token, stores the refresh token hash in DB,
 // and sets httpOnly cookies on the response.
-func (h *Handler) IssueTokenPair(c *gin.Context, userID, email string, roles []string) error {
+func (h *Handler) IssueTokenPair(c *Context, userID, email string, roles []string) error {
 	accessToken, err := middleware.GenerateAccessToken([]byte(h.cfg.JWTSecret), userID, email, roles)
 	if err != nil {
 		return err
@@ -114,7 +114,7 @@ func (h *Handler) IssueTokenPair(c *gin.Context, userID, email string, roles []s
 }
 
 // Logout revokes the current refresh token and clears cookies.
-func (h *Handler) Logout(c *gin.Context) {
+func (h *Handler) Logout(c *Context) {
 	if refreshToken, err := c.Cookie(middleware.RefreshTokenCookie); err == nil && refreshToken != "" {
 		hash := hashToken(refreshToken)
 		// Ignore error: best-effort revocation
@@ -129,7 +129,7 @@ func (h *Handler) Logout(c *gin.Context) {
 }
 
 // Refresh rotates the refresh token and issues a new access token.
-func (h *Handler) Refresh(c *gin.Context) {
+func (h *Handler) Refresh(c *Context) {
 	refreshToken, err := c.Cookie(middleware.RefreshTokenCookie)
 	if err != nil || refreshToken == "" {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "missing refresh token", "code": "UNAUTHORIZED"})

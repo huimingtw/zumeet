@@ -77,7 +77,7 @@ func AdminAuth(adminJWTSecret []byte, db *pgxpool.Pool) gin.HandlerFunc {
 	}
 }
 
-func AdminIDFromContext(c *gin.Context) (string, bool) {
+func AdminIDFromContext(c valueGetter) (string, bool) {
 	v, ok := c.Get("admin_id")
 	if !ok {
 		return "", false
@@ -86,7 +86,7 @@ func AdminIDFromContext(c *gin.Context) (string, bool) {
 	return id, ok
 }
 
-func MustAdminID(c *gin.Context) string {
+func MustAdminID(c valueGetter) string {
 	id, ok := AdminIDFromContext(c)
 	if !ok {
 		panic("admin_id not in context")
@@ -94,7 +94,7 @@ func MustAdminID(c *gin.Context) string {
 	return id
 }
 
-func AdminLevelFromContext(c *gin.Context) string {
+func AdminLevelFromContext(c valueGetter) string {
 	v, _ := c.Get("admin_level")
 	s, _ := v.(string)
 	return s

@@ -37,11 +37,18 @@ func Logger(logger *zap.Logger) gin.HandlerFunc {
 
 		status := c.Writer.Status()
 		reqID, _ := c.Get("request_id")
+		handlerCaller := ""
+		if value, ok := c.Get("hcaller"); ok {
+			handlerCaller, _ = value.(string)
+		}
 
 		fields := []zap.Field{
 			zap.String("request_id", reqID.(string)),
 			zap.String("method", c.Request.Method),
 			zap.String("path", c.Request.URL.Path),
+			zap.String("route", c.FullPath()),
+			zap.String("handler", c.HandlerName()),
+			zap.String("hcaller", handlerCaller),
 			zap.Int("status", status),
 			zap.String("ip", c.ClientIP()),
 			zap.Duration("latency", time.Since(start)),

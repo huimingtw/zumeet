@@ -14,21 +14,21 @@ import (
 
 // MatchedListingCard is what a tenant sees when browsing listings.
 type MatchedListingCard struct {
-	ID                          string    `json:"id"`
-	LocationID                  string    `json:"location_id"`
-	Rent                        int       `json:"rent"`
-	RoomType                    string    `json:"room_type"`
-	AreaPing                    float64   `json:"area_ping"`
-	AvailableFrom               time.Time `json:"available_from"`
-	AllowPets                   bool      `json:"allow_pets"`
-	AllowSubsidy                bool      `json:"allow_subsidy"`
-	AllowTaxReceipt             bool      `json:"allow_tax_receipt"`
-	AllowHouseholdRegistration  bool      `json:"allow_household_registration"`
-	AllowCooking                bool      `json:"allow_cooking"`
-	HasParking                  bool      `json:"has_parking"`
-	AllowSmoking                bool      `json:"allow_smoking"`
-	Photos                      []string  `json:"photos"`
-	InterestSent                bool      `json:"interest_sent"` // tenant already expressed interest
+	ID                         string    `json:"id"`
+	LocationID                 string    `json:"location_id"`
+	Rent                       int       `json:"rent"`
+	RoomType                   string    `json:"room_type"`
+	AreaPing                   float64   `json:"area_ping"`
+	AvailableFrom              time.Time `json:"available_from"`
+	AllowPets                  bool      `json:"allow_pets"`
+	AllowSubsidy               bool      `json:"allow_subsidy"`
+	AllowTaxReceipt            bool      `json:"allow_tax_receipt"`
+	AllowHouseholdRegistration bool      `json:"allow_household_registration"`
+	AllowCooking               bool      `json:"allow_cooking"`
+	HasParking                 bool      `json:"has_parking"`
+	AllowSmoking               bool      `json:"allow_smoking"`
+	Photos                     []string  `json:"photos"`
+	InterestSent               bool      `json:"interest_sent"` // tenant already expressed interest
 }
 
 // MatchedTenantProfileCard is what a landlord sees when browsing tenant profiles.
@@ -53,7 +53,7 @@ const defaultPageSize = 20
 const maxPageSize = 100
 
 // BrowseListingsForProfile handles GET /api/v1/tenant-profiles/:profileId/listings
-func (h *Handler) BrowseListingsForProfile(c *gin.Context) {
+func (h *Handler) BrowseListingsForProfile(c *Context) {
 	userID := middleware.MustUserID(c)
 	profileID := c.Param("profileId")
 
@@ -182,7 +182,7 @@ func (h *Handler) BrowseListingsForProfile(c *gin.Context) {
 }
 
 // BrowseTenantProfilesForListing handles GET /api/v1/listings/:listingId/tenant-profiles
-func (h *Handler) BrowseTenantProfilesForListing(c *gin.Context) {
+func (h *Handler) BrowseTenantProfilesForListing(c *Context) {
 	userID := middleware.MustUserID(c)
 	listingID := c.Param("listingId")
 
@@ -311,7 +311,7 @@ func (h *Handler) BrowseTenantProfilesForListing(c *gin.Context) {
 
 // ---- helpers ----
 
-func parseCursorParams(c *gin.Context) (cursor string, limit int) {
+func parseCursorParams(c *Context) (cursor string, limit int) {
 	cursor = c.Query("cursor")
 	limit = defaultPageSize
 	if s := c.Query("limit"); s != "" {

@@ -9,7 +9,7 @@ import (
 )
 
 // CreateReport handles POST /api/v1/reports
-func (h *Handler) CreateReport(c *gin.Context) {
+func (h *Handler) CreateReport(c *Context) {
 	userID := middleware.MustUserID(c)
 
 	var req struct {
@@ -65,7 +65,7 @@ func (h *Handler) CreateReport(c *gin.Context) {
 }
 
 // BlockUser handles POST /api/v1/blocks/:userId
-func (h *Handler) BlockUser(c *gin.Context) {
+func (h *Handler) BlockUser(c *Context) {
 	userID := middleware.MustUserID(c)
 	targetID := c.Param("userId")
 
@@ -98,7 +98,7 @@ func (h *Handler) BlockUser(c *gin.Context) {
 }
 
 // UnblockUser handles DELETE /api/v1/blocks/:userId
-func (h *Handler) UnblockUser(c *gin.Context) {
+func (h *Handler) UnblockUser(c *Context) {
 	userID := middleware.MustUserID(c)
 	targetID := c.Param("userId")
 
@@ -118,7 +118,7 @@ func (h *Handler) UnblockUser(c *gin.Context) {
 }
 
 // DeleteAccount handles DELETE /api/v1/account
-func (h *Handler) DeleteAccount(c *gin.Context) {
+func (h *Handler) DeleteAccount(c *Context) {
 	userID := middleware.MustUserID(c)
 
 	tx, err := h.db.Begin(c.Request.Context())

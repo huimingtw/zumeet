@@ -14,27 +14,27 @@ import (
 )
 
 const (
-	maxListingPhotos   = 6
-	maxPhotoSizeBytes  = 5 * 1024 * 1024 // 5 MB
+	maxListingPhotos  = 6
+	maxPhotoSizeBytes = 5 * 1024 * 1024 // 5 MB
 )
 
 // ListingRequest is used for POST and PUT.
 type ListingRequest struct {
-	LocationID                  string    `json:"location_id" binding:"required"`
-	Rent                        int       `json:"rent" binding:"required,min=1"`
-	RoomType                    string    `json:"room_type" binding:"required"`
-	AreaPing                    float64   `json:"area_ping" binding:"required,min=1"`
-	AvailableFrom               time.Time `json:"available_from" binding:"required"`
-	MinLeaseMonths              int       `json:"min_lease_months" binding:"required,min=1"`
-	AllowPets                   bool      `json:"allow_pets"`
-	AllowSubsidy                bool      `json:"allow_subsidy"`
-	AllowTaxReceipt             bool      `json:"allow_tax_receipt"`
-	AllowHouseholdRegistration  bool      `json:"allow_household_registration"`
-	AllowCooking                bool      `json:"allow_cooking"`
-	HasParking                  bool      `json:"has_parking"`
-	AllowSmoking                bool      `json:"allow_smoking"`
-	ContactInfo                 string    `json:"contact_info" binding:"required"`
-	ComplianceConfirmed         bool      `json:"compliance_confirmed"`
+	LocationID                 string    `json:"location_id" binding:"required"`
+	Rent                       int       `json:"rent" binding:"required,min=1"`
+	RoomType                   string    `json:"room_type" binding:"required"`
+	AreaPing                   float64   `json:"area_ping" binding:"required,min=1"`
+	AvailableFrom              time.Time `json:"available_from" binding:"required"`
+	MinLeaseMonths             int       `json:"min_lease_months" binding:"required,min=1"`
+	AllowPets                  bool      `json:"allow_pets"`
+	AllowSubsidy               bool      `json:"allow_subsidy"`
+	AllowTaxReceipt            bool      `json:"allow_tax_receipt"`
+	AllowHouseholdRegistration bool      `json:"allow_household_registration"`
+	AllowCooking               bool      `json:"allow_cooking"`
+	HasParking                 bool      `json:"has_parking"`
+	AllowSmoking               bool      `json:"allow_smoking"`
+	ContactInfo                string    `json:"contact_info" binding:"required"`
+	ComplianceConfirmed        bool      `json:"compliance_confirmed"`
 	// soft attributes; stored as-is (whitelist validation omitted in MVP)
 	Attributes map[string]any `json:"attributes"`
 }
@@ -46,30 +46,30 @@ type PhotoDetail struct {
 }
 
 type ListingResponse struct {
-	ID                          string        `json:"id"`
-	LandlordID                  string        `json:"landlord_id"`
-	LocationID                  string        `json:"location_id"`
-	Rent                        int           `json:"rent"`
-	RoomType                    string        `json:"room_type"`
-	AreaPing                    float64       `json:"area_ping"`
-	AvailableFrom               time.Time     `json:"available_from"`
-	MinLeaseMonths              int           `json:"min_lease_months"`
-	AllowPets                   bool          `json:"allow_pets"`
-	AllowSubsidy                bool          `json:"allow_subsidy"`
-	AllowTaxReceipt             bool          `json:"allow_tax_receipt"`
-	AllowHouseholdRegistration  bool          `json:"allow_household_registration"`
-	AllowCooking                bool          `json:"allow_cooking"`
-	HasParking                  bool          `json:"has_parking"`
-	AllowSmoking                bool          `json:"allow_smoking"`
-	Status                      string        `json:"status"`
-	Photos                      []string      `json:"photos"`
-	PhotoList                   []PhotoDetail `json:"photo_list"`
-	CreatedAt                   time.Time     `json:"created_at"`
-	UpdatedAt                   time.Time     `json:"updated_at"`
+	ID                         string        `json:"id"`
+	LandlordID                 string        `json:"landlord_id"`
+	LocationID                 string        `json:"location_id"`
+	Rent                       int           `json:"rent"`
+	RoomType                   string        `json:"room_type"`
+	AreaPing                   float64       `json:"area_ping"`
+	AvailableFrom              time.Time     `json:"available_from"`
+	MinLeaseMonths             int           `json:"min_lease_months"`
+	AllowPets                  bool          `json:"allow_pets"`
+	AllowSubsidy               bool          `json:"allow_subsidy"`
+	AllowTaxReceipt            bool          `json:"allow_tax_receipt"`
+	AllowHouseholdRegistration bool          `json:"allow_household_registration"`
+	AllowCooking               bool          `json:"allow_cooking"`
+	HasParking                 bool          `json:"has_parking"`
+	AllowSmoking               bool          `json:"allow_smoking"`
+	Status                     string        `json:"status"`
+	Photos                     []string      `json:"photos"`
+	PhotoList                  []PhotoDetail `json:"photo_list"`
+	CreatedAt                  time.Time     `json:"created_at"`
+	UpdatedAt                  time.Time     `json:"updated_at"`
 }
 
 // CreateListing handles POST /api/v1/listings
-func (h *Handler) CreateListing(c *gin.Context) {
+func (h *Handler) CreateListing(c *Context) {
 	userID := middleware.MustUserID(c)
 	if err := h.RequireRole(c.Request.Context(), userID, "landlord"); err != nil {
 		if errors.Is(err, ErrForbidden) {
@@ -141,7 +141,7 @@ func (h *Handler) CreateListing(c *gin.Context) {
 }
 
 // GetListing handles GET /api/v1/listings/:listingId
-func (h *Handler) GetListing(c *gin.Context) {
+func (h *Handler) GetListing(c *Context) {
 	userID := middleware.MustUserID(c)
 	listingID := c.Param("listingId")
 
@@ -162,7 +162,7 @@ func (h *Handler) GetListing(c *gin.Context) {
 }
 
 // UpdateListing handles PUT /api/v1/listings/:listingId
-func (h *Handler) UpdateListing(c *gin.Context) {
+func (h *Handler) UpdateListing(c *Context) {
 	userID := middleware.MustUserID(c)
 	listingID := c.Param("listingId")
 
@@ -235,7 +235,7 @@ func (h *Handler) UpdateListing(c *gin.Context) {
 }
 
 // UpdateListingStatus handles PATCH /api/v1/listings/:listingId/status
-func (h *Handler) UpdateListingStatus(c *gin.Context) {
+func (h *Handler) UpdateListingStatus(c *Context) {
 	userID := middleware.MustUserID(c)
 	listingID := c.Param("listingId")
 
@@ -350,7 +350,7 @@ func (h *Handler) UpdateListingStatus(c *gin.Context) {
 }
 
 // DeleteListing handles DELETE /api/v1/listings/:listingId
-func (h *Handler) DeleteListing(c *gin.Context) {
+func (h *Handler) DeleteListing(c *Context) {
 	userID := middleware.MustUserID(c)
 	listingID := c.Param("listingId")
 
@@ -387,7 +387,7 @@ func (h *Handler) DeleteListing(c *gin.Context) {
 }
 
 // UploadListingPhoto handles POST /api/v1/listings/:listingId/photos
-func (h *Handler) UploadListingPhoto(c *gin.Context) {
+func (h *Handler) UploadListingPhoto(c *Context) {
 	userID := middleware.MustUserID(c)
 	listingID := c.Param("listingId")
 
@@ -484,7 +484,7 @@ func (h *Handler) UploadListingPhoto(c *gin.Context) {
 }
 
 // DeleteListingPhoto handles DELETE /api/v1/listings/:listingId/photos/:photoId
-func (h *Handler) DeleteListingPhoto(c *gin.Context) {
+func (h *Handler) DeleteListingPhoto(c *Context) {
 	userID := middleware.MustUserID(c)
 	listingID := c.Param("listingId")
 	photoID := c.Param("photoId")
@@ -542,7 +542,7 @@ func (h *Handler) DeleteListingPhoto(c *gin.Context) {
 }
 
 // ListLandlordListings handles GET /api/v1/listings (landlord's own listings)
-func (h *Handler) ListLandlordListings(c *gin.Context) {
+func (h *Handler) ListLandlordListings(c *Context) {
 	userID := middleware.MustUserID(c)
 
 	if err := h.RequireRole(c.Request.Context(), userID, "landlord"); err != nil {
@@ -587,7 +587,7 @@ func (h *Handler) ListLandlordListings(c *gin.Context) {
 
 // ---- helpers ----
 
-func (h *Handler) listingOwner(c *gin.Context, listingID string) (string, error) {
+func (h *Handler) listingOwner(c *Context, listingID string) (string, error) {
 	var ownerID string
 	err := h.db.QueryRow(c.Request.Context(),
 		`SELECT landlord_id FROM listings WHERE id=$1 AND deleted_at IS NULL`,
@@ -596,7 +596,7 @@ func (h *Handler) listingOwner(c *gin.Context, listingID string) (string, error)
 	return ownerID, err
 }
 
-func (h *Handler) fetchListingResponse(c *gin.Context, id string) (*ListingResponse, error) {
+func (h *Handler) fetchListingResponse(c *Context, id string) (*ListingResponse, error) {
 	var r ListingResponse
 	err := h.db.QueryRow(c.Request.Context(), `
 		SELECT id, landlord_id, location_id, rent, room_type::text, area_ping,
@@ -684,4 +684,3 @@ func sanitizeFilename(name string) string {
 	}
 	return b.String()
 }
-

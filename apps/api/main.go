@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 
 	"github.com/zumeet/api/config"
 	"github.com/zumeet/api/db"
@@ -28,9 +29,14 @@ func main() {
 		zapCfg := zap.NewProductionConfig()
 		zapCfg.EncoderConfig.MessageKey = "message"
 		zapCfg.EncoderConfig.LevelKey = "severity"
-		logger, err = zapCfg.Build()
+		zapCfg.EncoderConfig.CallerKey = "caller"
+		zapCfg.EncoderConfig.EncodeCaller = zapcore.ShortCallerEncoder
+		logger, err = zapCfg.Build(zap.AddCaller())
 	} else {
-		logger, err = zap.NewDevelopment()
+		zapCfg := zap.NewDevelopmentConfig()
+		zapCfg.EncoderConfig.CallerKey = "caller"
+		zapCfg.EncoderConfig.EncodeCaller = zapcore.ShortCallerEncoder
+		logger, err = zapCfg.Build(zap.AddCaller())
 	}
 	if err != nil {
 		log.Fatalf("init logger: %v", err)

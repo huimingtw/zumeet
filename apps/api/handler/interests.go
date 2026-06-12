@@ -11,12 +11,12 @@ import (
 )
 
 type interestResult struct {
-	Status      string `json:"status"`               // "pending" | "matched"
+	Status      string `json:"status"`                 // "pending" | "matched"
 	ContactInfo string `json:"contact_info,omitempty"` // only when matched
 }
 
 // ExpressInterestAsTenant handles POST /api/v1/tenant-profiles/:profileId/listings/:listingId/interest
-func (h *Handler) ExpressInterestAsTenant(c *gin.Context) {
+func (h *Handler) ExpressInterestAsTenant(c *Context) {
 	userID := middleware.MustUserID(c)
 	profileID := c.Param("profileId")
 	listingID := c.Param("listingId")
@@ -44,7 +44,7 @@ func (h *Handler) ExpressInterestAsTenant(c *gin.Context) {
 }
 
 // ExpressInterestAsLandlord handles POST /api/v1/listings/:listingId/tenant-profiles/:profileId/interest
-func (h *Handler) ExpressInterestAsLandlord(c *gin.Context) {
+func (h *Handler) ExpressInterestAsLandlord(c *Context) {
 	userID := middleware.MustUserID(c)
 	listingID := c.Param("listingId")
 	profileID := c.Param("profileId")
@@ -73,7 +73,7 @@ func (h *Handler) ExpressInterestAsLandlord(c *gin.Context) {
 
 // expressInterest is the shared transaction for both tenant and landlord interest expressions.
 // It serializes concurrent interest pairs via pg_advisory_xact_lock to prevent missed matches.
-func (h *Handler) expressInterest(c *gin.Context, userID, profileID, listingID, actorRole string) (*interestResult, error) {
+func (h *Handler) expressInterest(c *Context, userID, profileID, listingID, actorRole string) (*interestResult, error) {
 	ctx := c.Request.Context()
 
 	tx, err := h.db.Begin(ctx)

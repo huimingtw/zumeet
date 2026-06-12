@@ -16,7 +16,7 @@ type MeResponse struct {
 }
 
 // GetMe handles GET /api/v1/profile/me
-func (h *Handler) GetMe(c *gin.Context) {
+func (h *Handler) GetMe(c *Context) {
 	userID := middleware.MustUserID(c)
 
 	var me MeResponse

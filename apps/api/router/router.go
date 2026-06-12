@@ -17,6 +17,7 @@ func New(h *handler.Handler, cfg *config.AppConfig, logger *zap.Logger) *gin.Eng
 	r.Use(gin.Recovery())
 	r.Use(middleware.RequestID())
 	r.Use(middleware.Logger(logger))
+	t := handler.NewContextTransformer()
 
 	allowedOrigins := []string{"http://localhost:3000"}
 	if cfg.AppEnv == "production" {
@@ -37,44 +38,44 @@ func New(h *handler.Handler, cfg *config.AppConfig, logger *zap.Logger) *gin.Eng
 		adminGroup = r.Group("/admin")
 	}
 	{
-		adminGroup.POST("/login", h.AdminLogin)
-		adminGroup.GET("/auth/callback", h.AdminAuthCallback)
-		adminGroup.POST("/logout", h.AdminLogout)
+		adminGroup.POST("/login", t.Public(h.AdminLogin))
+		adminGroup.GET("/auth/callback", t.Public(h.AdminAuthCallback))
+		adminGroup.POST("/logout", t.Public(h.AdminLogout))
 
 		adminAuth := adminGroup.Group("")
 		adminAuth.Use(middleware.AdminAuth([]byte(cfg.AdminJWTSecret), h.DB()))
 		{
-			adminAuth.GET("/reports", h.AdminListReports)
-			adminAuth.POST("/reports/:reportId/resolve", h.AdminResolveReport)
-			adminAuth.GET("/users/:userId", h.AdminGetUser)
-			adminAuth.POST("/users/:userId/suspend", h.AdminSuspendUser)
-			adminAuth.POST("/users/:userId/unsuspend", h.AdminUnsuspendUser)
-			adminAuth.POST("/users/:userId/delete", h.AdminDeleteUser)
-			adminAuth.POST("/listings/:listingId/remove", h.AdminRemoveListing)
-			adminAuth.POST("/listings/:listingId/restore", h.AdminRestoreListing)
-			adminAuth.GET("/actions", h.AdminListActions)
+			adminAuth.GET("/reports", t.Public(h.AdminListReports))
+			adminAuth.POST("/reports/:reportId/resolve", t.Public(h.AdminResolveReport))
+			adminAuth.GET("/users/:userId", t.Public(h.AdminGetUser))
+			adminAuth.POST("/users/:userId/suspend", t.Public(h.AdminSuspendUser))
+			adminAuth.POST("/users/:userId/unsuspend", t.Public(h.AdminUnsuspendUser))
+			adminAuth.POST("/users/:userId/delete", t.Public(h.AdminDeleteUser))
+			adminAuth.POST("/listings/:listingId/remove", t.Public(h.AdminRemoveListing))
+			adminAuth.POST("/listings/:listingId/restore", t.Public(h.AdminRestoreListing))
+			adminAuth.GET("/actions", t.Public(h.AdminListActions))
 		}
 	}
 
-	r.GET("/healthz", h.HealthCheck)
+	r.GET("/healthz", t.Public(h.HealthCheck))
 
 	// Test-only: mock Google OAuth token + userinfo endpoints.
 	// Guard ensures these routes are NEVER mounted in production.
 	if cfg.AppEnv == "test" || cfg.AppEnv == "development" {
-		r.POST("/test/oauth/google", h.TestOAuthTokenEndpoint)
-		r.GET("/test/oauth/userinfo", h.TestOAuthUserInfoEndpoint)
-		r.POST("/test/auth/seed", h.TestSeedSession)
+		r.POST("/test/oauth/google", t.Public(h.TestOAuthTokenEndpoint))
+		r.GET("/test/oauth/userinfo", t.Public(h.TestOAuthUserInfoEndpoint))
+		r.POST("/test/auth/seed", t.Public(h.TestSeedSession))
 	}
 
 	v1 := r.Group("/api/v1")
 	{
 		auth := v1.Group("/auth")
 		{
-			auth.GET("/google", h.GoogleOAuthRedirect)
-			auth.GET("/google/callback", h.GoogleOAuthCallback)
-			auth.POST("/onboarding", h.Onboarding)
-			auth.POST("/logout", h.Logout)
-			auth.POST("/refresh", h.Refresh)
+			auth.GET("/google", t.Public(h.GoogleOAuthRedirect))
+			auth.GET("/google/callback", t.Public(h.GoogleOAuthCallback))
+			auth.POST("/onboarding", t.Public(h.Onboarding))
+			auth.POST("/logout", t.Public(h.Logout))
+			auth.POST("/refresh", t.Public(h.Refresh))
 		}
 	}
 
@@ -84,48 +85,48 @@ func New(h *handler.Handler, cfg *config.AppConfig, logger *zap.Logger) *gin.Eng
 	{
 		tp := protected.Group("/tenant-profiles")
 		{
-			tp.GET("", h.ListTenantProfiles)
-			tp.POST("", h.CreateTenantProfile)
-			tp.GET("/:profileId", h.GetTenantProfile)
-			tp.PUT("/:profileId", h.UpdateTenantProfile)
-			tp.DELETE("/:profileId", h.DeleteTenantProfile)
-			tp.PATCH("/:profileId/status", h.ToggleTenantProfileStatus)
+			tp.GET("", t.Public(h.ListTenantProfiles))
+			tp.POST("", t.Public(h.CreateTenantProfile))
+			tp.GET("/:profileId", t.Public(h.GetTenantProfile))
+			tp.PUT("/:profileId", t.Public(h.UpdateTenantProfile))
+			tp.DELETE("/:profileId", t.Public(h.DeleteTenantProfile))
+			tp.PATCH("/:profileId/status", t.Public(h.ToggleTenantProfileStatus))
 		}
 
 		ls := protected.Group("/listings")
 		{
-			ls.GET("", h.ListLandlordListings)
-			ls.POST("", h.CreateListing)
-			ls.GET("/:listingId", h.GetListing)
-			ls.PUT("/:listingId", h.UpdateListing)
-			ls.PATCH("/:listingId/status", h.UpdateListingStatus)
-			ls.DELETE("/:listingId", h.DeleteListing)
-			ls.POST("/:listingId/photos", h.UploadListingPhoto)
-			ls.DELETE("/:listingId/photos/:photoId", h.DeleteListingPhoto)
-			ls.GET("/:listingId/tenant-profiles", h.BrowseTenantProfilesForListing)
+			ls.GET("", t.Public(h.ListLandlordListings))
+			ls.POST("", t.Public(h.CreateListing))
+			ls.GET("/:listingId", t.Public(h.GetListing))
+			ls.PUT("/:listingId", t.Public(h.UpdateListing))
+			ls.PATCH("/:listingId/status", t.Public(h.UpdateListingStatus))
+			ls.DELETE("/:listingId", t.Public(h.DeleteListing))
+			ls.POST("/:listingId/photos", t.Public(h.UploadListingPhoto))
+			ls.DELETE("/:listingId/photos/:photoId", t.Public(h.DeleteListingPhoto))
+			ls.GET("/:listingId/tenant-profiles", t.Public(h.BrowseTenantProfilesForListing))
 		}
 
-		tp.GET("/:profileId/listings", h.BrowseListingsForProfile)
-		tp.POST("/:profileId/listings/:listingId/interest", h.ExpressInterestAsTenant)
-		tp.GET("/:profileId/matches", h.GetProfileMatches)
-		tp.GET("/:profileId/interests/incoming", h.GetProfileIncomingInterests)
-		tp.GET("/:profileId/interests/outgoing", h.GetProfileOutgoingInterests)
+		tp.GET("/:profileId/listings", t.Public(h.BrowseListingsForProfile))
+		tp.POST("/:profileId/listings/:listingId/interest", t.Public(h.ExpressInterestAsTenant))
+		tp.GET("/:profileId/matches", t.Public(h.GetProfileMatches))
+		tp.GET("/:profileId/interests/incoming", t.Public(h.GetProfileIncomingInterests))
+		tp.GET("/:profileId/interests/outgoing", t.Public(h.GetProfileOutgoingInterests))
 
-		ls.POST("/:listingId/tenant-profiles/:profileId/interest", h.ExpressInterestAsLandlord)
+		ls.POST("/:listingId/tenant-profiles/:profileId/interest", t.Public(h.ExpressInterestAsLandlord))
 
 		matches := protected.Group("/matches")
 		{
-			matches.GET("/mutual", h.GetAllMutualMatches)
-			matches.GET("/incoming", h.GetAllIncomingInterests)
-			matches.GET("/outgoing", h.GetAllOutgoingInterests)
+			matches.GET("/mutual", t.Public(h.GetAllMutualMatches))
+			matches.GET("/incoming", t.Public(h.GetAllIncomingInterests))
+			matches.GET("/outgoing", t.Public(h.GetAllOutgoingInterests))
 		}
 
-		protected.GET("/profile/me", h.GetMe)
+		protected.GET("/profile/me", t.Public(h.GetMe))
 
-		protected.POST("/reports", h.CreateReport)
-		protected.POST("/blocks/:userId", h.BlockUser)
-		protected.DELETE("/blocks/:userId", h.UnblockUser)
-		protected.DELETE("/account", h.DeleteAccount)
+		protected.POST("/reports", t.Public(h.CreateReport))
+		protected.POST("/blocks/:userId", t.Public(h.BlockUser))
+		protected.DELETE("/blocks/:userId", t.Public(h.UnblockUser))
+		protected.DELETE("/account", t.Public(h.DeleteAccount))
 	}
 
 	return r

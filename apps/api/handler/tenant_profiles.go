@@ -63,7 +63,7 @@ type TenantProfileResponse struct {
 }
 
 // ListTenantProfiles GET /api/v1/tenant-profiles
-func (h *Handler) ListTenantProfiles(c *gin.Context) {
+func (h *Handler) ListTenantProfiles(c *Context) {
 	userID := middleware.MustUserID(c)
 	if err := h.RequireRole(c.Request.Context(), userID, "tenant"); err != nil {
 		respondForbidden(c, err)
@@ -101,7 +101,7 @@ func (h *Handler) ListTenantProfiles(c *gin.Context) {
 }
 
 // CreateTenantProfile POST /api/v1/tenant-profiles
-func (h *Handler) CreateTenantProfile(c *gin.Context) {
+func (h *Handler) CreateTenantProfile(c *Context) {
 	userID := middleware.MustUserID(c)
 	if err := h.RequireRole(c.Request.Context(), userID, "tenant"); err != nil {
 		respondForbidden(c, err)
@@ -178,7 +178,7 @@ func (h *Handler) CreateTenantProfile(c *gin.Context) {
 }
 
 // GetTenantProfile GET /api/v1/tenant-profiles/:profileId
-func (h *Handler) GetTenantProfile(c *gin.Context) {
+func (h *Handler) GetTenantProfile(c *Context) {
 	userID := middleware.MustUserID(c)
 	profileID := c.Param("profileId")
 
@@ -195,7 +195,7 @@ func (h *Handler) GetTenantProfile(c *gin.Context) {
 }
 
 // UpdateTenantProfile PUT /api/v1/tenant-profiles/:profileId
-func (h *Handler) UpdateTenantProfile(c *gin.Context) {
+func (h *Handler) UpdateTenantProfile(c *Context) {
 	userID := middleware.MustUserID(c)
 	profileID := c.Param("profileId")
 
@@ -267,7 +267,7 @@ func (h *Handler) UpdateTenantProfile(c *gin.Context) {
 }
 
 // DeleteTenantProfile DELETE /api/v1/tenant-profiles/:profileId
-func (h *Handler) DeleteTenantProfile(c *gin.Context) {
+func (h *Handler) DeleteTenantProfile(c *Context) {
 	userID := middleware.MustUserID(c)
 	profileID := c.Param("profileId")
 
@@ -288,7 +288,7 @@ func (h *Handler) DeleteTenantProfile(c *gin.Context) {
 }
 
 // ToggleTenantProfileStatus PATCH /api/v1/tenant-profiles/:profileId/status
-func (h *Handler) ToggleTenantProfileStatus(c *gin.Context) {
+func (h *Handler) ToggleTenantProfileStatus(c *Context) {
 	userID := middleware.MustUserID(c)
 	profileID := c.Param("profileId")
 
@@ -344,7 +344,7 @@ func scanProfile(s profileScanner) (TenantProfileResponse, error) {
 	return p, err
 }
 
-func (h *Handler) loadProfile(c *gin.Context, profileID, tenantID string) (TenantProfileResponse, error) {
+func (h *Handler) loadProfile(c *Context, profileID, tenantID string) (TenantProfileResponse, error) {
 	row := h.db.QueryRow(c.Request.Context(),
 		`SELECT id, tenant_id, name, budget_min, budget_max,
 		        preferred_room_types, available_from, min_lease_months, min_area_ping,
@@ -363,7 +363,7 @@ func (h *Handler) loadProfile(c *gin.Context, profileID, tenantID string) (Tenan
 	return p, nil
 }
 
-func (h *Handler) loadProfileLocations(c *gin.Context, profileID string) []string {
+func (h *Handler) loadProfileLocations(c *Context, profileID string) []string {
 	rows, err := h.db.Query(c.Request.Context(),
 		`SELECT location_id FROM tenant_profile_locations
 		 WHERE tenant_profile_id=$1 AND deleted_at IS NULL`,
@@ -383,7 +383,7 @@ func (h *Handler) loadProfileLocations(c *gin.Context, profileID string) []strin
 	return locs
 }
 
-func insertProfileLocations(c *gin.Context, tx pgx.Tx, profileID string, locationIDs []string) error {
+func insertProfileLocations(c *Context, tx pgx.Tx, profileID string, locationIDs []string) error {
 	for _, locID := range locationIDs {
 		if _, err := tx.Exec(c.Request.Context(),
 			`INSERT INTO tenant_profile_locations (tenant_profile_id, location_id)
@@ -397,7 +397,7 @@ func insertProfileLocations(c *gin.Context, tx pgx.Tx, profileID string, locatio
 	return nil
 }
 
-func (h *Handler) assertProfileOwner(c *gin.Context, profileID, userID string) error {
+func (h *Handler) assertProfileOwner(c *Context, profileID, userID string) error {
 	var ownerID string
 	err := h.db.QueryRow(c.Request.Context(),
 		`SELECT tenant_id FROM tenant_profiles WHERE id=$1 AND deleted_at IS NULL`,
@@ -414,7 +414,7 @@ func (h *Handler) assertProfileOwner(c *gin.Context, profileID, userID string) e
 	return nil
 }
 
-func respondForbidden(c *gin.Context, err error) {
+func respondForbidden(c *Context, err error) {
 	if errors.Is(err, ErrForbidden) {
 		c.JSON(http.StatusForbidden, gin.H{"error": "forbidden", "code": "FORBIDDEN"})
 	} else {
