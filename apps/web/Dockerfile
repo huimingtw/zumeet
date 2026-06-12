@@ -2,6 +2,9 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
+ARG NEXT_IMAGE_UNOPTIMIZED=false
+ENV NEXT_IMAGE_UNOPTIMIZED=$NEXT_IMAGE_UNOPTIMIZED
+
 COPY package.json package-lock.json* ./
 RUN npm ci
 

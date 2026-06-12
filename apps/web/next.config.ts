@@ -1,12 +1,12 @@
 import type { NextConfig } from "next";
 
+const unoptimized = process.env.NEXT_IMAGE_UNOPTIMIZED === "true";
+
 const nextConfig: NextConfig = {
   output: "standalone",
   images: {
-    remotePatterns: [
-      { protocol: "http", hostname: "localhost" },
-      { protocol: "https", hostname: "**" },
-    ],
+    unoptimized,
+    remotePatterns: [{ protocol: "https", hostname: "**" }],
   },
 };
 
