@@ -1,7 +1,10 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { type ReactNode, Suspense, useEffect, useState } from "react";
+
 import { useRouter, useSearchParams } from "next/navigation";
+import { Home, Search } from "lucide-react";
+
 import { api } from "@/lib/api";
 
 const TOS = `本平台（Zumeet）為租客與房東條件媒合平台，非仲介服務，不保證任何資訊真實性，不介入租賃交易、不處理租金押金、不做身份收入產權驗證。
@@ -57,33 +60,48 @@ function OnboardingForm() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center px-4 py-12">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-gray-100 px-4 py-12">
       <div className="w-full max-w-lg">
         <div className="mb-8 text-center">
-          <h1 className="text-2xl font-bold">歡迎加入 Zumeet</h1>
-          <p className="mt-1 text-sm text-zinc-500">請完成以下設定後即可開始使用</p>
+          <h1 className="text-2xl font-bold text-gray-950">歡迎加入 Zumeet</h1>
+          <p className="mt-1 text-sm text-gray-500">請完成以下設定後即可開始使用</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="rounded-2xl border border-zinc-200 bg-white p-8 shadow-sm space-y-6">
+        <form
+          onSubmit={handleSubmit}
+          className="space-y-6 rounded-2xl border border-gray-200 bg-white p-8 shadow-sm"
+        >
           <div>
-            <p className="mb-3 text-sm font-medium">您的身份</p>
+            <p className="mb-3 text-sm font-medium text-gray-700">您的身份</p>
             <div className="grid grid-cols-2 gap-3">
-              <RoleCard selected={role === "tenant"} onClick={() => setRole("tenant")} title="租客" desc="我在找房子" />
-              <RoleCard selected={role === "landlord"} onClick={() => setRole("landlord")} title="房東" desc="我有房子出租" />
+              <RoleCard
+                selected={role === "tenant"}
+                onClick={() => setRole("tenant")}
+                icon={<Search size={20} strokeWidth={1.5} />}
+                title="租客"
+                desc="我在找房子"
+              />
+              <RoleCard
+                selected={role === "landlord"}
+                onClick={() => setRole("landlord")}
+                icon={<Home size={20} strokeWidth={1.5} />}
+                title="房東"
+                desc="我有房子出租"
+              />
             </div>
           </div>
 
           <div>
-            <p className="mb-2 text-sm font-medium">服務條款</p>
-            <div className="h-40 overflow-y-auto rounded-lg border border-zinc-200 bg-zinc-50 p-3 text-xs leading-relaxed text-zinc-600 whitespace-pre-line">
+            <p className="mb-2 text-sm font-medium text-gray-700">服務條款</p>
+            <div className="h-40 overflow-y-auto rounded-lg border border-gray-200 bg-gray-50 p-3 text-xs leading-relaxed whitespace-pre-line text-gray-600">
               {TOS}
             </div>
-            <label className="mt-3 flex cursor-pointer items-start gap-2 text-sm">
+            <label className="mt-3 flex cursor-pointer items-start gap-2 text-sm text-gray-700">
               <input
                 type="checkbox"
                 checked={agreed}
                 onChange={(e) => setAgreed(e.target.checked)}
-                className="mt-0.5 h-4 w-4 rounded border-zinc-300 accent-zinc-900"
+                className="mt-0.5 h-4 w-4 rounded border-gray-300 accent-primary-600"
               />
               <span>我已閱讀並同意上述服務條款與平台免責聲明</span>
             </label>
@@ -94,7 +112,7 @@ function OnboardingForm() {
           <button
             type="submit"
             disabled={!role || !agreed || !oauthState || loading}
-            className="w-full rounded-xl bg-zinc-900 py-3 text-sm font-medium text-white transition hover:bg-zinc-700 disabled:opacity-40"
+            className="w-full rounded-lg bg-primary-600 py-3 text-sm font-medium text-white transition hover:bg-primary-500 disabled:opacity-40"
           >
             {loading ? "請稍候…" : "完成設定，開始使用"}
           </button>
@@ -105,10 +123,15 @@ function OnboardingForm() {
 }
 
 function RoleCard({
-  selected, onClick, title, desc,
+  selected,
+  onClick,
+  icon,
+  title,
+  desc,
 }: {
   selected: boolean;
   onClick: () => void;
+  icon: ReactNode;
   title: string;
   desc: string;
 }) {
@@ -116,19 +139,26 @@ function RoleCard({
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-xl border-2 p-4 text-left transition ${
-        selected ? "border-zinc-900 bg-zinc-900 text-white" : "border-zinc-200 bg-white text-zinc-800 hover:border-zinc-400"
+      className={`flex h-24 flex-col justify-between rounded-xl border-2 p-4 text-left transition ${
+        selected
+          ? "border-primary-600 bg-primary-100"
+          : "border-gray-200 bg-white hover:border-gray-400"
       }`}
     >
-      <p className="font-semibold">{title}</p>
-      <p className={`mt-1 text-xs ${selected ? "text-zinc-300" : "text-zinc-500"}`}>{desc}</p>
+      <span className={selected ? "text-primary-600" : "text-gray-400"}>{icon}</span>
+      <div>
+        <p className={`text-sm font-semibold ${selected ? "text-gray-950" : "text-gray-800"}`}>
+          {title}
+        </p>
+        <p className={`text-xs ${selected ? "text-primary-600" : "text-gray-500"}`}>{desc}</p>
+      </div>
     </button>
   );
 }
 
 export default function OnboardingPage() {
   return (
-    <Suspense fallback={<div className="flex min-h-screen items-center justify-center text-sm text-zinc-400">載入中…</div>}>
+    <Suspense fallback={<div className="min-h-screen bg-gray-100" />}>
       <OnboardingForm />
     </Suspense>
   );

@@ -107,28 +107,32 @@ export const ROOM_TYPE_LABELS: Record<string, string> = {
   whole_floor: "整層",
 };
 
-export const LOCATION_LABELS: Record<string, string> = {
-  "taipei-zhongzheng": "台北・中正",
-  "taipei-daan": "台北・大安",
-  "taipei-zhongshan": "台北・中山",
-  "taipei-songshan": "台北・松山",
-  "taipei-xinyi": "台北・信義",
-  "taipei-shilin": "台北・士林",
-  "taipei-beitou": "台北・北投",
-  "taipei-neihu": "台北・內湖",
-  "taipei-nangang": "台北・南港",
-  "taipei-wenshan": "台北・文山",
-  "taipei-wanhua": "台北・萬華",
-  "taipei-datong": "台北・大同",
-  "newtaipei-banqiao": "新北・板橋",
-  "newtaipei-zhonghe": "新北・中和",
-  "newtaipei-yonghe": "新北・永和",
-  "newtaipei-xindian": "新北・新店",
-  "newtaipei-sanchong": "新北・三重",
-  "newtaipei-xinzhuang": "新北・新莊",
-  "newtaipei-tucheng": "新北・土城",
-  "newtaipei-luzhou": "新北・蘆洲",
-  "newtaipei-shulin": "新北・樹林",
-  "newtaipei-xizhi": "新北・汐止",
-  "newtaipei-tamsui": "新北・淡水",
-};
+export const LOCATIONS: { id: string; label: string }[] = [
+  { id: "taipei-daan", label: "台北・大安" },
+  { id: "taipei-zhongzheng", label: "台北・中正" },
+  { id: "taipei-zhongshan", label: "台北・中山" },
+  { id: "taipei-xinyi", label: "台北・信義" },
+  { id: "taipei-songshan", label: "台北・松山" },
+  { id: "taipei-shilin", label: "台北・士林" },
+  { id: "taipei-neihu", label: "台北・內湖" },
+  { id: "taipei-wenshan", label: "台北・文山" },
+  { id: "taipei-wanhua", label: "台北・萬華" },
+  { id: "taipei-datong", label: "台北・大同" },
+  { id: "taipei-beitou", label: "台北・北投" },
+  { id: "taipei-nangang", label: "台北・南港" },
+  { id: "newtaipei-banqiao", label: "新北・板橋" },
+  { id: "newtaipei-zhonghe", label: "新北・中和" },
+  { id: "newtaipei-yonghe", label: "新北・永和" },
+  { id: "newtaipei-xindian", label: "新北・新店" },
+  { id: "newtaipei-sanchong", label: "新北・三重" },
+  { id: "newtaipei-xinzhuang", label: "新北・新莊" },
+  { id: "newtaipei-tucheng", label: "新北・土城" },
+  { id: "newtaipei-luzhou", label: "新北・蘆洲" },
+  { id: "newtaipei-shulin", label: "新北・樹林" },
+  { id: "newtaipei-xizhi", label: "新北・汐止" },
+  { id: "newtaipei-tamsui", label: "新北・淡水" },
+];
+
+export const LOCATION_LABELS: Record<string, string> = Object.fromEntries(
+  LOCATIONS.map((l) => [l.id, l.label])
+);

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+
 import { useRouter } from "next/navigation";
 
 import { api } from "@/lib/api";
@@ -11,7 +12,6 @@ export default function LoginPage() {
   const router = useRouter();
 
   useEffect(() => {
-    // If already logged in, redirect to the appropriate dashboard
     api
       .get<{ roles: string[] }>("/profile/me")
       .then((res) => {
@@ -22,37 +22,35 @@ export default function LoginPage() {
           router.replace("/dashboard/tenant");
         }
       })
-      .catch(() => {
-        // Not logged in — stay on this page
-      });
+      .catch(() => {});
   }, [router]);
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center px-4">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-gray-100 px-4">
       <div className="w-full max-w-sm">
         <div className="mb-10 text-center">
-          <h1 className="text-3xl font-bold tracking-tight">Zumeet</h1>
-          <p className="mt-2 text-sm text-zinc-500">
-            租客與房東條件雙向媒合平台
-          </p>
+          <h1 className="text-[32px] font-bold leading-10 tracking-wide text-gray-950">
+            Zumeet
+          </h1>
+          <p className="mt-2 text-sm text-gray-500">租客與房東條件雙向媒合平台</p>
         </div>
 
-        <div className="rounded-2xl border border-zinc-200 bg-white p-8 shadow-sm">
-          <h2 className="mb-1 text-lg font-semibold">登入 / 註冊</h2>
-          <p className="mb-6 text-sm text-zinc-500">
+        <div className="rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
+          <h2 className="mb-1 text-base font-semibold text-gray-950">登入 / 註冊</h2>
+          <p className="mb-6 text-sm text-gray-500">
             目前僅支援 Google 登入。首次登入後需完成個人設定。
           </p>
 
           <a
             href={`${API_BASE}/api/v1/auth/google`}
-            className="flex w-full items-center justify-center gap-3 rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm font-medium text-zinc-800 shadow-sm transition hover:bg-zinc-50 active:bg-zinc-100"
+            className="flex w-full items-center justify-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-800 shadow-sm transition hover:bg-gray-50 active:bg-gray-100"
           >
             <GoogleIcon />
             以 Google 帳號繼續
           </a>
         </div>
 
-        <p className="mt-6 text-center text-xs text-zinc-400">
+        <p className="mt-6 text-center text-xs text-gray-400">
           平台僅提供條件媒合功能，不參與租賃交易，不保證資訊真實性。
           <br />
           實際租賃關係由雙方自行確認與承擔。

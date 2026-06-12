@@ -1,73 +1,179 @@
 "use client";
 
+import { type ReactNode, useRef, useState } from "react";
 import Image from "next/image";
-import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  Building2,
+  ChevronDown,
+  Heart,
+  Inbox,
+  MoreHorizontal,
+  Search,
+  SearchX,
+  SendHorizonal,
+} from "lucide-react";
 import { api } from "@/lib/api";
-import { ROOM_TYPE_LABELS } from "@/types";
+import { LOCATIONS, ROOM_TYPE_LABELS } from "@/types";
 import type { Listing, MatchedTenantProfileCard, MutualMatch } from "@/types";
 
-type Tab = "listings" | "browse" | "incoming" | "outgoing" | "matched";
+type MainTab = "listings" | "browse" | "matches";
+type MatchesSubTab = "incoming" | "outgoing" | "matched";
+
+const STATUS_LABELS: Record<string, string> = {
+  draft: "草稿",
+  active: "刊登中",
+  paused: "暫停",
+  rented: "已出租",
+};
 
 export default function LandlordDashboard() {
-  const [tab, setTab] = useState<Tab>("listings");
+  const [tab, setTab] = useState<MainTab>("listings");
+  const [matchesSubTab, setMatchesSubTab] = useState<MatchesSubTab>("incoming");
   const [selectedListingId, setSelectedListingId] = useState<string | null>(null);
 
+  function goToBrowse(id: string) {
+    setSelectedListingId(id);
+    setTab("browse");
+  }
+
   return (
-    <div className="min-h-screen">
-      <Header />
-      <div className="mx-auto max-w-4xl px-4 py-6">
-        <nav className="mb-6 flex gap-1 overflow-x-auto rounded-xl border border-zinc-200 bg-white p-1">
-          {(
-            [
-              ["listings", "我的房源"],
-              ["browse", "找租客"],
-              ["incoming", "對我有興趣"],
-              ["outgoing", "我送出的興趣"],
-              ["matched", "已媒合"],
-            ] as [Tab, string][]
-          ).map(([t, label]) => (
-            <button
-              type="button"
-              key={t}
-              onClick={() => setTab(t)}
-              className={`flex-shrink-0 rounded-lg px-4 py-2 text-sm font-medium transition ${
-                tab === t ? "bg-zinc-900 text-white" : "text-zinc-600 hover:bg-zinc-100"
-              }`}
-            >
-              {label}
-            </button>
-          ))}
+    <div className="min-h-screen pb-14 sm:pb-0">
+      <DashboardHeader />
+
+      <div className="mx-auto max-w-4xl px-4 pt-4">
+        {/* Desktop tab nav */}
+        <nav className="mb-6 hidden gap-1 rounded-xl border border-gray-200 bg-white p-1 shadow-sm sm:flex">
+          <TabButton
+            active={tab === "listings"}
+            onClick={() => setTab("listings")}
+            icon={<Building2 size={20} strokeWidth={1.5} />}
+            label="我的房源"
+          />
+          <TabButton
+            active={tab === "browse"}
+            onClick={() => setTab("browse")}
+            icon={<Search size={20} strokeWidth={1.5} />}
+            label="找租客"
+          />
+          <TabButton
+            active={tab === "matches"}
+            onClick={() => setTab("matches")}
+            icon={<Heart size={20} strokeWidth={1.5} />}
+            label="媒合狀態"
+          />
         </nav>
 
-        {tab === "listings" && (
-          <ListingsTab onSelectListing={(id) => { setSelectedListingId(id); setTab("browse"); }} />
-        )}
+        {tab === "listings" && <ListingsTab onSelectListing={goToBrowse} />}
         {tab === "browse" && (
-          <BrowseTab selectedListingId={selectedListingId} onSelectListing={setSelectedListingId} />
+          <BrowseTab
+            selectedListingId={selectedListingId}
+            onSelectListing={setSelectedListingId}
+            onGoToListings={() => setTab("listings")}
+          />
         )}
-        {tab === "incoming" && <IncomingTab />}
-        {tab === "outgoing" && <OutgoingTab />}
-        {tab === "matched" && <MatchedTab />}
+        {tab === "matches" && (
+          <MatchesView subTab={matchesSubTab} onSubTabChange={setMatchesSubTab} />
+        )}
       </div>
+
+      {/* Mobile bottom tab bar */}
+      <nav className="fixed bottom-0 left-0 right-0 z-40 h-14 border-t border-gray-200 bg-white sm:hidden">
+        <div className="flex h-full">
+          <BottomTabItem
+            active={tab === "listings"}
+            onClick={() => setTab("listings")}
+            icon={<Building2 size={20} strokeWidth={1.5} />}
+            label="我的房源"
+          />
+          <BottomTabItem
+            active={tab === "browse"}
+            onClick={() => setTab("browse")}
+            icon={<Search size={20} strokeWidth={1.5} />}
+            label="找租客"
+          />
+          <BottomTabItem
+            active={tab === "matches"}
+            onClick={() => setTab("matches")}
+            icon={<Heart size={20} strokeWidth={1.5} />}
+            label="媒合狀態"
+          />
+        </div>
+      </nav>
     </div>
   );
 }
 
-function Header() {
+// ---- Shared nav ----
+
+function DashboardHeader() {
   async function logout() {
     await api.post("/auth/logout");
     window.location.href = "/";
   }
   return (
-    <header className="border-b border-zinc-200 bg-white px-4 py-3">
+    <header className="border-b border-gray-200 bg-white px-4 py-3">
       <div className="mx-auto flex max-w-4xl items-center justify-between">
-        <span className="font-bold text-lg">Zumeet</span>
-        <button type="button" onClick={logout} className="text-sm text-zinc-500 hover:text-zinc-800">
+        <span className="text-lg font-bold text-gray-950">Zumeet</span>
+        <button
+          type="button"
+          onClick={logout}
+          className="text-sm text-gray-500 hover:text-gray-800"
+        >
           登出
         </button>
       </div>
     </header>
+  );
+}
+
+function TabButton({
+  active,
+  onClick,
+  icon,
+  label,
+}: {
+  active: boolean;
+  onClick: () => void;
+  icon: ReactNode;
+  label: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition ${
+        active ? "bg-primary-600 text-white" : "text-gray-500 hover:bg-gray-100"
+      }`}
+    >
+      {icon}
+      {label}
+    </button>
+  );
+}
+
+function BottomTabItem({
+  active,
+  onClick,
+  icon,
+  label,
+}: {
+  active: boolean;
+  onClick: () => void;
+  icon: ReactNode;
+  label: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex flex-1 flex-col items-center justify-center gap-0.5 transition ${
+        active ? "text-primary-600" : "text-gray-400"
+      }`}
+    >
+      {icon}
+      <span className="text-[10px]">{label}</span>
+    </button>
   );
 }
 
@@ -79,30 +185,72 @@ function ListingsTab({ onSelectListing }: { onSelectListing: (id: string) => voi
     queryKey: ["listings"],
     queryFn: () => api.get("/listings").then((r) => r.data),
   });
-  const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [showForm, setShowForm] = useState(false);
 
-  if (isLoading) return <Loading />;
+  if (isLoading) {
+    return (
+      <div className="space-y-3">
+        {[0, 1].map((i) => (
+          <SkeletonListingMgmtCard key={i} />
+        ))}
+      </div>
+    );
+  }
+
+  if (!isLoading && listings.length === 0) {
+    return (
+      <>
+        <EmptyState
+          icon={<Building2 size={32} strokeWidth={1.5} className="text-gray-300" />}
+          title="尚無房源"
+          description="建立第一筆房源，就能開始找符合條件的租客"
+          action={{
+            label: "新增第一筆房源",
+            onClick: () => {
+              setEditingId(null);
+              setShowForm(true);
+            },
+          }}
+        />
+        {showForm && (
+          <ListingFormModal
+            editingId={null}
+            onClose={() => setShowForm(false)}
+            onSaved={() => {
+              qc.invalidateQueries({ queryKey: ["listings"] });
+              setShowForm(false);
+            }}
+          />
+        )}
+      </>
+    );
+  }
 
   return (
     <div>
       <div className="mb-4 flex items-center justify-between">
-        <h2 className="font-semibold text-lg">我的房源</h2>
+        <h2 className="text-base font-semibold text-gray-950">我的房源</h2>
         <button
           type="button"
-          onClick={() => { setEditingId(null); setShowForm(true); }}
-          className="rounded-lg bg-zinc-900 px-3 py-1.5 text-sm text-white hover:bg-zinc-700"
+          onClick={() => {
+            setEditingId(null);
+            setShowForm(true);
+          }}
+          className="rounded-lg bg-primary-600 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-primary-500"
         >
           + 新增房源
         </button>
       </div>
-      {listings.length === 0 && <EmptyState message="尚無房源。請新增第一筆房源。" />}
       <div className="space-y-3">
         {listings.map((l) => (
           <ListingCard
             key={l.id}
             listing={l}
-            onEdit={() => { setEditingId(l.id); setShowForm(true); }}
+            onEdit={() => {
+              setEditingId(l.id);
+              setShowForm(true);
+            }}
             onBrowse={() => onSelectListing(l.id)}
             onChanged={() => qc.invalidateQueries({ queryKey: ["listings"] })}
           />
@@ -111,20 +259,20 @@ function ListingsTab({ onSelectListing }: { onSelectListing: (id: string) => voi
       {showForm && (
         <ListingFormModal
           editingId={editingId}
-          onClose={() => { setShowForm(false); setEditingId(null); }}
-          onSaved={() => { qc.invalidateQueries({ queryKey: ["listings"] }); setShowForm(false); setEditingId(null); }}
+          onClose={() => {
+            setShowForm(false);
+            setEditingId(null);
+          }}
+          onSaved={() => {
+            qc.invalidateQueries({ queryKey: ["listings"] });
+            setShowForm(false);
+            setEditingId(null);
+          }}
         />
       )}
     </div>
   );
 }
-
-const STATUS_LABELS: Record<string, string> = {
-  draft: "草稿",
-  active: "上架中",
-  paused: "已暫停",
-  rented: "已出租",
-};
 
 function ListingCard({
   listing,
@@ -142,83 +290,174 @@ function ListingCard({
 
   const changeStatus = useMutation({
     mutationFn: (status: string) => api.patch(`/listings/${listing.id}/status`, { status }),
-    onSuccess: () => { onChanged(); qc.invalidateQueries({ queryKey: ["listings"] }); },
+    onSuccess: () => {
+      onChanged();
+      qc.invalidateQueries({ queryKey: ["listings"] });
+    },
   });
   const deleteListing = useMutation({
     mutationFn: () => api.delete(`/listings/${listing.id}`),
     onSuccess: onChanged,
   });
 
+  const statusBadgeClass =
+    listing.status === "active"
+      ? "bg-[#D1FAE5] text-[#059669]"
+      : listing.status === "draft"
+        ? "bg-[#FEF3C7] text-[#92400E]"
+        : listing.status === "rented"
+          ? "bg-blue-100 text-blue-700"
+          : "bg-gray-100 text-gray-500";
+
   return (
-    <div className="rounded-xl border border-zinc-200 bg-white p-4">
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <div>
+    <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="font-semibold">${listing.rent.toLocaleString()}</span>
-            <span className="text-sm text-zinc-500">{ROOM_TYPE_LABELS[listing.room_type] ?? listing.room_type} {listing.area_ping}坪</span>
-            <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-              listing.status === "active" ? "bg-green-100 text-green-700"
-              : listing.status === "draft" ? "bg-yellow-100 text-yellow-700"
-              : "bg-zinc-100 text-zinc-500"
-            }`}>
+            <span className="text-base font-semibold text-gray-950">
+              ${listing.rent.toLocaleString()}
+            </span>
+            <span className="text-sm text-gray-500">
+              {ROOM_TYPE_LABELS[listing.room_type] ?? listing.room_type} {listing.area_ping}坪
+            </span>
+            <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusBadgeClass}`}>
               {STATUS_LABELS[listing.status] ?? listing.status}
             </span>
           </div>
-          <p className="mt-1 text-xs text-zinc-400">
+          <p className="mt-1 text-xs text-gray-400">
             可入住：{new Date(listing.available_from).toLocaleDateString("zh-TW")} ／ {listing.photos.length} 張照片
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          {listing.status === "active" && (
-            <button type="button" onClick={onBrowse} className="rounded-lg bg-zinc-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-zinc-700">
-              找租客
-            </button>
-          )}
-          <button type="button" onClick={() => setShowPhotoMgr(true)} className="rounded-lg border border-zinc-200 px-3 py-1.5 text-xs hover:bg-zinc-50">
-            照片管理
-          </button>
-          <button type="button" onClick={onEdit} className="rounded-lg border border-zinc-200 px-3 py-1.5 text-xs hover:bg-zinc-50">
-            編輯
-          </button>
+
+        <div className="flex flex-shrink-0 flex-wrap items-center gap-2">
+          {/* Primary CTA */}
           {listing.status === "draft" && (
             <button
               type="button"
               onClick={() => changeStatus.mutate("active")}
               disabled={listing.photos.length === 0}
               title={listing.photos.length === 0 ? "請先上傳至少一張照片" : ""}
-              className="rounded-lg bg-green-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-green-700 disabled:opacity-40"
+              className="rounded-lg bg-[#10B981] px-3 py-1.5 text-xs font-medium text-white transition hover:bg-[#059669] disabled:opacity-40"
             >
               發布上架
             </button>
           )}
           {listing.status === "active" && (
-            <>
-              <button type="button" onClick={() => changeStatus.mutate("paused")} className="rounded-lg border border-zinc-200 px-3 py-1.5 text-xs hover:bg-zinc-50">
-                暫停
-              </button>
-              <button type="button" onClick={() => changeStatus.mutate("rented")} className="rounded-lg border border-zinc-200 px-3 py-1.5 text-xs hover:bg-zinc-50">
-                已出租
-              </button>
-            </>
+            <button
+              type="button"
+              onClick={onBrowse}
+              className="rounded-lg bg-primary-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-primary-500"
+            >
+              找租客
+            </button>
           )}
           {listing.status === "paused" && (
-            <button type="button" onClick={() => changeStatus.mutate("active")} className="rounded-lg bg-green-600 px-3 py-1.5 text-xs text-white hover:bg-green-700">
+            <button
+              type="button"
+              onClick={() => changeStatus.mutate("active")}
+              className="rounded-lg bg-[#10B981] px-3 py-1.5 text-xs font-medium text-white transition hover:bg-[#059669]"
+            >
               重新上架
             </button>
           )}
+
+          {/* Fixed secondary */}
           <button
             type="button"
-            onClick={() => { if (confirm("確定刪除這筆房源？")) deleteListing.mutate(); }}
-            className="rounded-lg border border-zinc-200 px-3 py-1.5 text-xs text-red-600 hover:bg-red-50"
+            onClick={() => setShowPhotoMgr(true)}
+            className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs text-gray-700 transition hover:bg-gray-50"
           >
-            刪除
+            照片管理
           </button>
+          <button
+            type="button"
+            onClick={onEdit}
+            className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs text-gray-700 transition hover:bg-gray-50"
+          >
+            編輯
+          </button>
+
+          {/* Overflow menu */}
+          <OverflowMenu>
+            {listing.status === "active" && (
+              <>
+                <MenuItem onClick={() => changeStatus.mutate("paused")}>暫停曝光</MenuItem>
+                <MenuItem onClick={() => changeStatus.mutate("rented")}>標記已出租</MenuItem>
+              </>
+            )}
+            <MenuItem
+              danger
+              onClick={() => {
+                if (confirm("確定刪除這筆房源？")) deleteListing.mutate();
+              }}
+            >
+              刪除
+            </MenuItem>
+          </OverflowMenu>
         </div>
       </div>
+
       {showPhotoMgr && (
-        <PhotoManager listingId={listing.id} onClose={() => setShowPhotoMgr(false)} onChanged={onChanged} />
+        <PhotoManager
+          listingId={listing.id}
+          onClose={() => setShowPhotoMgr(false)}
+          onChanged={onChanged}
+        />
       )}
     </div>
+  );
+}
+
+// ---- Overflow Menu ----
+
+function OverflowMenu({ children }: { children: ReactNode }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="rounded-lg border border-gray-200 px-2 py-1.5 text-gray-700 transition hover:bg-gray-50"
+        aria-label="更多動作"
+      >
+        <MoreHorizontal size={16} strokeWidth={1.5} />
+      </button>
+      {open && (
+        <>
+          <button
+            type="button"
+            className="fixed inset-0 z-10"
+            aria-label="關閉選單"
+            onClick={() => setOpen(false)}
+          />
+          <div className="absolute right-0 top-9 z-20 min-w-[9rem] rounded-xl border border-gray-200 bg-white py-1 shadow-md">
+            {children}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function MenuItem({
+  onClick,
+  danger,
+  children,
+}: {
+  onClick: () => void;
+  danger?: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`w-full px-4 py-2 text-left text-sm transition hover:bg-gray-50 ${
+        danger ? "text-red-600" : "text-gray-700"
+      }`}
+    >
+      {children}
+    </button>
   );
 }
 
@@ -226,7 +465,11 @@ function ListingCard({
 
 type PhotoRecord = { id: string; public_url: string; position: number };
 
-function PhotoManager({ listingId, onClose, onChanged }: {
+function PhotoManager({
+  listingId,
+  onClose,
+  onChanged,
+}: {
   listingId: string;
   onClose: () => void;
   onChanged: () => void;
@@ -237,7 +480,8 @@ function PhotoManager({ listingId, onClose, onChanged }: {
 
   const { data: listing } = useQuery({
     queryKey: ["listing-detail", listingId],
-    queryFn: () => api.get(`/listings/${listingId}`).then((r) => r.data as { photo_list: PhotoRecord[] }),
+    queryFn: () =>
+      api.get(`/listings/${listingId}`).then((r) => r.data as { photo_list: PhotoRecord[] }),
   });
 
   async function upload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -260,21 +504,35 @@ function PhotoManager({ listingId, onClose, onChanged }: {
 
   const deletePhoto = useMutation({
     mutationFn: (photoId: string) => api.delete(`/listings/${listingId}/photos/${photoId}`),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["listing-detail", listingId] }); onChanged(); },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["listing-detail", listingId] });
+      onChanged();
+    },
   });
 
   const photos: PhotoRecord[] = listing?.photo_list ?? [];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+    <div
+      role="dialog"
+      aria-modal="true"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+    >
       <div className="w-full max-w-md rounded-2xl bg-white p-6">
         <div className="mb-4 flex items-center justify-between">
-          <h3 className="font-semibold">照片管理（最多 6 張）</h3>
-          <button type="button" onClick={onClose} className="text-zinc-400 hover:text-zinc-700">✕</button>
+          <h3 className="text-base font-semibold text-gray-950">照片管理（最多 6 張）</h3>
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-700"
+            aria-label="關閉"
+          >
+            ✕
+          </button>
         </div>
         <div className="mb-4 grid grid-cols-3 gap-2">
           {photos.map((p) => (
-            <div key={p.id} className="relative aspect-square overflow-hidden rounded-lg bg-zinc-100">
+            <div key={p.id} className="relative aspect-square overflow-hidden rounded-lg bg-gray-100">
               <Image src={p.public_url} alt="" fill className="object-cover" sizes="120px" />
               <button
                 type="button"
@@ -290,14 +548,20 @@ function PhotoManager({ listingId, onClose, onChanged }: {
               type="button"
               onClick={() => fileRef.current?.click()}
               disabled={uploading}
-              className="flex aspect-square items-center justify-center rounded-lg border-2 border-dashed border-zinc-300 text-zinc-400 hover:border-zinc-400 hover:text-zinc-500 disabled:opacity-40"
+              className="flex aspect-square items-center justify-center rounded-lg border-2 border-dashed border-gray-300 text-gray-400 transition hover:border-gray-400 hover:text-gray-500 disabled:opacity-40"
             >
               {uploading ? "上傳中…" : "+ 新增"}
             </button>
           )}
         </div>
-        <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={upload} />
-        <p className="text-xs text-zinc-400">接受 JPEG / PNG / WebP，每張最大 5MB。</p>
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          className="hidden"
+          onChange={upload}
+        />
+        <p className="text-xs text-gray-400">接受 JPEG / PNG / WebP，每張最大 5MB。</p>
       </div>
     </div>
   );
@@ -305,9 +569,14 @@ function PhotoManager({ listingId, onClose, onChanged }: {
 
 // ---- Browse Tab ----
 
-function BrowseTab({ selectedListingId, onSelectListing }: {
+function BrowseTab({
+  selectedListingId,
+  onSelectListing,
+  onGoToListings,
+}: {
   selectedListingId: string | null;
   onSelectListing: (id: string) => void;
+  onGoToListings: () => void;
 }) {
   const { data: listings = [] } = useQuery<Listing[]>({
     queryKey: ["listings"],
@@ -315,12 +584,16 @@ function BrowseTab({ selectedListingId, onSelectListing }: {
   });
 
   const activeListings = listings.filter((l) => l.status === "active");
-  const currentId = activeListings.find((l) => l.id === selectedListingId)?.id ?? activeListings[0]?.id ?? null;
+  const currentId =
+    activeListings.find((l) => l.id === selectedListingId)?.id ??
+    activeListings[0]?.id ??
+    null;
 
   const qc = useQueryClient();
   const { data, isLoading } = useQuery<{ items: MatchedTenantProfileCard[] }>({
     queryKey: ["profiles-browse", currentId],
-    queryFn: () => api.get(`/listings/${currentId}/tenant-profiles?limit=20`).then((r) => r.data),
+    queryFn: () =>
+      api.get(`/listings/${currentId}/tenant-profiles?limit=20`).then((r) => r.data),
     enabled: !!currentId,
   });
 
@@ -331,18 +604,27 @@ function BrowseTab({ selectedListingId, onSelectListing }: {
   });
 
   if (activeListings.length === 0) {
-    return <EmptyState message="請先將房源狀態設為「上架中」，才能瀏覽符合條件的租客。" />;
+    return (
+      <EmptyState
+        icon={<Search size={32} strokeWidth={1.5} className="text-gray-300" />}
+        title="請先將房源設為刊登中"
+        description="上架房源後，系統才能為你媒合符合條件的租客"
+        action={{ label: "前往我的房源", onClick: onGoToListings }}
+      />
+    );
   }
 
   return (
     <div>
       <div className="mb-4 flex items-center gap-2">
-        <label htmlFor="listing-select" className="text-sm font-medium text-zinc-700">使用房源</label>
+        <label htmlFor="listing-select" className="text-sm font-medium text-gray-700">
+          使用房源
+        </label>
         <select
           id="listing-select"
           value={currentId ?? ""}
           onChange={(e) => onSelectListing(e.target.value)}
-          className="rounded-lg border border-zinc-200 bg-white px-2 py-1.5 text-sm"
+          className="rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm text-gray-700"
         >
           {activeListings.map((l) => (
             <option key={l.id} value={l.id}>
@@ -351,20 +633,41 @@ function BrowseTab({ selectedListingId, onSelectListing }: {
           ))}
         </select>
       </div>
-      {isLoading && <Loading />}
-      {!isLoading && data?.items.length === 0 && (
-        <EmptyState message="目前沒有符合條件的租客需求卡，請稍後再查看。" />
+
+      {isLoading && (
+        <div className="space-y-3">
+          {[0, 1, 2].map((i) => (
+            <SkeletonProfileCard key={i} />
+          ))}
+        </div>
+      )}
+      {!isLoading && (data?.items ?? []).length === 0 && (
+        <EmptyState
+          icon={<SearchX size={32} strokeWidth={1.5} className="text-gray-300" />}
+          title="目前無符合條件的租客需求卡"
+          description="符合條件的租客尚未刊登需求，可稍後再查看"
+        />
       )}
       <div className="space-y-3">
-        {data?.items.map((profile) => (
-          <TenantProfileCard key={profile.id} profile={profile} onInterest={() => expressInterest.mutate(profile.id)} />
+        {(data?.items ?? []).map((profile) => (
+          <TenantProfileCard
+            key={profile.id}
+            profile={profile}
+            onInterest={() => expressInterest.mutate(profile.id)}
+          />
         ))}
       </div>
     </div>
   );
 }
 
-function TenantProfileCard({ profile, onInterest }: { profile: MatchedTenantProfileCard; onInterest: () => void }) {
+function TenantProfileCard({
+  profile,
+  onInterest,
+}: {
+  profile: MatchedTenantProfileCard;
+  onInterest: () => void;
+}) {
   const tags = [
     profile.has_pets && "有寵物",
     profile.needs_subsidy && "需租補",
@@ -374,32 +677,46 @@ function TenantProfileCard({ profile, onInterest }: { profile: MatchedTenantProf
   ].filter(Boolean) as string[];
 
   return (
-    <div className="rounded-xl border border-zinc-200 bg-white p-4">
+    <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-baseline gap-2">
-            <span className="font-semibold">{profile.name}</span>
-            <span className="text-sm text-zinc-500">
+            <span className="text-sm font-semibold text-gray-950">{profile.name}</span>
+            <span className="text-sm text-gray-500">
               預算 ${profile.budget_min.toLocaleString()}–${profile.budget_max.toLocaleString()}
             </span>
           </div>
-          <p className="mt-1 text-sm text-zinc-500">
-            {profile.preferred_room_types.map((t) => ROOM_TYPE_LABELS[t] ?? t).join("、")} ／ 可入住：{new Date(profile.available_from).toLocaleDateString("zh-TW")}
+          <p className="mt-1 text-sm text-gray-500">
+            {profile.preferred_room_types.map((t) => ROOM_TYPE_LABELS[t] ?? t).join("、")} ／ 可入住：
+            {new Date(profile.available_from).toLocaleDateString("zh-TW")}
           </p>
-          {profile.occupation && <p className="mt-0.5 text-xs text-zinc-400">職業：{profile.occupation}</p>}
+          {profile.occupation && (
+            <p className="mt-0.5 text-xs text-gray-400">職業：{profile.occupation}</p>
+          )}
           {tags.length > 0 && (
             <div className="mt-2 flex flex-wrap gap-1">
               {tags.map((tag) => (
-                <span key={tag} className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs text-zinc-600">{tag}</span>
+                <span
+                  key={tag}
+                  className="rounded-full bg-[#EDE9FE] px-3 py-1 text-xs font-medium text-[#5B21B6]"
+                >
+                  {tag}
+                </span>
               ))}
             </div>
           )}
         </div>
         <div className="flex-shrink-0">
           {profile.interest_sent ? (
-            <span className="rounded-lg bg-zinc-100 px-3 py-1.5 text-xs font-medium text-zinc-500">已送出</span>
+            <span className="rounded-full bg-[#EDE9FE] px-2.5 py-0.5 text-xs font-medium text-[#5B21B6]">
+              已送出
+            </span>
           ) : (
-            <button type="button" onClick={onInterest} className="rounded-lg bg-zinc-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-zinc-700">
+            <button
+              type="button"
+              onClick={onInterest}
+              className="rounded-lg bg-primary-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-primary-500"
+            >
               有興趣
             </button>
           )}
@@ -409,34 +726,87 @@ function TenantProfileCard({ profile, onInterest }: { profile: MatchedTenantProf
   );
 }
 
-// ---- Incoming Tab ----
+// ---- Matches View ----
 
-function IncomingTab() {
-  const { data: listings = [] } = useQuery<Listing[]>({
-    queryKey: ["listings"],
-    queryFn: () => api.get("/listings").then((r) => r.data),
-  });
-  const qc = useQueryClient();
-  const [expandedListing, setExpandedListing] = useState<string | null>(null);
-
+function MatchesView({
+  subTab,
+  onSubTabChange,
+}: {
+  subTab: MatchesSubTab;
+  onSubTabChange: (t: MatchesSubTab) => void;
+}) {
   return (
     <div>
-      <h2 className="mb-4 font-semibold text-lg">對我房源有興趣的租客</h2>
-      {listings.map((listing) => (
-        <ListingIncoming
-          key={listing.id}
-          listing={listing}
-          expanded={expandedListing === listing.id}
-          onToggle={() => setExpandedListing(expandedListing === listing.id ? null : listing.id)}
-          onMatched={() => qc.invalidateQueries({ queryKey: ["matched"] })}
-        />
-      ))}
-      {listings.length === 0 && <EmptyState message="尚無房源。" />}
+      <div className="mb-4 flex gap-1 rounded-xl border border-gray-200 bg-white p-1 shadow-sm">
+        {(
+          [
+            ["incoming", "待確認"],
+            ["outgoing", "等待中"],
+            ["matched", "已媒合"],
+          ] as [MatchesSubTab, string][]
+        ).map(([t, label]) => (
+          <button
+            key={t}
+            type="button"
+            onClick={() => onSubTabChange(t)}
+            className={`flex-1 rounded-lg py-2 text-sm font-medium transition ${
+              subTab === t ? "bg-primary-600 text-white" : "text-gray-500 hover:bg-gray-100"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      {subTab === "incoming" && <IncomingTab />}
+      {subTab === "outgoing" && <OutgoingTab />}
+      {subTab === "matched" && <MatchedTab />}
     </div>
   );
 }
 
-function ListingIncoming({ listing, expanded, onToggle, onMatched }: {
+// ---- Incoming (accordion per listing) ----
+
+function IncomingTab() {
+  const { data: listings = [], isLoading } = useQuery<Listing[]>({
+    queryKey: ["listings"],
+    queryFn: () => api.get("/listings").then((r) => r.data),
+  });
+  const qc = useQueryClient();
+  const [expanded, setExpanded] = useState<string | null>(null);
+
+  if (isLoading) return <Loading />;
+
+  if (listings.length === 0) {
+    return (
+      <EmptyState
+        icon={<Inbox size={32} strokeWidth={1.5} className="text-gray-300" />}
+        title="尚無房源"
+        description="建立並上架房源後，才能接收租客的媒合興趣"
+      />
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {listings.map((listing) => (
+        <ListingIncoming
+          key={listing.id}
+          listing={listing}
+          expanded={expanded === listing.id}
+          onToggle={() => setExpanded(expanded === listing.id ? null : listing.id)}
+          onMatched={() => qc.invalidateQueries({ queryKey: ["matched"] })}
+        />
+      ))}
+    </div>
+  );
+}
+
+function ListingIncoming({
+  listing,
+  expanded,
+  onToggle,
+  onMatched,
+}: {
   listing: Listing;
   expanded: boolean;
   onToggle: () => void;
@@ -445,7 +815,8 @@ function ListingIncoming({ listing, expanded, onToggle, onMatched }: {
   const qc = useQueryClient();
   const { data, isLoading } = useQuery<{ items: MatchedTenantProfileCard[] }>({
     queryKey: ["incoming-listing", listing.id],
-    queryFn: () => api.get(`/listings/${listing.id}/tenant-profiles?limit=50`).then((r) => r.data),
+    queryFn: () =>
+      api.get(`/listings/${listing.id}/tenant-profiles?limit=50`).then((r) => r.data),
     enabled: expanded,
   });
 
@@ -458,38 +829,67 @@ function ListingIncoming({ listing, expanded, onToggle, onMatched }: {
     },
   });
 
+  const pendingCount = (data?.items ?? []).filter((p) => !p.interest_sent).length;
+
   return (
-    <div className="mb-3 rounded-xl border border-zinc-200 bg-white">
-      <button type="button" onClick={onToggle} className="flex w-full items-center justify-between px-4 py-3 text-left">
-        <span className="font-medium">
+    <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="flex w-full items-center justify-between px-4 py-3 text-left"
+      >
+        <span className="text-sm font-medium text-gray-700">
           ${listing.rent.toLocaleString()} {ROOM_TYPE_LABELS[listing.room_type] ?? listing.room_type}
         </span>
-        <span className="text-zinc-400">{expanded ? "▲" : "▼"}</span>
+        <div className="flex items-center gap-2">
+          {expanded && pendingCount > 0 && (
+            <span className="rounded-full bg-primary-600 px-2 py-0.5 text-xs font-medium text-white">
+              {pendingCount}
+            </span>
+          )}
+          <ChevronDown
+            size={16}
+            strokeWidth={1.5}
+            className={`text-gray-400 transition-transform ${expanded ? "rotate-180" : ""}`}
+          />
+        </div>
       </button>
       {expanded && (
-        <div className="border-t border-zinc-100 px-4 py-3">
+        <div className="border-t border-gray-100 px-4 py-3">
           {isLoading && <Loading />}
-          {!isLoading && data?.items.length === 0 && <p className="text-sm text-zinc-400">目前無 incoming 興趣</p>}
+          {!isLoading && (data?.items ?? []).length === 0 && (
+            <p className="py-4 text-center text-sm text-gray-400">目前無符合條件的租客</p>
+          )}
           <div className="space-y-2">
-            {data?.items
-              .filter((p) => !p.interest_sent)
-              .map((profile) => (
-                <div key={profile.id} className="flex items-center justify-between rounded-lg border border-zinc-100 p-3">
-                  <div className="text-sm">
-                    <span className="font-medium">{profile.name}</span>
-                    <span className="ml-2 text-zinc-500">
-                      預算 ${profile.budget_min.toLocaleString()}–${profile.budget_max.toLocaleString()}
-                    </span>
-                  </div>
+            {(data?.items ?? []).map((profile) => (
+              <div
+                key={profile.id}
+                className="flex items-center justify-between rounded-lg border border-gray-100 px-3 py-2.5"
+              >
+                <div className="text-sm">
+                  <span className="font-medium text-gray-900">{profile.name}</span>
+                  <span className="ml-2 text-gray-500">
+                    預算 ${profile.budget_min.toLocaleString()}–${profile.budget_max.toLocaleString()}
+                  </span>
+                  {profile.occupation && (
+                    <span className="ml-2 text-gray-400">{profile.occupation}</span>
+                  )}
+                </div>
+                {profile.interest_sent ? (
+                  <span className="rounded-full bg-[#EDE9FE] px-2.5 py-0.5 text-xs font-medium text-[#5B21B6]">
+                    已送出
+                  </span>
+                ) : (
                   <button
                     type="button"
                     onClick={() => expressInterest.mutate(profile.id)}
-                    className="rounded-lg bg-zinc-900 px-3 py-1 text-xs font-medium text-white hover:bg-zinc-700"
+                    className="rounded-lg bg-primary-600 px-3 py-1 text-xs font-medium text-white transition hover:bg-primary-500"
                   >
-                    有興趣 → 媒合
+                    回應興趣
                   </button>
-                </div>
-              ))}
+                )}
+              </div>
+            ))}
           </div>
         </div>
       )}
@@ -497,91 +897,119 @@ function ListingIncoming({ listing, expanded, onToggle, onMatched }: {
   );
 }
 
-// ---- Outgoing Tab ----
+// ---- Outgoing ----
 
-type OutgoingItem = { tenant_profile_id: string; profile_name: string; budget_min: number; budget_max: number };
+type OutgoingItem = {
+  tenant_profile_id: string;
+  profile_name: string;
+  budget_min: number;
+  budget_max: number;
+};
 
 function OutgoingTab() {
   const { data, isLoading } = useQuery<{ items: OutgoingItem[] }>({
     queryKey: ["outgoing"],
     queryFn: () => api.get("/matches/outgoing?limit=50").then((r) => r.data),
   });
+
   if (isLoading) return <Loading />;
+
+  if ((data?.items ?? []).length === 0) {
+    return (
+      <EmptyState
+        icon={<SendHorizonal size={32} strokeWidth={1.5} className="text-gray-300" />}
+        title="尚未送出任何興趣"
+        description="前往找租客，對感興趣的需求卡按「有興趣」"
+      />
+    );
+  }
+
   return (
-    <div>
-      <h2 className="mb-4 font-semibold text-lg">我送出的興趣（等待租客回應）</h2>
-      {(data?.items ?? []).length === 0 && <EmptyState message="尚未送出任何興趣。" />}
-      <div className="space-y-2">
-        {(data?.items ?? []).map((i) => (
-          <div key={i.tenant_profile_id} className="rounded-xl border border-zinc-200 bg-white p-4 text-sm">
-            <span className="font-medium">{i.profile_name}</span>
-            <span className="ml-2 text-zinc-500">預算 ${i.budget_min.toLocaleString()}–${i.budget_max.toLocaleString()}</span>
+    <div className="space-y-2">
+      {(data?.items ?? []).map((i) => (
+        <div
+          key={i.tenant_profile_id}
+          className="flex items-center justify-between rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm"
+        >
+          <div className="text-sm">
+            <span className="font-medium text-gray-900">{i.profile_name}</span>
+            <span className="ml-2 text-gray-500">
+              預算 ${i.budget_min.toLocaleString()}–${i.budget_max.toLocaleString()}
+            </span>
           </div>
-        ))}
-      </div>
+          <span className="rounded-full bg-[#EDE9FE] px-2.5 py-0.5 text-xs font-medium text-[#5B21B6]">
+            已送出
+          </span>
+        </div>
+      ))}
     </div>
   );
 }
 
-// ---- Matched Tab ----
+// ---- Matched ----
 
-type MatchItem = { match_id: string; tenant_profile_id: string; contact_info: string; matched_at: string; profile_name?: string };
+type MatchItem = {
+  match_id: string;
+  tenant_profile_id: string;
+  contact_info: string;
+  matched_at: string;
+  profile_name?: string;
+};
 
 function MatchedTab() {
   const { data, isLoading } = useQuery<{ items: MutualMatch[] }>({
     queryKey: ["matched"],
     queryFn: () => api.get("/matches/mutual?limit=50").then((r) => r.data),
   });
+
   if (isLoading) return <Loading />;
+
+  if ((data?.items ?? []).length === 0) {
+    return (
+      <EmptyState
+        icon={<Heart size={32} strokeWidth={1.5} className="text-gray-300" />}
+        title="尚無媒合結果"
+        description="繼續瀏覽租客需求卡，或等待租客對你的房源表示興趣"
+      />
+    );
+  }
+
   return (
-    <div>
-      <h2 className="mb-4 font-semibold text-lg">已媒合</h2>
-      {(data?.items ?? []).length === 0 && <EmptyState message="尚無媒合結果。" />}
-      <div className="space-y-3">
-        {(data?.items ?? []).map((m) => {
-          const match = m as unknown as MatchItem;
-          return (
-            <div key={match.match_id} className="rounded-xl border border-zinc-200 bg-white p-4">
-              <p className="mb-2 text-sm text-zinc-500">
-                媒合時間：{new Date(match.matched_at).toLocaleDateString("zh-TW")}
-                {match.profile_name && <span className="ml-2">需求卡：{match.profile_name}</span>}
-              </p>
-              <div className="mt-3 rounded-lg bg-zinc-50 p-3">
-                <p className="mb-1 text-xs text-zinc-400">租客聯絡方式（自填資料，平台不保證真實性）</p>
-                <p className="text-sm font-medium">{match.contact_info}</p>
-              </div>
+    <div className="space-y-3">
+      {(data?.items ?? []).map((m) => {
+        const match = m as unknown as MatchItem;
+        return (
+          <div
+            key={match.match_id}
+            className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm"
+          >
+            <div className="flex items-center gap-2 text-xs text-gray-400">
+              <span className="rounded-full bg-[#D1FAE5] px-2 py-0.5 font-medium text-[#065F46]">
+                媒合成功
+              </span>
+              <span>{new Date(match.matched_at).toLocaleDateString("zh-TW")}</span>
+              {match.profile_name && <span>需求卡：{match.profile_name}</span>}
             </div>
-          );
-        })}
-      </div>
+            <div className="mt-3 rounded-lg border border-gray-200 bg-gray-50 p-3">
+              <p className="mb-1 text-xs text-gray-400">
+                以下為對方自填資料，平台不保證真實性，請自行確認。
+              </p>
+              <p className="text-sm font-medium text-gray-950">{match.contact_info}</p>
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
 
 // ---- Listing Form Modal ----
 
-const LOCATIONS = [
-  { id: "taipei-daan", label: "台北・大安" },
-  { id: "taipei-zhongzheng", label: "台北・中正" },
-  { id: "taipei-zhongshan", label: "台北・中山" },
-  { id: "taipei-xinyi", label: "台北・信義" },
-  { id: "taipei-songshan", label: "台北・松山" },
-  { id: "taipei-shilin", label: "台北・士林" },
-  { id: "taipei-neihu", label: "台北・內湖" },
-  { id: "taipei-wenshan", label: "台北・文山" },
-  { id: "taipei-wanhua", label: "台北・萬華" },
-  { id: "taipei-datong", label: "台北・大同" },
-  { id: "taipei-beitou", label: "台北・北投" },
-  { id: "taipei-nangang", label: "台北・南港" },
-  { id: "newtaipei-banqiao", label: "新北・板橋" },
-  { id: "newtaipei-zhonghe", label: "新北・中和" },
-  { id: "newtaipei-yonghe", label: "新北・永和" },
-  { id: "newtaipei-xindian", label: "新北・新店" },
-  { id: "newtaipei-sanchong", label: "新北・三重" },
-  { id: "newtaipei-xinzhuang", label: "新北・新莊" },
-];
-
-function ListingFormModal({ editingId, onClose, onSaved }: {
+function ListingFormModal({
+  editingId,
+  onClose,
+  onSaved,
+}: {
   editingId: string | null;
   onClose: () => void;
   onSaved: () => void;
@@ -627,8 +1055,9 @@ function ListingFormModal({ editingId, onClose, onSaved }: {
       rent: Number(form.rent),
       area_ping: Number(form.area_ping),
       min_lease_months: Number(form.min_lease_months),
-      // Convert date-only string to RFC3339 for Go time.Time binding
-      available_from: form.available_from ? `${form.available_from}T00:00:00Z` : form.available_from,
+      available_from: form.available_from
+        ? `${form.available_from}T00:00:00Z`
+        : form.available_from,
     };
     try {
       if (editingId) {
@@ -650,16 +1079,27 @@ function ListingFormModal({ editingId, onClose, onSaved }: {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 sm:items-center">
       <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-t-2xl bg-white p-6 sm:rounded-2xl">
         <div className="mb-4 flex items-center justify-between">
-          <h3 className="font-semibold text-lg">{editingId ? "編輯房源" : "新增房源"}</h3>
-          <button type="button" onClick={onClose} className="text-zinc-400 hover:text-zinc-700">✕</button>
+          <h3 className="text-base font-semibold text-gray-950">
+            {editingId ? "編輯房源" : "新增房源"}
+          </h3>
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-700"
+            aria-label="關閉"
+          >
+            ✕
+          </button>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label htmlFor="location_id" className="mb-1 block text-sm font-medium text-zinc-700">地區</label>
+            <label htmlFor="location_id" className="mb-1 block text-sm font-medium text-gray-700">
+              地區
+            </label>
             <select
               id="location_id"
               required
@@ -669,34 +1109,57 @@ function ListingFormModal({ editingId, onClose, onSaved }: {
             >
               <option value="">請選擇地區</option>
               {LOCATIONS.map((loc) => (
-                <option key={loc.id} value={loc.id}>{loc.label}</option>
+                <option key={loc.id} value={loc.id}>
+                  {loc.label}
+                </option>
               ))}
             </select>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label htmlFor="rent" className="mb-1 block text-sm font-medium text-zinc-700">租金（元/月）</label>
-              <input id="rent" required type="number" min={1} value={form.rent || ""} onChange={(e) => setForm((f) => ({ ...f, rent: Number(e.target.value) }))} className="input" />
+              <label htmlFor="rent" className="mb-1 block text-sm font-medium text-gray-700">
+                租金（元/月）
+              </label>
+              <input
+                id="rent"
+                required
+                type="number"
+                min={1}
+                value={form.rent || ""}
+                onChange={(e) => setForm((f) => ({ ...f, rent: Number(e.target.value) }))}
+                className="input"
+              />
             </div>
             <div>
-              <label htmlFor="area_ping" className="mb-1 block text-sm font-medium text-zinc-700">坪數</label>
-              <input id="area_ping" required type="number" min={1} step="0.1" value={form.area_ping || ""} onChange={(e) => setForm((f) => ({ ...f, area_ping: Number(e.target.value) }))} className="input" />
+              <label htmlFor="area_ping" className="mb-1 block text-sm font-medium text-gray-700">
+                坪數
+              </label>
+              <input
+                id="area_ping"
+                required
+                type="number"
+                min={1}
+                step="0.1"
+                value={form.area_ping || ""}
+                onChange={(e) => setForm((f) => ({ ...f, area_ping: Number(e.target.value) }))}
+                className="input"
+              />
             </div>
           </div>
 
           <div>
-            <p className="mb-1 text-sm font-medium text-zinc-700">房型</p>
+            <p className="mb-1 text-sm font-medium text-gray-700">房型</p>
             <div className="flex gap-2">
               {Object.entries(ROOM_TYPE_LABELS).map(([rt, label]) => (
                 <button
                   key={rt}
                   type="button"
                   onClick={() => setForm((f) => ({ ...f, room_type: rt }))}
-                  className={`rounded-full px-3 py-1 text-sm transition ${
+                  className={`rounded-full px-3 py-1 text-sm font-medium transition ${
                     form.room_type === rt
-                      ? "bg-zinc-900 text-white"
-                      : "border border-zinc-200 text-zinc-600 hover:border-zinc-400"
+                      ? "bg-primary-600 text-white"
+                      : "border border-gray-200 text-gray-600 hover:border-gray-400"
                   }`}
                 >
                   {label}
@@ -707,32 +1170,64 @@ function ListingFormModal({ editingId, onClose, onSaved }: {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label htmlFor="available_from" className="mb-1 block text-sm font-medium text-zinc-700">可入住日</label>
-              <input id="available_from" required type="date" value={form.available_from} onChange={(e) => setForm((f) => ({ ...f, available_from: e.target.value }))} className="input" />
+              <label
+                htmlFor="available_from"
+                className="mb-1 block text-sm font-medium text-gray-700"
+              >
+                可入住日
+              </label>
+              <input
+                id="available_from"
+                required
+                type="date"
+                value={form.available_from}
+                onChange={(e) => setForm((f) => ({ ...f, available_from: e.target.value }))}
+                className="input"
+              />
             </div>
             <div>
-              <label htmlFor="min_lease_months" className="mb-1 block text-sm font-medium text-zinc-700">最短租期（月）</label>
-              <input id="min_lease_months" required type="number" min={1} value={form.min_lease_months || ""} onChange={(e) => setForm((f) => ({ ...f, min_lease_months: Number(e.target.value) }))} className="input" />
+              <label
+                htmlFor="min_lease_months"
+                className="mb-1 block text-sm font-medium text-gray-700"
+              >
+                最短租期（月）
+              </label>
+              <input
+                id="min_lease_months"
+                required
+                type="number"
+                min={1}
+                value={form.min_lease_months || ""}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, min_lease_months: Number(e.target.value) }))
+                }
+                className="input"
+              />
             </div>
           </div>
 
           <div className="space-y-2">
-            <p className="text-sm font-medium">房源條件</p>
-            {([
-              ["allow_pets", "接受寵物"],
-              ["allow_subsidy", "接受租補"],
-              ["allow_tax_receipt", "開立報稅收據"],
-              ["allow_household_registration", "可入籍"],
-              ["allow_cooking", "可開伙"],
-              ["has_parking", "有車位"],
-              ["allow_smoking", "可抽菸"],
-            ] as const).map(([key, label]) => (
-              <label key={key} className="flex cursor-pointer items-center gap-2 text-sm">
+            <p className="text-sm font-medium text-gray-700">房源條件</p>
+            {(
+              [
+                ["allow_pets", "接受寵物"],
+                ["allow_subsidy", "接受租補"],
+                ["allow_tax_receipt", "開立報稅收據"],
+                ["allow_household_registration", "可入籍"],
+                ["allow_cooking", "可開伙"],
+                ["has_parking", "有車位"],
+                ["allow_smoking", "可抽菸"],
+              ] as const
+            ).map(([key, label]) => (
+              <label
+                key={key}
+                className="flex cursor-pointer items-center gap-2 text-sm text-gray-700"
+              >
                 <input
                   type="checkbox"
                   checked={form[key]}
                   onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.checked }))}
-                  className="h-4 w-4 rounded border-zinc-300 accent-zinc-900"
+                  className="h-4 w-4 rounded border-gray-300 accent-primary-600"
                 />
                 {label}
               </label>
@@ -740,7 +1235,12 @@ function ListingFormModal({ editingId, onClose, onSaved }: {
           </div>
 
           <div>
-            <label htmlFor="contact_info" className="mb-1 block text-sm font-medium text-zinc-700">聯絡方式（媒合成功後才對租客顯示）</label>
+            <label
+              htmlFor="contact_info"
+              className="mb-1 block text-sm font-medium text-gray-700"
+            >
+              聯絡方式（媒合成功後才對租客顯示）
+            </label>
             <input
               id="contact_info"
               required={!editingId}
@@ -749,7 +1249,7 @@ function ListingFormModal({ editingId, onClose, onSaved }: {
               className="input"
               placeholder="例：Line ID: xxx 或 0912-345-678"
             />
-            <p className="mt-1 text-xs text-zinc-400">媒合成功後才會顯示給租客，請填真實聯絡方式</p>
+            <p className="mt-1 text-xs text-gray-400">媒合成功後才會顯示給租客，請填真實聯絡方式</p>
           </div>
 
           {!editingId && (
@@ -762,7 +1262,9 @@ function ListingFormModal({ editingId, onClose, onSaved }: {
                 <input
                   type="checkbox"
                   checked={form.compliance_confirmed}
-                  onChange={(e) => setForm((f) => ({ ...f, compliance_confirmed: e.target.checked }))}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, compliance_confirmed: e.target.checked }))
+                  }
                   className="mt-0.5 h-4 w-4 rounded border-amber-300 accent-amber-800"
                 />
                 <span>我確認此房源符合上述合規條件</span>
@@ -775,7 +1277,7 @@ function ListingFormModal({ editingId, onClose, onSaved }: {
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-xl bg-zinc-900 py-3 text-sm font-medium text-white hover:bg-zinc-700 disabled:opacity-40"
+            className="w-full rounded-lg bg-primary-600 py-3 text-sm font-medium text-white transition hover:bg-primary-500 disabled:opacity-40"
           >
             {loading ? "儲存中…" : "儲存房源"}
           </button>
@@ -787,14 +1289,67 @@ function ListingFormModal({ editingId, onClose, onSaved }: {
 
 // ---- Shared UI ----
 
-function Loading() {
-  return <div className="py-8 text-center text-sm text-zinc-400">載入中…</div>;
+function EmptyState({
+  icon,
+  title,
+  description,
+  action,
+}: {
+  icon?: ReactNode;
+  title: string;
+  description?: string;
+  action?: { label: string; onClick: () => void };
+}) {
+  return (
+    <div className="rounded-xl border border-gray-200 bg-white py-12 text-center shadow-sm">
+      {icon && <div className="mb-3 flex justify-center">{icon}</div>}
+      <p className="text-sm font-medium text-gray-700">{title}</p>
+      {description && <p className="mt-1 text-xs text-gray-400">{description}</p>}
+      {action && (
+        <button
+          type="button"
+          onClick={action.onClick}
+          className="mt-4 rounded-lg border border-primary-600 px-4 py-2 text-sm font-medium text-primary-600 transition hover:bg-primary-50"
+        >
+          {action.label}
+        </button>
+      )}
+    </div>
+  );
 }
 
-function EmptyState({ message }: { message: string }) {
+function Loading() {
+  return <div className="py-8 text-center text-sm text-gray-400">載入中…</div>;
+}
+
+function SkeletonListingMgmtCard() {
   return (
-    <div className="rounded-xl border border-zinc-200 bg-white py-10 text-center text-sm text-zinc-400">
-      {message}
+    <div className="flex animate-pulse items-center justify-between rounded-xl border border-gray-200 bg-white p-5">
+      <div className="space-y-2">
+        <div className="h-4 w-36 rounded bg-gray-200" />
+        <div className="h-3 w-48 rounded bg-gray-200" />
+      </div>
+      <div className="flex gap-2">
+        <div className="h-7 w-16 rounded-lg bg-gray-200" />
+        <div className="h-7 w-12 rounded-lg bg-gray-200" />
+        <div className="h-7 w-12 rounded-lg bg-gray-200" />
+      </div>
+    </div>
+  );
+}
+
+function SkeletonProfileCard() {
+  return (
+    <div className="flex animate-pulse items-start justify-between rounded-xl border border-gray-200 bg-white p-5">
+      <div className="space-y-2">
+        <div className="h-4 w-28 rounded bg-gray-200" />
+        <div className="h-3 w-44 rounded bg-gray-200" />
+        <div className="flex gap-1">
+          <div className="h-5 w-12 rounded-full bg-gray-200" />
+          <div className="h-5 w-12 rounded-full bg-gray-200" />
+        </div>
+      </div>
+      <div className="h-7 w-16 rounded-lg bg-gray-200" />
     </div>
   );
 }
