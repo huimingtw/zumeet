@@ -7,12 +7,14 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zumeet/api/config"
 	"github.com/zumeet/api/service"
+	"gorm.io/gorm"
 )
 
 var ErrForbidden = errors.New("forbidden")
 
 type Handler struct {
 	db      *pgxpool.Pool
+	orm     *gorm.DB
 	oauth   service.OAuthService
 	storage service.StorageService
 	email   service.EmailService
@@ -21,6 +23,7 @@ type Handler struct {
 
 func New(
 	db *pgxpool.Pool,
+	orm *gorm.DB,
 	oauth service.OAuthService,
 	storage service.StorageService,
 	email service.EmailService,
@@ -28,6 +31,7 @@ func New(
 ) *Handler {
 	return &Handler{
 		db:      db,
+		orm:     orm,
 		oauth:   oauth,
 		storage: storage,
 		email:   email,
@@ -36,6 +40,8 @@ func New(
 }
 
 func (h *Handler) DB() *pgxpool.Pool { return h.db }
+
+func (h *Handler) ORM() *gorm.DB { return h.orm }
 
 // RequireRole checks DB (never JWT) to verify the user has the given role.
 // Use this in every endpoint that requires a specific role — not the JWT payload.

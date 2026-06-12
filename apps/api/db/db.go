@@ -9,6 +9,8 @@ import (
 
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
+	postgresdriver "gorm.io/driver/postgres"
+	"gorm.io/gorm"
 )
 
 //go:embed schema.sql
@@ -36,6 +38,24 @@ func Connect(databaseURL string) (*pgxpool.Pool, error) {
 	return pool, nil
 }
 
+func ConnectGorm(databaseURL string) (*gorm.DB, error) {
+	gdb, err := gorm.Open(postgresdriver.Open(databaseURL), &gorm.Config{})
+	if err != nil {
+		return nil, fmt.Errorf("create gorm db: %w", err)
+	}
+
+	sqlDB, err := gdb.DB()
+	if err != nil {
+		return nil, fmt.Errorf("unwrap gorm db: %w", err)
+	}
+
+	if err := sqlDB.Ping(); err != nil {
+		return nil, fmt.Errorf("ping gorm db: %w", err)
+	}
+
+	return gdb, nil
+}
+
 // ConnectTest connects to the test database, applies schema and seed (idempotent).
 // Uses TEST_DATABASE_URL env var; defaults to local zumeet_test.
 func ConnectTest() (*pgxpool.Pool, error) {
@@ -60,6 +80,14 @@ func ConnectTest() (*pgxpool.Pool, error) {
 	pgConn.Close(context.Background())
 
 	return Connect(url)
+}
+
+func ConnectGormTest() (*gorm.DB, error) {
+	url := os.Getenv("TEST_DATABASE_URL")
+	if url == "" {
+		url = "postgres://zumeet:secret@localhost:5432/zumeet_test"
+	}
+	return ConnectGorm(url)
 }
 
 // TruncateTables removes all user-generated data. Preserves locations (reference data).

@@ -62,8 +62,8 @@ type ListingResponse struct {
 	HasParking                 bool          `json:"has_parking"`
 	AllowSmoking               bool          `json:"allow_smoking"`
 	Status                     string        `json:"status"`
-	Photos                     []string      `json:"photos"`
-	PhotoList                  []PhotoDetail `json:"photo_list"`
+	Photos                     []string      `json:"photos" gorm:"-"`
+	PhotoList                  []PhotoDetail `json:"photo_list" gorm:"-"`
 	CreatedAt                  time.Time     `json:"created_at"`
 	UpdatedAt                  time.Time     `json:"updated_at"`
 }
@@ -554,24 +554,14 @@ func (h *Handler) ListLandlordListings(c *Context) {
 		return
 	}
 
-	rows, err := h.db.Query(c.Request.Context(),
-		`SELECT id FROM listings WHERE landlord_id=$1 AND deleted_at IS NULL ORDER BY created_at DESC`,
-		userID,
-	)
-	if err != nil {
+	var ids []string
+	db := h.orm.WithContext(c.Request.Context())
+	if err := db.Table("listings").
+		Where("landlord_id = ? AND deleted_at IS NULL", userID).
+		Order("created_at DESC").
+		Pluck("id", &ids).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
 		return
-	}
-	defer rows.Close()
-
-	var ids []string
-	for rows.Next() {
-		var id string
-		if err := rows.Scan(&id); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
-			return
-		}
-		ids = append(ids, id)
 	}
 
 	result := make([]ListingResponse, 0, len(ids))
@@ -618,25 +608,20 @@ func (h *Handler) fetchListingResponse(c *Context, id string) (*ListingResponse,
 		return nil, err
 	}
 
-	// attach active photos
-	rows, err := h.db.Query(c.Request.Context(),
-		`SELECT id, public_url, position FROM listing_photos
-		 WHERE listing_id=$1 AND deleted_at IS NULL ORDER BY position`,
-		id,
-	)
+	var photos []PhotoDetail
+	db := h.orm.WithContext(c.Request.Context())
+	err = db.Table("listing_photos").
+		Select("id, public_url, position").
+		Where("listing_id = ? AND deleted_at IS NULL", id).
+		Order("position").
+		Scan(&photos).Error
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
-	r.Photos = []string{}
-	r.PhotoList = []PhotoDetail{}
-	for rows.Next() {
-		var pd PhotoDetail
-		if err := rows.Scan(&pd.ID, &pd.PublicURL, &pd.Position); err != nil {
-			return nil, err
-		}
-		r.Photos = append(r.Photos, pd.PublicURL)
-		r.PhotoList = append(r.PhotoList, pd)
+	r.PhotoList = photos
+	r.Photos = make([]string, 0, len(photos))
+	for _, p := range photos {
+		r.Photos = append(r.Photos, p.PublicURL)
 	}
 
 	return &r, nil

@@ -191,19 +191,6 @@ func notePtr(s string) *string {
 func (h *Handler) AdminListReports(c *Context) {
 	status := c.DefaultQuery("status", "pending")
 
-	rows, err := h.db.Query(c.Request.Context(), `
-		SELECT id, reporter_id, reported_id, listing_id, reason, status::text, created_at
-		FROM reports
-		WHERE status=$1::report_status AND deleted_at IS NULL
-		ORDER BY created_at ASC
-		LIMIT 50`, status,
-	)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
-		return
-	}
-	defer rows.Close()
-
 	type reportRow struct {
 		ID         string    `json:"id"`
 		ReporterID string    `json:"reporter_id"`
@@ -213,14 +200,17 @@ func (h *Handler) AdminListReports(c *Context) {
 		Status     string    `json:"status"`
 		CreatedAt  time.Time `json:"created_at"`
 	}
+	db := h.orm.WithContext(c.Request.Context())
 	result := make([]reportRow, 0)
-	for rows.Next() {
-		var r reportRow
-		if err := rows.Scan(&r.ID, &r.ReporterID, &r.ReportedID, &r.ListingID, &r.Reason, &r.Status, &r.CreatedAt); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
-			return
-		}
-		result = append(result, r)
+	if err := db.Raw(`
+		SELECT id, reporter_id, reported_id, listing_id, reason, status::text AS status, created_at
+		FROM reports
+		WHERE status=$1::report_status AND deleted_at IS NULL
+		ORDER BY created_at ASC
+		LIMIT 50`, status,
+	).Scan(&result).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
+		return
 	}
 	c.JSON(http.StatusOK, result)
 }
@@ -514,18 +504,6 @@ func (h *Handler) AdminRestoreListing(c *Context) {
 
 // AdminListActions handles GET /actions
 func (h *Handler) AdminListActions(c *Context) {
-	rows, err := h.db.Query(c.Request.Context(), `
-		SELECT id, admin_id, action::text, target_type, target_id, note, created_at
-		FROM admin_actions
-		ORDER BY created_at DESC
-		LIMIT 100`,
-	)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
-		return
-	}
-	defer rows.Close()
-
 	type actionRow struct {
 		ID         string    `json:"id"`
 		AdminID    string    `json:"admin_id"`
@@ -535,14 +513,16 @@ func (h *Handler) AdminListActions(c *Context) {
 		Note       *string   `json:"note"`
 		CreatedAt  time.Time `json:"created_at"`
 	}
+	db := h.orm.WithContext(c.Request.Context())
 	result := make([]actionRow, 0)
-	for rows.Next() {
-		var r actionRow
-		if err := rows.Scan(&r.ID, &r.AdminID, &r.Action, &r.TargetType, &r.TargetID, &r.Note, &r.CreatedAt); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
-			return
-		}
-		result = append(result, r)
+	if err := db.Raw(`
+		SELECT id, admin_id, action::text AS action, target_type, target_id, note, created_at
+		FROM admin_actions
+		ORDER BY created_at DESC
+		LIMIT 100`,
+	).Scan(&result).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
+		return
 	}
 	c.JSON(http.StatusOK, result)
 }

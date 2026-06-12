@@ -33,7 +33,7 @@ type TenantProfileRequest struct {
 	Smoking                    bool      `json:"smoking"`
 	Occupation                 string    `json:"occupation"`
 	ContactInfo                string    `json:"contact_info" binding:"required"`
-	IsActive                   bool      `json:"is_active"`
+	IsActive                   *bool     `json:"is_active"`
 }
 
 type TenantProfileResponse struct {
@@ -42,7 +42,7 @@ type TenantProfileResponse struct {
 	Name                       string    `json:"name"`
 	BudgetMin                  int       `json:"budget_min"`
 	BudgetMax                  int       `json:"budget_max"`
-	Locations                  []string  `json:"locations"`
+	Locations                  []string  `json:"locations" gorm:"-"`
 	PreferredRoomTypes         []string  `json:"preferred_room_types"`
 	AvailableFrom              time.Time `json:"available_from"`
 	MinLeaseMonths             int       `json:"min_lease_months"`
@@ -70,32 +70,72 @@ func (h *Handler) ListTenantProfiles(c *Context) {
 		return
 	}
 
-	rows, err := h.db.Query(c.Request.Context(),
+	type tenantProfileListRow struct {
+		ID                         string
+		TenantID                   string
+		Name                       string
+		BudgetMin                  int
+		BudgetMax                  int
+		PreferredRoomTypes         string
+		AvailableFrom              time.Time
+		MinLeaseMonths             int
+		MinAreaPing                *float64
+		HasPets                    bool
+		PetDescription             string
+		NeedsSubsidy               bool
+		NeedsTaxReceipt            bool
+		NeedsHouseholdRegistration bool
+		NeedsCooking               bool
+		NeedsParking               bool
+		Smoking                    bool
+		Occupation                 string
+		IsActive                   bool
+		CreatedAt                  time.Time
+		UpdatedAt                  time.Time
+	}
+	db := h.orm.WithContext(c.Request.Context())
+	rows := []tenantProfileListRow{}
+	if err := db.Raw(
 		`SELECT id, tenant_id, name, budget_min, budget_max,
-		        preferred_room_types, available_from, min_lease_months, min_area_ping,
-		        has_pets, COALESCE(pet_description, ''), needs_subsidy, needs_tax_receipt,
+		        array_to_string(preferred_room_types::text[], ',') AS preferred_room_types, available_from, min_lease_months, min_area_ping,
+		        has_pets, COALESCE(pet_description, '') AS pet_description, needs_subsidy, needs_tax_receipt,
 		        needs_household_registration, needs_cooking, needs_parking, smoking,
-		        COALESCE(occupation, ''), is_active, created_at, updated_at
+		        COALESCE(occupation, '') AS occupation, is_active, created_at, updated_at
 		 FROM tenant_profiles
 		 WHERE tenant_id = $1 AND deleted_at IS NULL
 		 ORDER BY created_at DESC`,
 		userID,
-	)
-	if err != nil {
+	).Scan(&rows).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "INTERNAL_ERROR"})
 		return
 	}
-	defer rows.Close()
 
-	profiles := []TenantProfileResponse{}
-	for rows.Next() {
-		p, err := scanProfile(rows)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error: DB scan error", "code": "INTERNAL_ERROR"})
-			return
-		}
-		p.Locations = h.loadProfileLocations(c, p.ID)
-		profiles = append(profiles, p)
+	profiles := make([]TenantProfileResponse, 0, len(rows))
+	for _, row := range rows {
+		profiles = append(profiles, TenantProfileResponse{
+			ID:                         row.ID,
+			TenantID:                   row.TenantID,
+			Name:                       row.Name,
+			BudgetMin:                  row.BudgetMin,
+			BudgetMax:                  row.BudgetMax,
+			Locations:                  h.loadProfileLocations(c, row.ID),
+			PreferredRoomTypes:         splitStringList(row.PreferredRoomTypes),
+			AvailableFrom:              row.AvailableFrom,
+			MinLeaseMonths:             row.MinLeaseMonths,
+			MinAreaPing:                row.MinAreaPing,
+			HasPets:                    row.HasPets,
+			PetDescription:             row.PetDescription,
+			NeedsSubsidy:               row.NeedsSubsidy,
+			NeedsTaxReceipt:            row.NeedsTaxReceipt,
+			NeedsHouseholdRegistration: row.NeedsHouseholdRegistration,
+			NeedsCooking:               row.NeedsCooking,
+			NeedsParking:               row.NeedsParking,
+			Smoking:                    row.Smoking,
+			Occupation:                 row.Occupation,
+			IsActive:                   row.IsActive,
+			CreatedAt:                  row.CreatedAt,
+			UpdatedAt:                  row.UpdatedAt,
+		})
 	}
 	c.JSON(http.StatusOK, profiles)
 }
@@ -137,8 +177,11 @@ func (h *Handler) CreateTenantProfile(c *Context) {
 	defer tx.Rollback(c.Request.Context())
 
 	profileID := ulid.Make().String()
-	// New profiles are created active by default so users can browse listings immediately.
-	// Use PATCH /:profileId/status to toggle is_active after creation.
+	// Default to active so users can browse immediately, while still honoring an explicit false.
+	isActive := true
+	if req.IsActive != nil {
+		isActive = *req.IsActive
+	}
 	_, err = tx.Exec(c.Request.Context(),
 		`INSERT INTO tenant_profiles (
 			id, tenant_id, name, budget_min, budget_max, preferred_room_types,
@@ -151,7 +194,7 @@ func (h *Handler) CreateTenantProfile(c *Context) {
 		req.AvailableFrom, req.MinLeaseMonths, req.MinAreaPing,
 		req.HasPets, req.PetDescription, req.NeedsSubsidy, req.NeedsTaxReceipt,
 		req.NeedsHouseholdRegistration, req.NeedsCooking, req.NeedsParking, req.Smoking,
-		req.Occupation, req.ContactInfo, true,
+		req.Occupation, req.ContactInfo, isActive,
 	)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "INTERNAL_ERROR"})
@@ -364,21 +407,13 @@ func (h *Handler) loadProfile(c *Context, profileID, tenantID string) (TenantPro
 }
 
 func (h *Handler) loadProfileLocations(c *Context, profileID string) []string {
-	rows, err := h.db.Query(c.Request.Context(),
-		`SELECT location_id FROM tenant_profile_locations
-		 WHERE tenant_profile_id=$1 AND deleted_at IS NULL`,
-		profileID,
-	)
+	db := h.orm.WithContext(c.Request.Context())
+	var locs []string
+	err := db.Table("tenant_profile_locations").
+		Where("tenant_profile_id = ? AND deleted_at IS NULL", profileID).
+		Pluck("location_id", &locs).Error
 	if err != nil {
 		return nil
-	}
-	defer rows.Close()
-	var locs []string
-	for rows.Next() {
-		var id string
-		if err := rows.Scan(&id); err == nil {
-			locs = append(locs, id)
-		}
 	}
 	return locs
 }

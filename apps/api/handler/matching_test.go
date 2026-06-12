@@ -387,4 +387,3 @@ func TestMatching_Pagination(t *testing.T) {
 		t.Errorf("expected 1 item on second page, got %d", len(items2))
 	}
 }
-

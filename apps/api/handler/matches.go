@@ -49,8 +49,10 @@ func (h *Handler) GetProfileMatches(c *Context) {
 		return
 	}
 
-	rows, err := h.db.Query(c.Request.Context(), `
-		SELECT m.id, m.tenant_profile_id, m.listing_id,
+	db := h.orm.WithContext(c.Request.Context())
+	result := make([]MutualMatchResponse, 0)
+	if err := db.Raw(`
+		SELECT m.id AS match_id, m.tenant_profile_id, m.listing_id,
 		       l.contact_info, m.matched_at
 		FROM matches m
 		JOIN listings l ON l.id = m.listing_id
@@ -66,21 +68,9 @@ func (h *Handler) GetProfileMatches(c *Context) {
 		  )
 		ORDER BY m.matched_at DESC`,
 		profileID,
-	)
-	if err != nil {
+	).Scan(&result).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
 		return
-	}
-	defer rows.Close()
-
-	result := make([]MutualMatchResponse, 0)
-	for rows.Next() {
-		var r MutualMatchResponse
-		if err := rows.Scan(&r.MatchID, &r.TenantProfileID, &r.ListingID, &r.ContactInfo, &r.MatchedAt); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
-			return
-		}
-		result = append(result, r)
 	}
 	c.JSON(http.StatusOK, result)
 }
@@ -100,7 +90,9 @@ func (h *Handler) GetProfileIncomingInterests(c *Context) {
 	}
 
 	// incoming = landlord has active interest, tenant has NOT yet responded
-	rows, err := h.db.Query(c.Request.Context(), `
+	db := h.orm.WithContext(c.Request.Context())
+	result := make([]IncomingInterestResponse, 0)
+	if err := db.Raw(`
 		SELECT i.tenant_profile_id, i.listing_id, i.created_at
 		FROM interests i
 		JOIN listings l ON l.id = i.listing_id
@@ -125,21 +117,9 @@ func (h *Handler) GetProfileIncomingInterests(c *Context) {
 		  )
 		ORDER BY i.created_at DESC`,
 		profileID, userID,
-	)
-	if err != nil {
+	).Scan(&result).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
 		return
-	}
-	defer rows.Close()
-
-	result := make([]IncomingInterestResponse, 0)
-	for rows.Next() {
-		var r IncomingInterestResponse
-		if err := rows.Scan(&r.TenantProfileID, &r.ListingID, &r.CreatedAt); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
-			return
-		}
-		result = append(result, r)
 	}
 	c.JSON(http.StatusOK, result)
 }
@@ -159,7 +139,9 @@ func (h *Handler) GetProfileOutgoingInterests(c *Context) {
 	}
 
 	// outgoing = tenant has active interest, landlord has NOT yet responded
-	rows, err := h.db.Query(c.Request.Context(), `
+	db := h.orm.WithContext(c.Request.Context())
+	result := make([]OutgoingInterestResponse, 0)
+	if err := db.Raw(`
 		SELECT i.tenant_profile_id, i.listing_id, i.created_at
 		FROM interests i
 		JOIN listings l ON l.id = i.listing_id
@@ -184,21 +166,9 @@ func (h *Handler) GetProfileOutgoingInterests(c *Context) {
 		  )
 		ORDER BY i.created_at DESC`,
 		profileID, userID,
-	)
-	if err != nil {
+	).Scan(&result).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
 		return
-	}
-	defer rows.Close()
-
-	result := make([]OutgoingInterestResponse, 0)
-	for rows.Next() {
-		var r OutgoingInterestResponse
-		if err := rows.Scan(&r.TenantProfileID, &r.ListingID, &r.CreatedAt); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
-			return
-		}
-		result = append(result, r)
 	}
 	c.JSON(http.StatusOK, result)
 }
@@ -210,8 +180,10 @@ func (h *Handler) GetAllMutualMatches(c *Context) {
 	userID := middleware.MustUserID(c)
 
 	// Works for both tenant and landlord
-	rows, err := h.db.Query(c.Request.Context(), `
-		SELECT m.id, m.tenant_profile_id, m.listing_id,
+	db := h.orm.WithContext(c.Request.Context())
+	result := make([]MutualMatchResponse, 0)
+	if err := db.Raw(`
+		SELECT m.id AS match_id, m.tenant_profile_id, m.listing_id,
 		       CASE WHEN m.tenant_id = $1 THEN l.contact_info
 		            ELSE tp.contact_info END AS contact_info,
 		       m.matched_at
@@ -230,21 +202,9 @@ func (h *Handler) GetAllMutualMatches(c *Context) {
 		  )
 		ORDER BY m.matched_at DESC`,
 		userID,
-	)
-	if err != nil {
+	).Scan(&result).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
 		return
-	}
-	defer rows.Close()
-
-	result := make([]MutualMatchResponse, 0)
-	for rows.Next() {
-		var r MutualMatchResponse
-		if err := rows.Scan(&r.MatchID, &r.TenantProfileID, &r.ListingID, &r.ContactInfo, &r.MatchedAt); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
-			return
-		}
-		result = append(result, r)
 	}
 	c.JSON(http.StatusOK, result)
 }
@@ -255,7 +215,9 @@ func (h *Handler) GetAllIncomingInterests(c *Context) {
 
 	// Incoming for tenant: landlord expressed interest, tenant hasn't
 	// Incoming for landlord: tenant expressed interest, landlord hasn't
-	rows, err := h.db.Query(c.Request.Context(), `
+	db := h.orm.WithContext(c.Request.Context())
+	result := make([]IncomingInterestResponse, 0)
+	if err := db.Raw(`
 		SELECT i.tenant_profile_id, i.listing_id, i.created_at
 		FROM interests i
 		JOIN listings l ON l.id = i.listing_id
@@ -286,21 +248,9 @@ func (h *Handler) GetAllIncomingInterests(c *Context) {
 		)
 		ORDER BY i.created_at DESC`,
 		userID,
-	)
-	if err != nil {
+	).Scan(&result).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
 		return
-	}
-	defer rows.Close()
-
-	result := make([]IncomingInterestResponse, 0)
-	for rows.Next() {
-		var r IncomingInterestResponse
-		if err := rows.Scan(&r.TenantProfileID, &r.ListingID, &r.CreatedAt); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
-			return
-		}
-		result = append(result, r)
 	}
 	c.JSON(http.StatusOK, result)
 }
@@ -309,7 +259,9 @@ func (h *Handler) GetAllIncomingInterests(c *Context) {
 func (h *Handler) GetAllOutgoingInterests(c *Context) {
 	userID := middleware.MustUserID(c)
 
-	rows, err := h.db.Query(c.Request.Context(), `
+	db := h.orm.WithContext(c.Request.Context())
+	result := make([]OutgoingInterestResponse, 0)
+	if err := db.Raw(`
 		SELECT i.tenant_profile_id, i.listing_id, i.created_at
 		FROM interests i
 		JOIN listings l ON l.id = i.listing_id
@@ -340,21 +292,9 @@ func (h *Handler) GetAllOutgoingInterests(c *Context) {
 		)
 		ORDER BY i.created_at DESC`,
 		userID,
-	)
-	if err != nil {
+	).Scan(&result).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
 		return
-	}
-	defer rows.Close()
-
-	result := make([]OutgoingInterestResponse, 0)
-	for rows.Next() {
-		var r OutgoingInterestResponse
-		if err := rows.Scan(&r.TenantProfileID, &r.ListingID, &r.CreatedAt); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
-			return
-		}
-		result = append(result, r)
 	}
 	c.JSON(http.StatusOK, result)
 }

@@ -22,10 +22,12 @@ import (
 	"github.com/zumeet/api/handler"
 	"github.com/zumeet/api/middleware"
 	"github.com/zumeet/api/router"
+	"gorm.io/gorm"
 )
 
 var (
 	testPool *pgxpool.Pool
+	testORM  *gorm.DB
 	testH    *handler.Handler
 	testR    *gin.Engine
 	testCfg  *config.AppConfig
@@ -49,7 +51,15 @@ func TestMain(m *testing.M) {
 	}
 	defer testPool.Close()
 
-	testH = handler.New(testPool, &handler.MockOAuthService{}, &noopStorage{}, &noopEmail{}, testCfg)
+	testORM, err = appdb.ConnectGormTest()
+	if err != nil {
+		log.Fatalf("connect gorm test db: %v", err)
+	}
+	if sqlDB, err := testORM.DB(); err == nil {
+		defer sqlDB.Close()
+	}
+
+	testH = handler.New(testPool, testORM, &handler.MockOAuthService{}, &noopStorage{}, &noopEmail{}, testCfg)
 	testR = router.New(testH, testCfg, zap.NewNop())
 
 	if err := appdb.TruncateTables(testPool); err != nil {

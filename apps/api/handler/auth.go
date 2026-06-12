@@ -175,22 +175,13 @@ func (h *Handler) Refresh(c *Context) {
 		return
 	}
 
-	rows, err := h.db.Query(c.Request.Context(),
-		`SELECT role FROM user_roles WHERE user_id = $1 AND deleted_at IS NULL`,
-		userID,
-	)
-	if err != nil {
+	db := h.orm.WithContext(c.Request.Context())
+	var roles []string
+	if err := db.Table("user_roles").
+		Where("user_id = ? AND deleted_at IS NULL", userID).
+		Pluck("role", &roles).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "INTERNAL_ERROR"})
 		return
-	}
-	defer rows.Close()
-	var roles []string
-	for rows.Next() {
-		var role string
-		if err := rows.Scan(&role); err != nil {
-			continue
-		}
-		roles = append(roles, role)
 	}
 
 	// Revoke old refresh token then issue new pair (rotation)

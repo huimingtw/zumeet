@@ -27,7 +27,7 @@ type MatchedListingCard struct {
 	AllowCooking               bool      `json:"allow_cooking"`
 	HasParking                 bool      `json:"has_parking"`
 	AllowSmoking               bool      `json:"allow_smoking"`
-	Photos                     []string  `json:"photos"`
+	Photos                     []string  `json:"photos" gorm:"-"`
 	InterestSent               bool      `json:"interest_sent"` // tenant already expressed interest
 }
 
@@ -90,7 +90,7 @@ func (h *Handler) BrowseListingsForProfile(c *Context) {
 
 	query := `
 		SELECT
-			l.id, l.location_id, l.rent, l.room_type::text, l.area_ping,
+			l.id, l.location_id, l.rent, l.room_type::text AS room_type, l.area_ping,
 			l.available_from,
 			l.allow_pets, l.allow_subsidy, l.allow_tax_receipt,
 			l.allow_household_registration, l.allow_cooking, l.has_parking, l.allow_smoking,
@@ -145,28 +145,15 @@ func (h *Handler) BrowseListingsForProfile(c *Context) {
 		ORDER BY l.id DESC
 		LIMIT $3`
 
-	rows, err := h.db.Query(c.Request.Context(), query, profileID, cursor, limit+1)
-	if err != nil {
+	db := h.orm.WithContext(c.Request.Context())
+	cards := make([]MatchedListingCard, 0)
+	if err := db.Raw(query, profileID, cursor, limit+1).Scan(&cards).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
 		return
 	}
-	defer rows.Close()
 
-	cards := make([]MatchedListingCard, 0)
-	for rows.Next() {
-		var card MatchedListingCard
-		if err := rows.Scan(
-			&card.ID, &card.LocationID, &card.Rent, &card.RoomType, &card.AreaPing,
-			&card.AvailableFrom,
-			&card.AllowPets, &card.AllowSubsidy, &card.AllowTaxReceipt,
-			&card.AllowHouseholdRegistration, &card.AllowCooking, &card.HasParking, &card.AllowSmoking,
-			&card.InterestSent,
-		); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
-			return
-		}
-		card.Photos = h.listingPhotos(c.Request.Context(), card.ID)
-		cards = append(cards, card)
+	for i := range cards {
+		cards[i].Photos = h.listingPhotos(c.Request.Context(), cards[i].ID)
 	}
 
 	var nextCursor string
@@ -218,10 +205,11 @@ func (h *Handler) BrowseTenantProfilesForListing(c *Context) {
 
 	query := `
 		SELECT
-			tp.id, tp.name, tp.budget_min, tp.budget_max, tp.preferred_room_types,
+			tp.id, tp.name, tp.budget_min, tp.budget_max,
+			array_to_string(tp.preferred_room_types::text[], ',') AS preferred_room_types,
 			tp.available_from, tp.min_lease_months,
 			tp.has_pets, tp.needs_subsidy, tp.needs_tax_receipt,
-			tp.needs_parking, tp.smoking, COALESCE(tp.occupation, ''),
+			tp.needs_parking, tp.smoking, COALESCE(tp.occupation, '') AS occupation,
 			EXISTS(
 				SELECT 1 FROM interests i
 				WHERE i.tenant_profile_id = tp.id
@@ -274,27 +262,46 @@ func (h *Handler) BrowseTenantProfilesForListing(c *Context) {
 		ORDER BY tp.id DESC
 		LIMIT $3`
 
-	rows, err := h.db.Query(c.Request.Context(), query, listingID, cursor, limit+1)
-	if err != nil {
+	type matchedTenantProfileRow struct {
+		ID                 string
+		Name               string
+		BudgetMin          int
+		BudgetMax          int
+		PreferredRoomTypes string
+		AvailableFrom      time.Time
+		MinLeaseMonths     int
+		HasPets            bool
+		NeedsSubsidy       bool
+		NeedsTaxReceipt    bool
+		NeedsParking       bool
+		Smoking            bool
+		Occupation         string
+		InterestSent       bool
+	}
+	db := h.orm.WithContext(c.Request.Context())
+	rows := make([]matchedTenantProfileRow, 0)
+	if err := db.Raw(query, listingID, cursor, limit+1).Scan(&rows).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
 		return
 	}
-	defer rows.Close()
-
-	cards := make([]MatchedTenantProfileCard, 0)
-	for rows.Next() {
-		var card MatchedTenantProfileCard
-		if err := rows.Scan(
-			&card.ID, &card.Name, &card.BudgetMin, &card.BudgetMax, &card.PreferredRoomTypes,
-			&card.AvailableFrom, &card.MinLeaseMonths,
-			&card.HasPets, &card.NeedsSubsidy, &card.NeedsTaxReceipt,
-			&card.NeedsParking, &card.Smoking, &card.Occupation,
-			&card.InterestSent,
-		); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
-			return
-		}
-		cards = append(cards, card)
+	cards := make([]MatchedTenantProfileCard, 0, len(rows))
+	for _, row := range rows {
+		cards = append(cards, MatchedTenantProfileCard{
+			ID:                 row.ID,
+			Name:               row.Name,
+			BudgetMin:          row.BudgetMin,
+			BudgetMax:          row.BudgetMax,
+			PreferredRoomTypes: splitStringList(row.PreferredRoomTypes),
+			AvailableFrom:      row.AvailableFrom,
+			MinLeaseMonths:     row.MinLeaseMonths,
+			HasPets:            row.HasPets,
+			NeedsSubsidy:       row.NeedsSubsidy,
+			NeedsTaxReceipt:    row.NeedsTaxReceipt,
+			NeedsParking:       row.NeedsParking,
+			Smoking:            row.Smoking,
+			Occupation:         row.Occupation,
+			InterestSent:       row.InterestSent,
+		})
 	}
 
 	var nextCursor string
@@ -326,23 +333,13 @@ func parseCursorParams(c *Context) (cursor string, limit int) {
 }
 
 func (h *Handler) listingPhotos(ctx context.Context, listingID string) []string {
-	rows, err := h.db.Query(ctx,
-		`SELECT public_url FROM listing_photos
-		 WHERE listing_id=$1 AND deleted_at IS NULL ORDER BY position`,
-		listingID,
-	)
-	if err != nil {
-		return []string{}
-	}
-	defer rows.Close()
+	db := h.orm.WithContext(ctx)
 	var urls []string
-	for rows.Next() {
-		var u string
-		if err := rows.Scan(&u); err == nil {
-			urls = append(urls, u)
-		}
-	}
-	if urls == nil {
+	err := db.Table("listing_photos").
+		Where("listing_id = ? AND deleted_at IS NULL", listingID).
+		Order("position").
+		Pluck("public_url", &urls).Error
+	if err != nil || urls == nil {
 		return []string{}
 	}
 	return urls

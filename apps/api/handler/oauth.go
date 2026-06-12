@@ -271,21 +271,12 @@ func (h *Handler) loginUser(c *Context, userID string) error {
 		return err
 	}
 
-	rows, err := h.db.Query(c.Request.Context(),
-		`SELECT role FROM user_roles WHERE user_id = $1 AND deleted_at IS NULL`,
-		userID,
-	)
-	if err != nil {
-		return err
-	}
-	defer rows.Close()
+	db := h.orm.WithContext(c.Request.Context())
 	var roles []string
-	for rows.Next() {
-		var r string
-		if err := rows.Scan(&r); err != nil {
-			continue
-		}
-		roles = append(roles, r)
+	if err := db.Table("user_roles").
+		Where("user_id = ? AND deleted_at IS NULL", userID).
+		Pluck("role", &roles).Error; err != nil {
+		return err
 	}
 
 	return h.IssueTokenPair(c, userID, email, roles)

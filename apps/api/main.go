@@ -49,6 +49,14 @@ func main() {
 	}
 	defer pool.Close()
 
+	orm, err := db.ConnectGorm(cfg.DatabaseURL)
+	if err != nil {
+		logger.Fatal("connect gorm db", zap.Error(err))
+	}
+	if sqlDB, err := orm.DB(); err == nil {
+		defer sqlDB.Close()
+	}
+
 	oauthSvc := service.NewGoogleOAuthService(
 		cfg.GoogleClientID,
 		cfg.GoogleClientSecret,
@@ -74,7 +82,7 @@ func main() {
 		emailSvc = &service.NoopEmailService{}
 	}
 
-	h := handler.New(pool, oauthSvc, storageSvc, emailSvc, cfg)
+	h := handler.New(pool, orm, oauthSvc, storageSvc, emailSvc, cfg)
 	r := router.New(h, cfg, logger)
 
 	srv := &http.Server{
