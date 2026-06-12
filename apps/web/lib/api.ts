@@ -1,4 +1,8 @@
-import axios from "axios";
+import axios, { type InternalAxiosRequestConfig } from "axios";
+
+interface RetryableConfig extends InternalAxiosRequestConfig {
+  _retry?: boolean;
+}
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
 
@@ -7,17 +11,57 @@ export const api = axios.create({
   withCredentials: true,
 });
 
-// Intercept 401 → redirect to login (skip if already on login page)
+let refreshPromise: Promise<void> | null = null;
+
 api.interceptors.response.use(
   (r) => r,
   async (err) => {
-    if (
-      err.response?.status === 401 &&
-      typeof window !== "undefined" &&
-      window.location.pathname !== "/"
-    ) {
-      window.location.href = "/";
+    if (err.response?.status !== 401 || typeof window === "undefined") {
+      return Promise.reject(err);
     }
-    return Promise.reject(err);
+
+    const config = err.config as RetryableConfig | undefined;
+
+    // Refresh endpoint itself returned 401 — refresh token is expired/invalid
+    if (config?.url?.includes("/auth/refresh")) {
+      if (window.location.pathname !== "/") {
+        window.location.href = "/";
+      }
+      return Promise.reject(err);
+    }
+
+    // Already retried once after a successful refresh — give up
+    if (config?._retry) {
+      if (window.location.pathname !== "/") {
+        window.location.href = "/";
+      }
+      return Promise.reject(err);
+    }
+
+    // Deduplicate concurrent refresh calls: all 401s share one refresh attempt
+    if (!refreshPromise) {
+      refreshPromise = api
+        .post<void>("/auth/refresh")
+        .then(() => undefined)
+        .finally(() => {
+          refreshPromise = null;
+        });
+    }
+
+    try {
+      await refreshPromise;
+    } catch {
+      if (window.location.pathname !== "/") {
+        window.location.href = "/";
+      }
+      return Promise.reject(err);
+    }
+
+    if (!config) {
+      return Promise.reject(err);
+    }
+
+    config._retry = true;
+    return api(config);
   }
 );
