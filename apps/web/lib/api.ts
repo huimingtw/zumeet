@@ -7,11 +7,15 @@ export const api = axios.create({
   withCredentials: true,
 });
 
-// Intercept 401 → redirect to login
+// Intercept 401 → redirect to login (skip if already on login page)
 api.interceptors.response.use(
   (r) => r,
   async (err) => {
-    if (err.response?.status === 401 && typeof window !== "undefined") {
+    if (
+      err.response?.status === 401 &&
+      typeof window !== "undefined" &&
+      window.location.pathname !== "/"
+    ) {
       window.location.href = "/";
     }
     return Promise.reject(err);
