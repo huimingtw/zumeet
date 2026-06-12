@@ -15,7 +15,8 @@ import {
   SendHorizonal,
 } from "lucide-react";
 import { api } from "@/lib/api";
-import { LOCATION_LABELS, LOCATIONS, ROOM_TYPE_LABELS } from "@/types";
+import { LOCATION_LABELS, ROOM_TYPE_LABELS } from "@/types";
+import { LocationPicker } from "@/components/LocationPicker";
 import type { MatchedListingCard, TenantProfile } from "@/types";
 
 type MainTab = "requirements" | "listings" | "matches";
@@ -234,15 +235,15 @@ function ProfilesTab({ onSelectProfile }: { onSelectProfile: (id: string) => voi
     <div>
       <div className="mb-4 flex items-center justify-between">
         <h2 className="text-base font-semibold text-gray-950">我的找房需求卡</h2>
-        {profiles.length < 3 && (
-          <button
-            type="button"
-            onClick={() => { setEditingProfile(null); setShowForm(true); }}
-            className="rounded-lg bg-primary-600 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-primary-500"
-          >
-            + 新增需求卡
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={() => { setEditingProfile(null); setShowForm(true); }}
+          disabled={profiles.length >= 3}
+          title={profiles.length >= 3 ? "最多可建立 3 張需求卡" : undefined}
+          className="rounded-lg bg-primary-600 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-primary-500 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          {profiles.length >= 3 ? "已達上限 (3/3)" : "+ 新增需求卡"}
+        </button>
       </div>
       <div className="space-y-3">
         {profiles.map((p) => (
@@ -1028,6 +1029,7 @@ function ProfileFormModal({
   }));
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [locPickerOpen, setLocPickerOpen] = useState(false);
 
   function toggleLoc(id: string) {
     setForm((f) => ({
@@ -1143,22 +1145,40 @@ function ProfileFormModal({
 
           <div>
             <p className="mb-1 text-sm font-medium text-gray-700">可接受地區（多選）</p>
-            <div className="flex flex-wrap gap-1.5">
-              {LOCATIONS.map((loc) => (
-                <button
-                  key={loc.id}
-                  type="button"
-                  onClick={() => toggleLoc(loc.id)}
-                  className={`rounded-full px-3 py-1 text-xs font-medium transition ${
-                    form.locations.includes(loc.id)
-                      ? "bg-primary-600 text-white"
-                      : "border border-gray-200 text-gray-600 hover:border-gray-400"
-                  }`}
-                >
-                  {loc.label}
-                </button>
-              ))}
-            </div>
+            <button
+              type="button"
+              onClick={() => setLocPickerOpen(true)}
+              className="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-600 hover:border-gray-400 hover:text-gray-800"
+            >
+              {form.locations.length > 0
+                ? `已選 ${form.locations.length} 個地區`
+                : "選擇地區 ›"}
+            </button>
+            {form.locations.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {form.locations.map((id) => (
+                  <span
+                    key={id}
+                    className="flex items-center gap-1 rounded-full bg-orange-50 px-2.5 py-0.5 text-xs text-orange-700"
+                  >
+                    {LOCATION_LABELS[id] ?? id}
+                    <button
+                      type="button"
+                      onClick={() => toggleLoc(id)}
+                      className="ml-0.5 text-orange-400 hover:text-orange-600"
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+            <LocationPicker
+              open={locPickerOpen}
+              value={form.locations}
+              onChange={(ids) => setForm((f) => ({ ...f, locations: ids }))}
+              onClose={() => setLocPickerOpen(false)}
+            />
           </div>
 
           <div>
