@@ -91,6 +91,67 @@ func TestTenantProfile_CreateAndList(t *testing.T) {
 	}
 }
 
+func TestTenantProfile_ListAndGetHandlesNullableOptionalText(t *testing.T) {
+	truncate(t)
+	userID := seedUser(t, "tp-nullable@example.com", "tenant")
+	cookie := validAccessCookie(t, userID, "tp-nullable@example.com", []string{"tenant"})
+	profileID := "01TESTNULLPROFILE000000000"
+
+	_, err := testPool.Exec(context.Background(),
+		`INSERT INTO tenant_profiles (
+			id, tenant_id, name, budget_min, budget_max, preferred_room_types,
+			available_from, min_lease_months, has_pets, needs_subsidy,
+			needs_tax_receipt, smoking, contact_info
+		) VALUES (
+			$1, $2, 'Nullable Optional Text', 10000, 20000,
+			ARRAY['suite']::room_type[], NOW(), 6, false, false,
+			false, false, 'line:null'
+		)`,
+		profileID, userID,
+	)
+	if err != nil {
+		t.Fatalf("insert nullable profile: %v", err)
+	}
+	_, err = testPool.Exec(context.Background(),
+		`INSERT INTO tenant_profile_locations (tenant_profile_id, location_id)
+		 VALUES ($1, 'taipei-daan')`,
+		profileID,
+	)
+	if err != nil {
+		t.Fatalf("insert profile location: %v", err)
+	}
+
+	req := httptest.NewRequest("GET", "/api/v1/tenant-profiles", nil)
+	req.AddCookie(cookie)
+	w := httptest.NewRecorder()
+	testR.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("list nullable profile: expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+	var list []map[string]any
+	if err := json.NewDecoder(w.Body).Decode(&list); err != nil {
+		t.Fatalf("decode list: %v", err)
+	}
+	if list[0]["pet_description"] != "" || list[0]["occupation"] != "" {
+		t.Fatalf("expected nullable text fields to be empty strings, got %#v", list[0])
+	}
+
+	req = httptest.NewRequest("GET", "/api/v1/tenant-profiles/"+profileID, nil)
+	req.AddCookie(cookie)
+	w = httptest.NewRecorder()
+	testR.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("get nullable profile: expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+	var got map[string]any
+	if err := json.NewDecoder(w.Body).Decode(&got); err != nil {
+		t.Fatalf("decode get: %v", err)
+	}
+	if got["pet_description"] != "" || got["occupation"] != "" {
+		t.Fatalf("expected nullable text fields to be empty strings, got %#v", got)
+	}
+}
+
 func TestTenantProfile_MaxThreeProfiles(t *testing.T) {
 	truncate(t)
 	userID := seedUser(t, "tp-max@example.com", "tenant")
@@ -98,8 +159,8 @@ func TestTenantProfile_MaxThreeProfiles(t *testing.T) {
 
 	body := func(n int) map[string]any {
 		return map[string]any{
-			"name":                 fmt.Sprintf("Profile %d", n),
-			"budget_min":           10000, "budget_max": 20000,
+			"name":       fmt.Sprintf("Profile %d", n),
+			"budget_min": 10000, "budget_max": 20000,
 			"locations":            []string{"taipei-daan"},
 			"preferred_room_types": []string{"suite"},
 			"available_from":       time.Now().UTC().Format(time.RFC3339),
@@ -167,8 +228,8 @@ func TestTenantProfile_BudgetValidation(t *testing.T) {
 	cookie := validAccessCookie(t, userID, "tp-budget@example.com", []string{"tenant"})
 
 	w := postJSON(t, "/api/v1/tenant-profiles", map[string]any{
-		"name":                 "Bad Budget",
-		"budget_min":           30000, "budget_max": 10000, // min > max
+		"name":       "Bad Budget",
+		"budget_min": 30000, "budget_max": 10000, // min > max
 		"locations":            []string{"taipei-daan"},
 		"preferred_room_types": []string{"suite"},
 		"available_from":       time.Now().UTC().Format(time.RFC3339),

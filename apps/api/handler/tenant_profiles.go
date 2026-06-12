@@ -15,50 +15,50 @@ const maxTenantProfiles = 3
 
 // TenantProfileRequest is used for both POST and PUT.
 type TenantProfileRequest struct {
-	Name                        string    `json:"name" binding:"required"`
-	BudgetMin                   int       `json:"budget_min" binding:"required,min=1"`
-	BudgetMax                   int       `json:"budget_max" binding:"required,min=1"`
-	Locations                   []string  `json:"locations" binding:"required,min=1"` // location IDs
-	PreferredRoomTypes          []string  `json:"preferred_room_types" binding:"required,min=1"`
-	AvailableFrom               time.Time `json:"available_from" binding:"required"`
-	MinLeaseMonths              int       `json:"min_lease_months" binding:"required,min=1"`
-	MinAreaPing                 *float64  `json:"min_area_ping"`
-	HasPets                     bool      `json:"has_pets"`
-	PetDescription              string    `json:"pet_description"`
-	NeedsSubsidy                bool      `json:"needs_subsidy"`
-	NeedsTaxReceipt             bool      `json:"needs_tax_receipt"`
-	NeedsHouseholdRegistration  bool      `json:"needs_household_registration"`
-	NeedsCooking                bool      `json:"needs_cooking"`
-	NeedsParking                bool      `json:"needs_parking"`
-	Smoking                     bool      `json:"smoking"`
-	Occupation                  string    `json:"occupation"`
-	ContactInfo                 string    `json:"contact_info" binding:"required"`
-	IsActive                    bool      `json:"is_active"`
+	Name                       string    `json:"name" binding:"required"`
+	BudgetMin                  int       `json:"budget_min" binding:"required,min=1"`
+	BudgetMax                  int       `json:"budget_max" binding:"required,min=1"`
+	Locations                  []string  `json:"locations" binding:"required,min=1"` // location IDs
+	PreferredRoomTypes         []string  `json:"preferred_room_types" binding:"required,min=1"`
+	AvailableFrom              time.Time `json:"available_from" binding:"required"`
+	MinLeaseMonths             int       `json:"min_lease_months" binding:"required,min=1"`
+	MinAreaPing                *float64  `json:"min_area_ping"`
+	HasPets                    bool      `json:"has_pets"`
+	PetDescription             string    `json:"pet_description"`
+	NeedsSubsidy               bool      `json:"needs_subsidy"`
+	NeedsTaxReceipt            bool      `json:"needs_tax_receipt"`
+	NeedsHouseholdRegistration bool      `json:"needs_household_registration"`
+	NeedsCooking               bool      `json:"needs_cooking"`
+	NeedsParking               bool      `json:"needs_parking"`
+	Smoking                    bool      `json:"smoking"`
+	Occupation                 string    `json:"occupation"`
+	ContactInfo                string    `json:"contact_info" binding:"required"`
+	IsActive                   bool      `json:"is_active"`
 }
 
 type TenantProfileResponse struct {
-	ID                          string    `json:"id"`
-	TenantID                    string    `json:"tenant_id"`
-	Name                        string    `json:"name"`
-	BudgetMin                   int       `json:"budget_min"`
-	BudgetMax                   int       `json:"budget_max"`
-	Locations                   []string  `json:"locations"`
-	PreferredRoomTypes          []string  `json:"preferred_room_types"`
-	AvailableFrom               time.Time `json:"available_from"`
-	MinLeaseMonths              int       `json:"min_lease_months"`
-	MinAreaPing                 *float64  `json:"min_area_ping"`
-	HasPets                     bool      `json:"has_pets"`
-	PetDescription              string    `json:"pet_description"`
-	NeedsSubsidy                bool      `json:"needs_subsidy"`
-	NeedsTaxReceipt             bool      `json:"needs_tax_receipt"`
-	NeedsHouseholdRegistration  bool      `json:"needs_household_registration"`
-	NeedsCooking                bool      `json:"needs_cooking"`
-	NeedsParking                bool      `json:"needs_parking"`
-	Smoking                     bool      `json:"smoking"`
-	Occupation                  string    `json:"occupation"`
-	IsActive                    bool      `json:"is_active"`
-	CreatedAt                   time.Time `json:"created_at"`
-	UpdatedAt                   time.Time `json:"updated_at"`
+	ID                         string    `json:"id"`
+	TenantID                   string    `json:"tenant_id"`
+	Name                       string    `json:"name"`
+	BudgetMin                  int       `json:"budget_min"`
+	BudgetMax                  int       `json:"budget_max"`
+	Locations                  []string  `json:"locations"`
+	PreferredRoomTypes         []string  `json:"preferred_room_types"`
+	AvailableFrom              time.Time `json:"available_from"`
+	MinLeaseMonths             int       `json:"min_lease_months"`
+	MinAreaPing                *float64  `json:"min_area_ping"`
+	HasPets                    bool      `json:"has_pets"`
+	PetDescription             string    `json:"pet_description"`
+	NeedsSubsidy               bool      `json:"needs_subsidy"`
+	NeedsTaxReceipt            bool      `json:"needs_tax_receipt"`
+	NeedsHouseholdRegistration bool      `json:"needs_household_registration"`
+	NeedsCooking               bool      `json:"needs_cooking"`
+	NeedsParking               bool      `json:"needs_parking"`
+	Smoking                    bool      `json:"smoking"`
+	Occupation                 string    `json:"occupation"`
+	IsActive                   bool      `json:"is_active"`
+	CreatedAt                  time.Time `json:"created_at"`
+	UpdatedAt                  time.Time `json:"updated_at"`
 	// ContactInfo intentionally omitted — only returned after mutual match
 }
 
@@ -73,9 +73,9 @@ func (h *Handler) ListTenantProfiles(c *gin.Context) {
 	rows, err := h.db.Query(c.Request.Context(),
 		`SELECT id, tenant_id, name, budget_min, budget_max,
 		        preferred_room_types, available_from, min_lease_months, min_area_ping,
-		        has_pets, pet_description, needs_subsidy, needs_tax_receipt,
+		        has_pets, COALESCE(pet_description, ''), needs_subsidy, needs_tax_receipt,
 		        needs_household_registration, needs_cooking, needs_parking, smoking,
-		        occupation, is_active, created_at, updated_at
+		        COALESCE(occupation, ''), is_active, created_at, updated_at
 		 FROM tenant_profiles
 		 WHERE tenant_id = $1 AND deleted_at IS NULL
 		 ORDER BY created_at DESC`,
@@ -91,7 +91,7 @@ func (h *Handler) ListTenantProfiles(c *gin.Context) {
 	for rows.Next() {
 		p, err := scanProfile(rows)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "INTERNAL_ERROR"})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error: DB scan error", "code": "INTERNAL_ERROR"})
 			return
 		}
 		p.Locations = h.loadProfileLocations(c, p.ID)
@@ -348,9 +348,9 @@ func (h *Handler) loadProfile(c *gin.Context, profileID, tenantID string) (Tenan
 	row := h.db.QueryRow(c.Request.Context(),
 		`SELECT id, tenant_id, name, budget_min, budget_max,
 		        preferred_room_types, available_from, min_lease_months, min_area_ping,
-		        has_pets, pet_description, needs_subsidy, needs_tax_receipt,
+		        has_pets, COALESCE(pet_description, ''), needs_subsidy, needs_tax_receipt,
 		        needs_household_registration, needs_cooking, needs_parking, smoking,
-		        occupation, is_active, created_at, updated_at
+		        COALESCE(occupation, ''), is_active, created_at, updated_at
 		 FROM tenant_profiles
 		 WHERE id=$1 AND tenant_id=$2 AND deleted_at IS NULL`,
 		profileID, tenantID,
