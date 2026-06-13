@@ -2,6 +2,7 @@
 
 import { type ReactNode, useRef, useState } from "react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Building2,
@@ -107,21 +108,50 @@ export default function LandlordDashboard() {
 // ---- Shared nav ----
 
 function DashboardHeader() {
+  const router = useRouter();
+  const { data: me } = useQuery<{ roles: string[] }>({
+    queryKey: ["me"],
+    queryFn: () => api.get("/profile/me").then((r) => r.data),
+  });
+  const addTenantRole = useMutation({
+    mutationFn: () => api.post("/account/roles", { role: "tenant" }),
+    onSuccess: () => router.push("/dashboard/tenant"),
+  });
+
   async function logout() {
     await api.post("/auth/logout");
     window.location.href = "/";
   }
+
+  function switchToTenant() {
+    if (me?.roles.includes("tenant")) {
+      router.push("/dashboard/tenant");
+    } else {
+      addTenantRole.mutate();
+    }
+  }
+
   return (
     <header className="border-b border-gray-200 bg-white px-4 py-3">
       <div className="mx-auto flex max-w-4xl items-center justify-between">
         <span className="text-lg font-bold text-gray-950">Zumeet</span>
-        <button
-          type="button"
-          onClick={logout}
-          className="text-sm text-gray-500 hover:text-gray-800"
-        >
-          登出
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={switchToTenant}
+            disabled={addTenantRole.isPending}
+            className="text-sm text-gray-500 hover:text-gray-800 disabled:opacity-50"
+          >
+            切換為租客
+          </button>
+          <button
+            type="button"
+            onClick={logout}
+            className="text-sm text-gray-500 hover:text-gray-800"
+          >
+            登出
+          </button>
+        </div>
       </div>
     </header>
   );

@@ -127,6 +127,7 @@ func New(h *handler.Handler, cfg *config.AppConfig, logger *zap.Logger) *gin.Eng
 		protected.POST("/blocks/:userId", t.Public(h.BlockUser))
 		protected.DELETE("/blocks/:userId", t.Public(h.UnblockUser))
 		protected.DELETE("/account", t.Public(h.DeleteAccount))
+		protected.POST("/account/roles", t.Public(h.AddRole))
 	}
 
 	return r
