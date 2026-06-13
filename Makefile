@@ -25,10 +25,16 @@ api-run:
 api-build:
 	cd apps/api && go build -o bin/api .
 
-api-test:
+db-test-up:
+	docker compose up -d db
+	docker compose exec db sh -c "until pg_isready -U zumeet -d zumeet; do sleep 1; done"
+	docker compose exec db psql -U zumeet -d zumeet -tc "SELECT 1 FROM pg_database WHERE datname='zumeet_test'" | grep -q 1 \
+		|| docker compose exec db psql -U zumeet -d postgres -c "CREATE DATABASE zumeet_test;"
+
+api-test: db-test-up
 	cd apps/api && go test ./... -v -count=1
 
-api-test-short:
+api-test-short: db-test-up
 	cd apps/api && go test ./... -short -count=1
 
 # ── Code quality ──────────────────────────────────────────────────────────────
