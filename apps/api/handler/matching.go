@@ -14,21 +14,21 @@ import (
 
 // MatchedListingCard is what a tenant sees when browsing listings.
 type MatchedListingCard struct {
-	ID                         string    `json:"id"`
-	LocationID                 string    `json:"location_id"`
-	Rent                       int       `json:"rent"`
-	RoomType                   string    `json:"room_type"`
-	AreaPing                   float64   `json:"area_ping"`
-	AvailableFrom              time.Time `json:"available_from"`
-	AllowPets                  bool      `json:"allow_pets"`
-	AllowSubsidy               bool      `json:"allow_subsidy"`
-	AllowTaxReceipt            bool      `json:"allow_tax_receipt"`
-	AllowHouseholdRegistration bool      `json:"allow_household_registration"`
-	AllowCooking               bool      `json:"allow_cooking"`
-	HasParking                 bool      `json:"has_parking"`
-	AllowSmoking               bool      `json:"allow_smoking"`
-	Photos                     []string  `json:"photos" gorm:"-"`
-	InterestSent               bool      `json:"interest_sent"` // tenant already expressed interest
+	ID                         string    `json:"id" db:"id"`
+	LocationID                 string    `json:"location_id" db:"location_id"`
+	Rent                       int       `json:"rent" db:"rent"`
+	RoomType                   string    `json:"room_type" db:"room_type"`
+	AreaPing                   float64   `json:"area_ping" db:"area_ping"`
+	AvailableFrom              time.Time `json:"available_from" db:"available_from"`
+	AllowPets                  bool      `json:"allow_pets" db:"allow_pets"`
+	AllowSubsidy               bool      `json:"allow_subsidy" db:"allow_subsidy"`
+	AllowTaxReceipt            bool      `json:"allow_tax_receipt" db:"allow_tax_receipt"`
+	AllowHouseholdRegistration bool      `json:"allow_household_registration" db:"allow_household_registration"`
+	AllowCooking               bool      `json:"allow_cooking" db:"allow_cooking"`
+	HasParking                 bool      `json:"has_parking" db:"has_parking"`
+	AllowSmoking               bool      `json:"allow_smoking" db:"allow_smoking"`
+	Photos                     []string  `json:"photos" db:"-"`
+	InterestSent               bool      `json:"interest_sent" db:"interest_sent"` // tenant already expressed interest
 }
 
 // MatchedTenantProfileCard is what a landlord sees when browsing tenant profiles.
@@ -145,9 +145,13 @@ func (h *Handler) BrowseListingsForProfile(c *Context) {
 		ORDER BY l.id DESC
 		LIMIT $3`
 
-	db := h.orm.WithContext(c.Request.Context())
-	cards := make([]MatchedListingCard, 0)
-	if err := db.Raw(query, profileID, cursor, limit+1).Scan(&cards).Error; err != nil {
+	rows, err := h.db.Query(c.Request.Context(), query, profileID, cursor, limit+1)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
+		return
+	}
+	cards, err := pgx.CollectRows(rows, pgx.RowToStructByNameLax[MatchedListingCard])
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
 		return
 	}
@@ -263,24 +267,28 @@ func (h *Handler) BrowseTenantProfilesForListing(c *Context) {
 		LIMIT $3`
 
 	type matchedTenantProfileRow struct {
-		ID                 string
-		Name               string
-		BudgetMin          int
-		BudgetMax          int
-		PreferredRoomTypes string
-		AvailableFrom      time.Time
-		MinLeaseMonths     int
-		HasPets            bool
-		NeedsSubsidy       bool
-		NeedsTaxReceipt    bool
-		NeedsParking       bool
-		Smoking            bool
-		Occupation         string
-		InterestSent       bool
+		ID                 string    `db:"id"`
+		Name               string    `db:"name"`
+		BudgetMin          int       `db:"budget_min"`
+		BudgetMax          int       `db:"budget_max"`
+		PreferredRoomTypes string    `db:"preferred_room_types"`
+		AvailableFrom      time.Time `db:"available_from"`
+		MinLeaseMonths     int       `db:"min_lease_months"`
+		HasPets            bool      `db:"has_pets"`
+		NeedsSubsidy       bool      `db:"needs_subsidy"`
+		NeedsTaxReceipt    bool      `db:"needs_tax_receipt"`
+		NeedsParking       bool      `db:"needs_parking"`
+		Smoking            bool      `db:"smoking"`
+		Occupation         string    `db:"occupation"`
+		InterestSent       bool      `db:"interest_sent"`
 	}
-	db := h.orm.WithContext(c.Request.Context())
-	rows := make([]matchedTenantProfileRow, 0)
-	if err := db.Raw(query, listingID, cursor, limit+1).Scan(&rows).Error; err != nil {
+	queryRows, err := h.db.Query(c.Request.Context(), query, listingID, cursor, limit+1)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
+		return
+	}
+	rows, err := pgx.CollectRows(queryRows, pgx.RowToStructByNameLax[matchedTenantProfileRow])
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
 		return
 	}
@@ -333,12 +341,14 @@ func parseCursorParams(c *Context) (cursor string, limit int) {
 }
 
 func (h *Handler) listingPhotos(ctx context.Context, listingID string) []string {
-	db := h.orm.WithContext(ctx)
-	var urls []string
-	err := db.Table("listing_photos").
-		Where("listing_id = ? AND deleted_at IS NULL", listingID).
-		Order("position").
-		Pluck("public_url", &urls).Error
+	rows, err := h.db.Query(ctx,
+		`SELECT public_url FROM listing_photos WHERE listing_id = $1 AND deleted_at IS NULL ORDER BY position`,
+		listingID,
+	)
+	if err != nil {
+		return []string{}
+	}
+	urls, err := pgx.CollectRows(rows, pgx.RowTo[string])
 	if err != nil || urls == nil {
 		return []string{}
 	}

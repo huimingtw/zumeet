@@ -39,11 +39,8 @@ func (h *Handler) AddRole(c *Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
 		return
 	}
-	var roles []string
-	if err := h.orm.WithContext(c.Request.Context()).
-		Table("user_roles").
-		Where("user_id = ? AND deleted_at IS NULL", userID).
-		Pluck("role", &roles).Error; err != nil {
+	roles, err := h.userRoles(c.Request.Context(), userID)
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
 		return
 	}
@@ -64,14 +61,12 @@ func (h *Handler) GetMe(c *Context) {
 		return
 	}
 
-	db := h.orm.WithContext(c.Request.Context())
-	me.Roles = []string{}
-	if err := db.Table("user_roles").
-		Where("user_id = ? AND deleted_at IS NULL", userID).
-		Pluck("role", &me.Roles).Error; err != nil {
+	roles, err := h.userRoles(c.Request.Context(), userID)
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
 		return
 	}
+	me.Roles = roles
 
 	c.JSON(http.StatusOK, me)
 }

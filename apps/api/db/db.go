@@ -6,11 +6,13 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
-	postgresdriver "gorm.io/driver/postgres"
-	"gorm.io/gorm"
+	"go.uber.org/zap"
+
+	"github.com/zumeet/api/internal/dblogger"
 )
 
 //go:embed schema.sql
@@ -19,11 +21,13 @@ var schemaSQL string
 //go:embed seed.sql
 var seedSQL string
 
-func Connect(databaseURL string) (*pgxpool.Pool, error) {
+func Connect(databaseURL string, logger *zap.Logger) (*pgxpool.Pool, error) {
 	cfg, err := pgxpool.ParseConfig(databaseURL)
 	if err != nil {
 		return nil, fmt.Errorf("parse db config: %w", err)
 	}
+
+	cfg.ConnConfig.Tracer = dblogger.NewPgxTracer(logger, 200*time.Millisecond)
 
 	pool, err := pgxpool.NewWithConfig(context.Background(), cfg)
 	if err != nil {
@@ -36,24 +40,6 @@ func Connect(databaseURL string) (*pgxpool.Pool, error) {
 	}
 
 	return pool, nil
-}
-
-func ConnectGorm(databaseURL string) (*gorm.DB, error) {
-	gdb, err := gorm.Open(postgresdriver.Open(databaseURL), &gorm.Config{})
-	if err != nil {
-		return nil, fmt.Errorf("create gorm db: %w", err)
-	}
-
-	sqlDB, err := gdb.DB()
-	if err != nil {
-		return nil, fmt.Errorf("unwrap gorm db: %w", err)
-	}
-
-	if err := sqlDB.Ping(); err != nil {
-		return nil, fmt.Errorf("ping gorm db: %w", err)
-	}
-
-	return gdb, nil
 }
 
 // ConnectTest drops and recreates the test database, then applies schema and seed.
@@ -106,15 +92,7 @@ func ConnectTest() (*pgxpool.Pool, error) {
 	}
 	appConn.Close(context.Background())
 
-	return Connect(url)
-}
-
-func ConnectGormTest() (*gorm.DB, error) {
-	url := os.Getenv("TEST_DATABASE_URL")
-	if url == "" {
-		url = "postgres://zumeet:secret@localhost:5432/zumeet_test"
-	}
-	return ConnectGorm(url)
+	return Connect(url, zap.NewNop())
 }
 
 // TruncateTables removes all user-generated data. Preserves locations (reference data).

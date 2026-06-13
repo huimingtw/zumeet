@@ -192,23 +192,27 @@ func (h *Handler) AdminListReports(c *Context) {
 	status := c.DefaultQuery("status", "pending")
 
 	type reportRow struct {
-		ID         string    `json:"id"`
-		ReporterID string    `json:"reporter_id"`
-		ReportedID string    `json:"reported_id"`
-		ListingID  *string   `json:"listing_id"`
-		Reason     string    `json:"reason"`
-		Status     string    `json:"status"`
-		CreatedAt  time.Time `json:"created_at"`
+		ID         string    `json:"id" db:"id"`
+		ReporterID string    `json:"reporter_id" db:"reporter_id"`
+		ReportedID string    `json:"reported_id" db:"reported_id"`
+		ListingID  *string   `json:"listing_id" db:"listing_id"`
+		Reason     string    `json:"reason" db:"reason"`
+		Status     string    `json:"status" db:"status"`
+		CreatedAt  time.Time `json:"created_at" db:"created_at"`
 	}
-	db := h.orm.WithContext(c.Request.Context())
-	result := make([]reportRow, 0)
-	if err := db.Raw(`
+	rows, err := h.db.Query(c.Request.Context(), `
 		SELECT id, reporter_id, reported_id, listing_id, reason, status::text AS status, created_at
 		FROM reports
 		WHERE status=$1::report_status AND deleted_at IS NULL
 		ORDER BY created_at ASC
 		LIMIT 50`, status,
-	).Scan(&result).Error; err != nil {
+	)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
+		return
+	}
+	result, err := pgx.CollectRows(rows, pgx.RowToStructByNameLax[reportRow])
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
 		return
 	}
@@ -505,22 +509,26 @@ func (h *Handler) AdminRestoreListing(c *Context) {
 // AdminListActions handles GET /actions
 func (h *Handler) AdminListActions(c *Context) {
 	type actionRow struct {
-		ID         string    `json:"id"`
-		AdminID    string    `json:"admin_id"`
-		Action     string    `json:"action"`
-		TargetType string    `json:"target_type"`
-		TargetID   string    `json:"target_id"`
-		Note       *string   `json:"note"`
-		CreatedAt  time.Time `json:"created_at"`
+		ID         string    `json:"id" db:"id"`
+		AdminID    string    `json:"admin_id" db:"admin_id"`
+		Action     string    `json:"action" db:"action"`
+		TargetType string    `json:"target_type" db:"target_type"`
+		TargetID   string    `json:"target_id" db:"target_id"`
+		Note       *string   `json:"note" db:"note"`
+		CreatedAt  time.Time `json:"created_at" db:"created_at"`
 	}
-	db := h.orm.WithContext(c.Request.Context())
-	result := make([]actionRow, 0)
-	if err := db.Raw(`
+	rows, err := h.db.Query(c.Request.Context(), `
 		SELECT id, admin_id, action::text AS action, target_type, target_id, note, created_at
 		FROM admin_actions
 		ORDER BY created_at DESC
 		LIMIT 100`,
-	).Scan(&result).Error; err != nil {
+	)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
+		return
+	}
+	result, err := pgx.CollectRows(rows, pgx.RowToStructByNameLax[actionRow])
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
 		return
 	}

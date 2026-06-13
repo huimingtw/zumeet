@@ -43,7 +43,7 @@ type TenantProfileResponse struct {
 	Name                       string    `json:"name"`
 	BudgetMin                  int       `json:"budget_min"`
 	BudgetMax                  int       `json:"budget_max"`
-	Locations                  []string  `json:"locations" gorm:"-"`
+	Locations                  []string  `json:"locations" db:"-"`
 	PreferredRoomTypes         []string  `json:"preferred_room_types"`
 	AvailableFrom              time.Time `json:"available_from"`
 	MinLeaseMonths             int       `json:"min_lease_months"`
@@ -73,32 +73,30 @@ func (h *Handler) ListTenantProfiles(c *Context) {
 	}
 
 	type tenantProfileListRow struct {
-		ID                         string
-		TenantID                   string
-		Name                       string
-		BudgetMin                  int
-		BudgetMax                  int
-		PreferredRoomTypes         string
-		AvailableFrom              time.Time
-		MinLeaseMonths             int
-		MinAreaPing                *float64
-		HasPets                    bool
-		PetDescription             string
-		NeedsSubsidy               bool
-		NeedsTaxReceipt            bool
-		NeedsHouseholdRegistration bool
-		NeedsCooking               bool
-		NeedsParking               bool
-		Smoking                    bool
-		Occupation                 string
-		Description                string
-		IsActive                   bool
-		CreatedAt                  time.Time
-		UpdatedAt                  time.Time
+		ID                         string    `db:"id"`
+		TenantID                   string    `db:"tenant_id"`
+		Name                       string    `db:"name"`
+		BudgetMin                  int       `db:"budget_min"`
+		BudgetMax                  int       `db:"budget_max"`
+		PreferredRoomTypes         string    `db:"preferred_room_types"`
+		AvailableFrom              time.Time `db:"available_from"`
+		MinLeaseMonths             int       `db:"min_lease_months"`
+		MinAreaPing                *float64  `db:"min_area_ping"`
+		HasPets                    bool      `db:"has_pets"`
+		PetDescription             string    `db:"pet_description"`
+		NeedsSubsidy               bool      `db:"needs_subsidy"`
+		NeedsTaxReceipt            bool      `db:"needs_tax_receipt"`
+		NeedsHouseholdRegistration bool      `db:"needs_household_registration"`
+		NeedsCooking               bool      `db:"needs_cooking"`
+		NeedsParking               bool      `db:"needs_parking"`
+		Smoking                    bool      `db:"smoking"`
+		Occupation                 string    `db:"occupation"`
+		Description                string    `db:"description"`
+		IsActive                   bool      `db:"is_active"`
+		CreatedAt                  time.Time `db:"created_at"`
+		UpdatedAt                  time.Time `db:"updated_at"`
 	}
-	db := h.orm.WithContext(c.Request.Context())
-	rows := []tenantProfileListRow{}
-	if err := db.Raw(
+	queryRows, err := h.db.Query(c.Request.Context(),
 		`SELECT id, tenant_id, name, budget_min, budget_max,
 		        array_to_string(preferred_room_types::text[], ',') AS preferred_room_types, available_from, min_lease_months, min_area_ping,
 		        has_pets, COALESCE(pet_description, '') AS pet_description, needs_subsidy, needs_tax_receipt,
@@ -109,7 +107,13 @@ func (h *Handler) ListTenantProfiles(c *Context) {
 		 WHERE tenant_id = $1 AND deleted_at IS NULL
 		 ORDER BY created_at DESC`,
 		userID,
-	).Scan(&rows).Error; err != nil {
+	)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "INTERNAL_ERROR"})
+		return
+	}
+	rows, err := pgx.CollectRows(queryRows, pgx.RowToStructByNameLax[tenantProfileListRow])
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "INTERNAL_ERROR"})
 		return
 	}
@@ -424,11 +428,14 @@ func (h *Handler) loadProfile(c *Context, profileID, tenantID string) (TenantPro
 }
 
 func (h *Handler) loadProfileLocations(c *Context, profileID string) []string {
-	db := h.orm.WithContext(c.Request.Context())
-	var locs []string
-	err := db.Table("tenant_profile_locations").
-		Where("tenant_profile_id = ? AND deleted_at IS NULL", profileID).
-		Pluck("location_id", &locs).Error
+	rows, err := h.db.Query(c.Request.Context(),
+		`SELECT location_id FROM tenant_profile_locations WHERE tenant_profile_id = $1 AND deleted_at IS NULL`,
+		profileID,
+	)
+	if err != nil {
+		return nil
+	}
+	locs, err := pgx.CollectRows(rows, pgx.RowTo[string])
 	if err != nil {
 		return nil
 	}

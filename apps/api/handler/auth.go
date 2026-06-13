@@ -175,11 +175,8 @@ func (h *Handler) Refresh(c *Context) {
 		return
 	}
 
-	db := h.orm.WithContext(c.Request.Context())
-	var roles []string
-	if err := db.Table("user_roles").
-		Where("user_id = ? AND deleted_at IS NULL", userID).
-		Pluck("role", &roles).Error; err != nil {
+	roles, err := h.userRoles(c.Request.Context(), userID)
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "INTERNAL_ERROR"})
 		return
 	}

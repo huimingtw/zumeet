@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"net/http"
@@ -9,6 +10,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
+
+type requestIDCtxKey struct{}
 
 const RequestIDHeader = "X-Request-Id"
 
@@ -23,9 +26,17 @@ func RequestID() gin.HandlerFunc {
 			id = hex.EncodeToString(raw)
 		}
 		c.Set("request_id", id)
+		ctx := context.WithValue(c.Request.Context(), requestIDCtxKey{}, id)
+		c.Request = c.Request.WithContext(ctx)
 		c.Header(RequestIDHeader, id)
 		c.Next()
 	}
+}
+
+// RequestIDFromContext extracts the request ID injected by the RequestID middleware.
+func RequestIDFromContext(ctx context.Context) string {
+	v, _ := ctx.Value(requestIDCtxKey{}).(string)
+	return v
 }
 
 // Logger logs each request with structured JSON fields.
