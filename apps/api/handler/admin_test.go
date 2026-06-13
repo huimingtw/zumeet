@@ -237,6 +237,61 @@ func TestAdmin_SuspendUnsuspend(t *testing.T) {
 	}
 }
 
+func TestAdmin_ListActions(t *testing.T) {
+	truncate(t)
+	adminID := seedAdmin(t, "adm-actions@example.com", "moderator")
+	cookie := validAdminCookie(t, adminID, "moderator")
+	targetID := seedUser(t, "adm-actions-target@example.com", "tenant")
+
+	// produce one auditable mutation
+	if w := postJSON(t, "/admin/users/"+targetID+"/suspend", nil, cookie); w.Code != http.StatusOK {
+		t.Fatalf("suspend: expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	// audit log must surface that action
+	w := adminRequest(t, "GET", "/admin/actions", cookie)
+	if w.Code != http.StatusOK {
+		t.Fatalf("list actions: expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	var actions []struct {
+		AdminID    string `json:"admin_id"`
+		Action     string `json:"action"`
+		TargetType string `json:"target_type"`
+		TargetID   string `json:"target_id"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &actions); err != nil {
+		t.Fatalf("decode actions: %v", err)
+	}
+
+	found := false
+	for _, a := range actions {
+		if a.TargetID == targetID && a.TargetType == "user" {
+			found = true
+			if a.AdminID != adminID {
+				t.Errorf("admin_id: expected %s, got %s", adminID, a.AdminID)
+			}
+			if a.Action == "" {
+				t.Error("action should be populated")
+			}
+		}
+	}
+	if !found {
+		t.Errorf("expected suspend action for target %s in audit log, got %+v", targetID, actions)
+	}
+}
+
+func TestAdmin_ListActions_UserJWTRejected(t *testing.T) {
+	truncate(t)
+	userID := seedUser(t, "adm-actions-user@example.com", "tenant")
+	userCookie := validAccessCookie(t, userID, "adm-actions-user@example.com", []string{"tenant"})
+
+	w := adminRequest(t, "GET", "/admin/actions", userCookie)
+	if w.Code != http.StatusUnauthorized {
+		t.Errorf("user JWT on admin actions: expected 401, got %d", w.Code)
+	}
+}
+
 func TestAdmin_ModeratorCannotForceDelete(t *testing.T) {
 	truncate(t)
 	adminID := seedAdmin(t, "adm-mod-del@example.com", "moderator")
