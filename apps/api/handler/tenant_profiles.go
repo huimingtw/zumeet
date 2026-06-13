@@ -18,7 +18,7 @@ type TenantProfileRequest struct {
 	Name                       string    `json:"name" binding:"required"`
 	BudgetMin                  int       `json:"budget_min" binding:"required,min=1"`
 	BudgetMax                  int       `json:"budget_max" binding:"required,min=1"`
-	Locations                  []string  `json:"locations" binding:"required,min=1"` // location IDs
+	Locations                  []LocationInput `json:"locations" binding:"required,min=1"`
 	PreferredRoomTypes         []string  `json:"preferred_room_types" binding:"required,min=1"`
 	AvailableFrom              time.Time `json:"available_from" binding:"required"`
 	MinLeaseMonths             int       `json:"min_lease_months" binding:"required,min=1"`
@@ -174,6 +174,12 @@ func (h *Handler) CreateTenantProfile(c *Context) {
 		return
 	}
 
+	locationIDs, err := h.resolveLocationIDs(c.Request.Context(), req.Locations)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid location", "code": "INVALID_LOCATION"})
+		return
+	}
+
 	tx, err := h.db.Begin(c.Request.Context())
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "INTERNAL_ERROR"})
@@ -206,7 +212,7 @@ func (h *Handler) CreateTenantProfile(c *Context) {
 		return
 	}
 
-	if err := insertProfileLocations(c, tx, profileID, req.Locations); err != nil {
+	if err := insertProfileLocations(c, tx, profileID, locationIDs); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid location id", "code": "INVALID_LOCATION"})
 		return
 	}
@@ -261,6 +267,12 @@ func (h *Handler) UpdateTenantProfile(c *Context) {
 		return
 	}
 
+	locationIDs, err := h.resolveLocationIDs(c.Request.Context(), req.Locations)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid location", "code": "INVALID_LOCATION"})
+		return
+	}
+
 	tx, err := h.db.Begin(c.Request.Context())
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "INTERNAL_ERROR"})
@@ -296,7 +308,7 @@ func (h *Handler) UpdateTenantProfile(c *Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "INTERNAL_ERROR"})
 		return
 	}
-	if err := insertProfileLocations(c, tx, profileID, req.Locations); err != nil {
+	if err := insertProfileLocations(c, tx, profileID, locationIDs); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid location id", "code": "INVALID_LOCATION"})
 		return
 	}

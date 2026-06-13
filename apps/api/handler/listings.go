@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -19,8 +20,11 @@ const (
 )
 
 // ListingRequest is used for POST and PUT.
+// Location is supplied as a (city, district) pair — the natural key of the
+// locations table (UNIQUE (city, district)) — and resolved to a location_id.
 type ListingRequest struct {
-	LocationID                 string    `json:"location_id" binding:"required"`
+	City                       string    `json:"city" binding:"required"`
+	District                   string    `json:"district" binding:"required"`
 	Rent                       int       `json:"rent" binding:"required,min=1"`
 	RoomType                   string    `json:"room_type" binding:"required"`
 	AreaPing                   float64   `json:"area_ping" binding:"required,min=1"`
@@ -96,19 +100,17 @@ func (h *Handler) CreateListing(c *Context) {
 		return
 	}
 
-	// verify location exists
-	var locExists bool
-	if err := h.db.QueryRow(c.Request.Context(),
-		`SELECT EXISTS(SELECT 1 FROM locations WHERE id=$1)`, req.LocationID,
-	).Scan(&locExists); err != nil || !locExists {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid location_id", "code": "invalid_location"})
+	// resolve (city, district) -> location_id
+	locationID, err := h.resolveLocationID(c.Request.Context(), req.City, req.District)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid location", "code": "invalid_location"})
 		return
 	}
 
 	id := ulid.Make().String()
 	now := time.Now().UTC()
 
-	_, err := h.db.Exec(c.Request.Context(), `
+	_, err = h.db.Exec(c.Request.Context(), `
 		INSERT INTO listings (
 			id, landlord_id, location_id, rent, room_type, area_ping,
 			available_from, min_lease_months,
@@ -122,7 +124,7 @@ func (h *Handler) CreateListing(c *Context) {
 			$12,$13,$14,$15,
 			$16,$17,$18,'draft',$19,$19
 		)`,
-		id, userID, req.LocationID, req.Rent, req.RoomType, req.AreaPing,
+		id, userID, locationID, req.Rent, req.RoomType, req.AreaPing,
 		req.AvailableFrom, req.MinLeaseMonths,
 		req.AllowPets, req.AllowSubsidy, req.AllowTaxReceipt,
 		req.AllowHouseholdRegistration, req.AllowCooking, req.HasParking, req.AllowSmoking,
@@ -202,11 +204,9 @@ func (h *Handler) UpdateListing(c *Context) {
 		return
 	}
 
-	var locExists bool
-	if err := h.db.QueryRow(c.Request.Context(),
-		`SELECT EXISTS(SELECT 1 FROM locations WHERE id=$1)`, req.LocationID,
-	).Scan(&locExists); err != nil || !locExists {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid location_id", "code": "invalid_location"})
+	locationID, err := h.resolveLocationID(c.Request.Context(), req.City, req.District)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid location", "code": "invalid_location"})
 		return
 	}
 
@@ -218,7 +218,7 @@ func (h *Handler) UpdateListing(c *Context) {
 			allow_household_registration=$10, allow_cooking=$11, has_parking=$12, allow_smoking=$13,
 			description=$14, contact_info=$15, updated_at=NOW()
 		WHERE id=$16 AND deleted_at IS NULL`,
-		req.LocationID, req.Rent, req.RoomType, req.AreaPing,
+		locationID, req.Rent, req.RoomType, req.AreaPing,
 		req.AvailableFrom, req.MinLeaseMonths,
 		req.AllowPets, req.AllowSubsidy, req.AllowTaxReceipt,
 		req.AllowHouseholdRegistration, req.AllowCooking, req.HasParking, req.AllowSmoking,
@@ -579,6 +579,32 @@ func (h *Handler) ListLandlordListings(c *Context) {
 }
 
 // ---- helpers ----
+
+// resolveLocationID maps a (city, district) pair to its location id.
+// (city, district) is the natural key of the locations table (UNIQUE constraint).
+func (h *Handler) resolveLocationID(ctx context.Context, city, district string) (string, error) {
+	var id string
+	err := h.db.QueryRow(ctx,
+		`SELECT id FROM locations WHERE city=$1 AND district=$2`, city, district,
+	).Scan(&id)
+	if err != nil {
+		return "", fmt.Errorf("location not found: city=%q district=%q", city, district)
+	}
+	return id, nil
+}
+
+// resolveLocationIDs resolves a slice of LocationInput to location ids.
+func (h *Handler) resolveLocationIDs(ctx context.Context, inputs []LocationInput) ([]string, error) {
+	ids := make([]string, 0, len(inputs))
+	for _, loc := range inputs {
+		id, err := h.resolveLocationID(ctx, loc.City, loc.District)
+		if err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	return ids, nil
+}
 
 func (h *Handler) listingOwner(c *Context, listingID string) (string, error) {
 	var ownerID string

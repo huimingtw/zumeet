@@ -13,11 +13,14 @@ import (
 // ---- test fixtures ----
 
 // activeListing creates a listing via API, uploads a photo, activates it, and returns its ID.
+// locationID is a location id used to derive city+district (ignored if empty; defaults to 台北市/大安區).
 func activeListing(t *testing.T, landlordID, locationID string, rent int, allowPets, allowSmoking bool) string {
 	t.Helper()
+	city, district := testCityDistrict(locationID)
 	cookie := validAccessCookie(t, landlordID, "ll@ll.com", []string{"landlord"})
 	w := postJSON(t, "/api/v1/listings", map[string]any{
-		"location_id":          locationID,
+		"city":                 city,
+		"district":             district,
 		"rent":                 rent,
 		"room_type":            "suite",
 		"area_ping":            12.0,
@@ -48,12 +51,13 @@ func activeListing(t *testing.T, landlordID, locationID string, rent int, allowP
 // activeTenantProfile creates an active tenant profile and returns its ID.
 func activeTenantProfile(t *testing.T, tenantID, locationID string, budgetMin, budgetMax int, hasPets, smoking bool) string {
 	t.Helper()
+	city, district := testCityDistrict(locationID)
 	cookie := validAccessCookie(t, tenantID, "tt@tt.com", []string{"tenant"})
 	w := postJSON(t, "/api/v1/tenant-profiles", map[string]any{
 		"name":                 "test profile",
 		"budget_min":           budgetMin,
 		"budget_max":           budgetMax,
-		"locations":            []string{locationID},
+		"locations":            []map[string]any{{"city": city, "district": district}},
 		"preferred_room_types": []string{"suite"},
 		"available_from":       time.Now().UTC().Format(time.RFC3339),
 		"min_lease_months":     6,
@@ -186,7 +190,7 @@ func TestMatching_DraftListing_Excluded(t *testing.T) {
 	// create listing but don't activate (stays draft)
 	lCookie := validAccessCookie(t, landlordID, "m-ll5@example.com", []string{"landlord"})
 	w := postJSON(t, "/api/v1/listings", map[string]any{
-		"location_id": "taipei-daan", "rent": 20000, "room_type": "suite",
+		"city": "台北市", "district": "大安區", "rent": 20000, "room_type": "suite",
 		"area_ping": 12.0, "available_from": time.Now().UTC().Format(time.RFC3339),
 		"min_lease_months": 6, "allow_smoking": false,
 		"contact_info": "x", "compliance_confirmed": true,
@@ -249,7 +253,7 @@ func TestMatching_InactiveProfile_Rejected(t *testing.T) {
 	// create inactive profile
 	w := postJSON(t, "/api/v1/tenant-profiles", map[string]any{
 		"name": "inactive", "budget_min": 10000, "budget_max": 20000,
-		"locations": []string{"taipei-daan"}, "preferred_room_types": []string{"suite"},
+		"locations": []map[string]any{{"city": "台北市", "district": "大安區"}}, "preferred_room_types": []string{"suite"},
 		"available_from": time.Now().UTC().Format(time.RFC3339), "min_lease_months": 3,
 		"has_pets": false, "needs_subsidy": false, "needs_tax_receipt": false, "smoking": false,
 		"contact_info": "x", "is_active": false,

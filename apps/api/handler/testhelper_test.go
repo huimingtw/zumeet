@@ -162,6 +162,17 @@ func buildProtectedRouter() *gin.Engine {
 	return r
 }
 
+// testCityDistrict maps legacy test location slugs to city+district natural keys.
+// Falls back to 台北市/大安區 for unknown or empty slugs.
+func testCityDistrict(slug string) (city, district string) {
+	switch slug {
+	case "taipei-zhongshan":
+		return "台北市", "中山區"
+	default: // "taipei-daan" and anything else
+		return "台北市", "大安區"
+	}
+}
+
 // ---- noop service implementations ----
 
 type noopStorage struct{}

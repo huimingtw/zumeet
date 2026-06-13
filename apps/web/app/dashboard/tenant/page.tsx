@@ -15,7 +15,7 @@ import {
   SendHorizonal,
 } from "lucide-react";
 import { api } from "@/lib/api";
-import { LOCATION_LABELS, ROOM_TYPE_LABELS } from "@/types";
+import { LOCATION_CITY_DISTRICT, LOCATION_LABELS, ROOM_TYPE_LABELS } from "@/types";
 import { LocationPicker } from "@/components/LocationPicker";
 import type { MatchedListingCard, TenantProfile } from "@/types";
 
@@ -1056,6 +1056,7 @@ function ProfileFormModal({
     setError("");
     const payload = {
       ...form,
+      locations: form.locations.map((id) => LOCATION_CITY_DISTRICT[id]).filter(Boolean),
       budget_min: Number(form.budget_min),
       budget_max: Number(form.budget_max),
       min_lease_months: Number(form.min_lease_months),

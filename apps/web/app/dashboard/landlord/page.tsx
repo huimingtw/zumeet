@@ -14,7 +14,7 @@ import {
   SendHorizonal,
 } from "lucide-react";
 import { api } from "@/lib/api";
-import { LOCATIONS, ROOM_TYPE_LABELS } from "@/types";
+import { LOCATION_CITY_DISTRICT, LOCATIONS, ROOM_TYPE_LABELS } from "@/types";
 import type { Listing, MatchedTenantProfileCard, MutualMatch } from "@/types";
 
 type MainTab = "listings" | "browse" | "matches";
@@ -1051,8 +1051,12 @@ function ListingFormModal({
     }
     setLoading(true);
     setError("");
+    const loc = LOCATION_CITY_DISTRICT[form.location_id];
+    const { location_id: _loc, ...rest } = form;
     const payload = {
-      ...form,
+      ...rest,
+      city: loc?.city ?? "",
+      district: loc?.district ?? "",
       rent: Number(form.rent),
       area_ping: Number(form.area_ping),
       min_lease_months: Number(form.min_lease_months),

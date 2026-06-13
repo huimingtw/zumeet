@@ -27,7 +27,7 @@ function cityState(city: LocationCity, selected: Set<string>): CityState {
 function CityCheckbox({ state }: { state: CityState }) {
   if (state === "all") {
     return (
-      <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded bg-orange-500 text-white">
+      <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded bg-primary-600 text-white">
         <svg viewBox="0 0 10 8" className="h-2.5 w-2.5" fill="none" stroke="currentColor" strokeWidth="1.8">
           <path d="M1 4l2.5 2.5L9 1" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
@@ -36,7 +36,7 @@ function CityCheckbox({ state }: { state: CityState }) {
   }
   if (state === "partial") {
     return (
-      <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded bg-orange-500 text-white">
+      <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded bg-primary-600 text-white">
         <svg viewBox="0 0 10 2" className="h-2.5 w-2.5" fill="none" stroke="currentColor" strokeWidth="2">
           <path d="M1 1h8" strokeLinecap="round" />
         </svg>
@@ -50,7 +50,7 @@ function CityCheckbox({ state }: { state: CityState }) {
 
 function DistrictCheckbox({ checked }: { checked: boolean }) {
   return checked ? (
-    <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded bg-orange-500 text-white">
+    <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded bg-primary-600 text-white">
       <svg viewBox="0 0 10 8" className="h-2.5 w-2.5" fill="none" stroke="currentColor" strokeWidth="1.8">
         <path d="M1 4l2.5 2.5L9 1" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
@@ -128,7 +128,7 @@ export function LocationPicker({ open, value, onChange, onClose }: Props) {
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
-            strokeWidth={2}
+            strokeWidth={1.5}
           >
             <circle cx="11" cy="11" r="8" />
             <path d="M21 21l-4.35-4.35" strokeLinecap="round" />
@@ -161,7 +161,7 @@ export function LocationPicker({ open, value, onChange, onClose }: Props) {
             {draft.length > 0 && (
               <button
                 onClick={() => setDraft([])}
-                className="text-sm text-orange-500 hover:text-orange-600"
+                className="text-sm text-primary-600 hover:text-primary-500"
               >
                 清除全部
               </button>
@@ -195,7 +195,7 @@ export function LocationPicker({ open, value, onChange, onClose }: Props) {
                   onClick={() => toggleDistrict(d.id)}
                   className={`rounded-full px-3 py-1 text-xs font-medium transition ${
                     draftSet.has(d.id)
-                      ? "bg-orange-500 text-white"
+                      ? "bg-primary-600 text-white"
                       : "border border-gray-200 text-gray-600 hover:border-gray-400"
                   }`}
                 >
@@ -248,7 +248,7 @@ export function LocationPicker({ open, value, onChange, onClose }: Props) {
                     onClick={() => setActiveCityCode(city.cityCode)}
                     className={`flex w-full items-center justify-between px-3 py-2.5 text-left text-sm transition ${
                       isActive
-                        ? "bg-white font-medium text-orange-600"
+                        ? "bg-white font-medium text-primary-600"
                         : "text-gray-700 hover:bg-white"
                     }`}
                   >
@@ -256,7 +256,7 @@ export function LocationPicker({ open, value, onChange, onClose }: Props) {
                     {count > 0 && (
                       <span
                         className={`ml-1 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full px-1 text-xs text-white ${
-                          state === "all" ? "bg-orange-500" : "bg-orange-400"
+                          state === "all" ? "bg-primary-600" : "bg-primary-500"
                         }`}
                       >
                         {count}
@@ -292,7 +292,7 @@ export function LocationPicker({ open, value, onChange, onClose }: Props) {
                         type="button"
                         onClick={() => toggleDistrict(d.id)}
                         className={`flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left transition hover:bg-gray-50 ${
-                          checked ? "bg-orange-50" : ""
+                          checked ? "bg-primary-100" : ""
                         }`}
                       >
                         <DistrictCheckbox checked={checked} />
@@ -316,7 +316,7 @@ export function LocationPicker({ open, value, onChange, onClose }: Props) {
               onChange(draft);
               onClose();
             }}
-            className="rounded-lg bg-orange-500 px-8 py-2 text-sm font-medium text-white transition hover:bg-orange-600"
+            className="rounded-lg bg-primary-600 px-8 py-2 text-sm font-medium text-white transition hover:bg-primary-500"
           >
             確定
           </button>

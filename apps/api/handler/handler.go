@@ -10,6 +10,13 @@ import (
 	"gorm.io/gorm"
 )
 
+// LocationInput is the city+district natural key used in create/update request bodies.
+// The backend resolves it to a location_id via the locations table UNIQUE(city, district).
+type LocationInput struct {
+	City     string `json:"city" binding:"required"`
+	District string `json:"district" binding:"required"`
+}
+
 var ErrForbidden = errors.New("forbidden")
 
 type Handler struct {

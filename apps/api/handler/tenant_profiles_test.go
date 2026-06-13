@@ -10,16 +10,15 @@ import (
 	"time"
 )
 
-// seedTenantProfile inserts a tenant_profile with one location.
+// seedTenantProfile inserts a tenant_profile with one location (台北市/大安區).
 // Returns the profile ID.
 func seedTenantProfile(t *testing.T, tenantID, name string, isActive bool) string {
 	t.Helper()
-	loc := "taipei-daan"
 	w := postJSON(t, "/api/v1/tenant-profiles", map[string]any{
 		"name":                 name,
 		"budget_min":           10000,
 		"budget_max":           25000,
-		"locations":            []string{loc},
+		"locations":            []map[string]any{{"city": "台北市", "district": "大安區"}},
 		"preferred_room_types": []string{"suite"},
 		"available_from":       time.Now().UTC().Format(time.RFC3339),
 		"min_lease_months":     6,
@@ -51,7 +50,7 @@ func TestTenantProfile_CreateAndList(t *testing.T) {
 		"name":                 "台北套房",
 		"budget_min":           15000,
 		"budget_max":           25000,
-		"locations":            []string{"taipei-daan", "taipei-zhongshan"},
+		"locations":            []map[string]any{{"city": "台北市", "district": "大安區"}, {"city": "台北市", "district": "中山區"}},
 		"preferred_room_types": []string{"suite"},
 		"available_from":       time.Now().UTC().Format(time.RFC3339),
 		"min_lease_months":     6,
@@ -114,7 +113,7 @@ func TestTenantProfile_ListAndGetHandlesNullableOptionalText(t *testing.T) {
 	}
 	_, err = testPool.Exec(context.Background(),
 		`INSERT INTO tenant_profile_locations (tenant_profile_id, location_id)
-		 VALUES ($1, 'taipei-daan')`,
+		 VALUES ($1, '01-0102')`,
 		profileID,
 	)
 	if err != nil {
@@ -161,7 +160,7 @@ func TestTenantProfile_MaxThreeProfiles(t *testing.T) {
 		return map[string]any{
 			"name":       fmt.Sprintf("Profile %d", n),
 			"budget_min": 10000, "budget_max": 20000,
-			"locations":            []string{"taipei-daan"},
+			"locations":            []map[string]any{{"city": "台北市", "district": "大安區"}},
 			"preferred_room_types": []string{"suite"},
 			"available_from":       time.Now().UTC().Format(time.RFC3339),
 			"min_lease_months":     3,
@@ -230,7 +229,7 @@ func TestTenantProfile_BudgetValidation(t *testing.T) {
 	w := postJSON(t, "/api/v1/tenant-profiles", map[string]any{
 		"name":       "Bad Budget",
 		"budget_min": 30000, "budget_max": 10000, // min > max
-		"locations":            []string{"taipei-daan"},
+		"locations":            []map[string]any{{"city": "台北市", "district": "大安區"}},
 		"preferred_room_types": []string{"suite"},
 		"available_from":       time.Now().UTC().Format(time.RFC3339),
 		"min_lease_months":     3,
@@ -298,7 +297,7 @@ func TestTenantProfile_LandlordCannotCreate(t *testing.T) {
 
 	w := postJSON(t, "/api/v1/tenant-profiles", map[string]any{
 		"name": "X", "budget_min": 1, "budget_max": 2,
-		"locations": []string{"taipei-daan"}, "preferred_room_types": []string{"suite"},
+		"locations": []map[string]any{{"city": "台北市", "district": "大安區"}}, "preferred_room_types": []string{"suite"},
 		"available_from": time.Now().UTC().Format(time.RFC3339), "min_lease_months": 1,
 		"has_pets": false, "needs_subsidy": false, "needs_tax_receipt": false, "smoking": false,
 		"contact_info": "x", "is_active": true,

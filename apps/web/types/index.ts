@@ -640,3 +640,12 @@ export const RECOMMENDED_LOCATION_IDS = [
   "31-3105", // 新北市・新店區
   "31-3102", // 新北市・三重區
 ];
+
+// Maps location_id → { city, district } natural key for API requests.
+// cityLabel / districtLabel in LOCATION_GROUPS match the seed's city / district columns exactly.
+export const LOCATION_CITY_DISTRICT: Record<string, { city: string; district: string }> =
+  Object.fromEntries(
+    LOCATION_GROUPS.flatMap((c) =>
+      c.districts.map((d) => [d.id, { city: c.cityLabel, district: d.districtLabel }])
+    )
+  );

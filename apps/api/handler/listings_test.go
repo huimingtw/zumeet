@@ -12,11 +12,13 @@ import (
 )
 
 // seedListing creates a listing via the HTTP API; returns listing ID.
-func seedListing(t *testing.T, landlordID string, locationID string) string {
+// locationID is ignored — all seed listings use 台北市/大安區.
+func seedListing(t *testing.T, landlordID string, _ string) string {
 	t.Helper()
 	cookie := validAccessCookie(t, landlordID, "l@l.com", []string{"landlord"})
 	w := postJSON(t, "/api/v1/listings", map[string]any{
-		"location_id":      locationID,
+		"city":             "台北市",
+		"district":         "大安區",
 		"rent":             20000,
 		"room_type":        "suite",
 		"area_ping":        10.0,
@@ -43,7 +45,8 @@ func TestListing_Create(t *testing.T) {
 	cookie := validAccessCookie(t, userID, "ls-create@example.com", []string{"landlord"})
 
 	w := postJSON(t, "/api/v1/listings", map[string]any{
-		"location_id":      "taipei-daan",
+		"city":             "台北市",
+		"district":         "大安區",
 		"rent":             25000,
 		"room_type":        "suite",
 		"area_ping":        12.5,
@@ -79,7 +82,8 @@ func TestListing_ComplianceRequired(t *testing.T) {
 	cookie := validAccessCookie(t, userID, "ls-compliance@example.com", []string{"landlord"})
 
 	w := postJSON(t, "/api/v1/listings", map[string]any{
-		"location_id":      "taipei-daan",
+		"city":             "台北市",
+		"district":         "大安區",
 		"rent":             20000,
 		"room_type":        "suite",
 		"area_ping":        10.0,
@@ -100,7 +104,8 @@ func TestListing_TenantCannotCreate(t *testing.T) {
 	cookie := validAccessCookie(t, userID, "ls-tenant@example.com", []string{"tenant"})
 
 	w := postJSON(t, "/api/v1/listings", map[string]any{
-		"location_id":          "taipei-daan",
+		"city":                 "台北市",
+		"district":             "大安區",
 		"rent":                 20000,
 		"room_type":            "suite",
 		"area_ping":            10.0,
