@@ -1025,6 +1025,7 @@ function ProfileFormModal({
     needs_parking: editingProfile?.needs_parking ?? false,
     smoking: editingProfile?.smoking ?? false,
     occupation: editingProfile?.occupation ?? "",
+    description: editingProfile?.description ?? "",
     contact_info: "",
   }));
   const [error, setError] = useState("");
@@ -1301,6 +1302,20 @@ function ProfileFormModal({
               onChange={(e) => setForm((f) => ({ ...f, occupation: e.target.value }))}
               className="input"
               placeholder="例：上班族、學生、自由工作者"
+            />
+          </div>
+
+          <div>
+            <label htmlFor="description" className="mb-1 block text-sm font-medium text-gray-700">
+              自我介紹（選填）
+            </label>
+            <textarea
+              id="description"
+              rows={4}
+              value={form.description}
+              onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+              className="input resize-none"
+              placeholder="介紹自己的生活習慣、工作狀況或其他想讓房東了解的資訊"
             />
           </div>
 

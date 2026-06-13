@@ -32,6 +32,7 @@ type TenantProfileRequest struct {
 	NeedsParking               bool      `json:"needs_parking"`
 	Smoking                    bool      `json:"smoking"`
 	Occupation                 string    `json:"occupation"`
+	Description                string    `json:"description"`
 	ContactInfo                string    `json:"contact_info" binding:"required"`
 	IsActive                   *bool     `json:"is_active"`
 }
@@ -56,6 +57,7 @@ type TenantProfileResponse struct {
 	NeedsParking               bool      `json:"needs_parking"`
 	Smoking                    bool      `json:"smoking"`
 	Occupation                 string    `json:"occupation"`
+	Description                string    `json:"description"`
 	IsActive                   bool      `json:"is_active"`
 	CreatedAt                  time.Time `json:"created_at"`
 	UpdatedAt                  time.Time `json:"updated_at"`
@@ -89,6 +91,7 @@ func (h *Handler) ListTenantProfiles(c *Context) {
 		NeedsParking               bool
 		Smoking                    bool
 		Occupation                 string
+		Description                string
 		IsActive                   bool
 		CreatedAt                  time.Time
 		UpdatedAt                  time.Time
@@ -100,7 +103,8 @@ func (h *Handler) ListTenantProfiles(c *Context) {
 		        array_to_string(preferred_room_types::text[], ',') AS preferred_room_types, available_from, min_lease_months, min_area_ping,
 		        has_pets, COALESCE(pet_description, '') AS pet_description, needs_subsidy, needs_tax_receipt,
 		        needs_household_registration, needs_cooking, needs_parking, smoking,
-		        COALESCE(occupation, '') AS occupation, is_active, created_at, updated_at
+		        COALESCE(occupation, '') AS occupation, COALESCE(description, '') AS description,
+		        is_active, created_at, updated_at
 		 FROM tenant_profiles
 		 WHERE tenant_id = $1 AND deleted_at IS NULL
 		 ORDER BY created_at DESC`,
@@ -132,6 +136,7 @@ func (h *Handler) ListTenantProfiles(c *Context) {
 			NeedsParking:               row.NeedsParking,
 			Smoking:                    row.Smoking,
 			Occupation:                 row.Occupation,
+			Description:                row.Description,
 			IsActive:                   row.IsActive,
 			CreatedAt:                  row.CreatedAt,
 			UpdatedAt:                  row.UpdatedAt,
@@ -188,13 +193,13 @@ func (h *Handler) CreateTenantProfile(c *Context) {
 			available_from, min_lease_months, min_area_ping,
 			has_pets, pet_description, needs_subsidy, needs_tax_receipt,
 			needs_household_registration, needs_cooking, needs_parking, smoking,
-			occupation, contact_info, is_active
-		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)`,
+			occupation, description, contact_info, is_active
+		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21)`,
 		profileID, userID, req.Name, req.BudgetMin, req.BudgetMax, req.PreferredRoomTypes,
 		req.AvailableFrom, req.MinLeaseMonths, req.MinAreaPing,
 		req.HasPets, req.PetDescription, req.NeedsSubsidy, req.NeedsTaxReceipt,
 		req.NeedsHouseholdRegistration, req.NeedsCooking, req.NeedsParking, req.Smoking,
-		req.Occupation, req.ContactInfo, isActive,
+		req.Occupation, req.Description, req.ContactInfo, isActive,
 	)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "INTERNAL_ERROR"})
@@ -269,13 +274,13 @@ func (h *Handler) UpdateTenantProfile(c *Context) {
 			available_from=$5, min_lease_months=$6, min_area_ping=$7,
 			has_pets=$8, pet_description=$9, needs_subsidy=$10, needs_tax_receipt=$11,
 			needs_household_registration=$12, needs_cooking=$13, needs_parking=$14,
-			smoking=$15, occupation=$16, contact_info=$17, updated_at=NOW()
-		 WHERE id=$18 AND tenant_id=$19 AND deleted_at IS NULL`,
+			smoking=$15, occupation=$16, description=$17, contact_info=$18, updated_at=NOW()
+		 WHERE id=$19 AND tenant_id=$20 AND deleted_at IS NULL`,
 		req.Name, req.BudgetMin, req.BudgetMax, req.PreferredRoomTypes,
 		req.AvailableFrom, req.MinLeaseMonths, req.MinAreaPing,
 		req.HasPets, req.PetDescription, req.NeedsSubsidy, req.NeedsTaxReceipt,
 		req.NeedsHouseholdRegistration, req.NeedsCooking, req.NeedsParking,
-		req.Smoking, req.Occupation, req.ContactInfo,
+		req.Smoking, req.Occupation, req.Description, req.ContactInfo,
 		profileID, userID,
 	)
 	if err != nil {
@@ -382,7 +387,7 @@ func scanProfile(s profileScanner) (TenantProfileResponse, error) {
 		&p.PreferredRoomTypes, &p.AvailableFrom, &p.MinLeaseMonths, &p.MinAreaPing,
 		&p.HasPets, &p.PetDescription, &p.NeedsSubsidy, &p.NeedsTaxReceipt,
 		&p.NeedsHouseholdRegistration, &p.NeedsCooking, &p.NeedsParking, &p.Smoking,
-		&p.Occupation, &p.IsActive, &p.CreatedAt, &p.UpdatedAt,
+		&p.Occupation, &p.Description, &p.IsActive, &p.CreatedAt, &p.UpdatedAt,
 	)
 	return p, err
 }
@@ -393,7 +398,7 @@ func (h *Handler) loadProfile(c *Context, profileID, tenantID string) (TenantPro
 		        preferred_room_types, available_from, min_lease_months, min_area_ping,
 		        has_pets, COALESCE(pet_description, ''), needs_subsidy, needs_tax_receipt,
 		        needs_household_registration, needs_cooking, needs_parking, smoking,
-		        COALESCE(occupation, ''), is_active, created_at, updated_at
+		        COALESCE(occupation, ''), COALESCE(description, ''), is_active, created_at, updated_at
 		 FROM tenant_profiles
 		 WHERE id=$1 AND tenant_id=$2 AND deleted_at IS NULL`,
 		profileID, tenantID,

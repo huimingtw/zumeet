@@ -33,6 +33,7 @@ type ListingRequest struct {
 	AllowCooking               bool      `json:"allow_cooking"`
 	HasParking                 bool      `json:"has_parking"`
 	AllowSmoking               bool      `json:"allow_smoking"`
+	Description                string    `json:"description"`
 	ContactInfo                string    `json:"contact_info" binding:"required"`
 	ComplianceConfirmed        bool      `json:"compliance_confirmed"`
 	// soft attributes; stored as-is (whitelist validation omitted in MVP)
@@ -61,6 +62,7 @@ type ListingResponse struct {
 	AllowCooking               bool          `json:"allow_cooking"`
 	HasParking                 bool          `json:"has_parking"`
 	AllowSmoking               bool          `json:"allow_smoking"`
+	Description                string        `json:"description"`
 	Status                     string        `json:"status"`
 	Photos                     []string      `json:"photos" gorm:"-"`
 	PhotoList                  []PhotoDetail `json:"photo_list" gorm:"-"`
@@ -112,18 +114,19 @@ func (h *Handler) CreateListing(c *Context) {
 			available_from, min_lease_months,
 			allow_pets, allow_subsidy, allow_tax_receipt,
 			allow_household_registration, allow_cooking, has_parking, allow_smoking,
-			contact_info, compliance_confirmed_at, status, created_at, updated_at
+			description, contact_info, compliance_confirmed_at, status, created_at, updated_at
 		) VALUES (
 			$1,$2,$3,$4,$5::room_type,$6,
 			$7,$8,
 			$9,$10,$11,
 			$12,$13,$14,$15,
-			$16,$17,'draft',$18,$18
+			$16,$17,$18,'draft',$19,$19
 		)`,
 		id, userID, req.LocationID, req.Rent, req.RoomType, req.AreaPing,
 		req.AvailableFrom, req.MinLeaseMonths,
 		req.AllowPets, req.AllowSubsidy, req.AllowTaxReceipt,
 		req.AllowHouseholdRegistration, req.AllowCooking, req.HasParking, req.AllowSmoking,
+		req.Description,
 		// contact_info intentionally not logged
 		req.ContactInfo, now, now,
 	)
@@ -213,13 +216,13 @@ func (h *Handler) UpdateListing(c *Context) {
 			available_from=$5, min_lease_months=$6,
 			allow_pets=$7, allow_subsidy=$8, allow_tax_receipt=$9,
 			allow_household_registration=$10, allow_cooking=$11, has_parking=$12, allow_smoking=$13,
-			contact_info=$14, updated_at=NOW()
-		WHERE id=$15 AND deleted_at IS NULL`,
+			description=$14, contact_info=$15, updated_at=NOW()
+		WHERE id=$16 AND deleted_at IS NULL`,
 		req.LocationID, req.Rent, req.RoomType, req.AreaPing,
 		req.AvailableFrom, req.MinLeaseMonths,
 		req.AllowPets, req.AllowSubsidy, req.AllowTaxReceipt,
 		req.AllowHouseholdRegistration, req.AllowCooking, req.HasParking, req.AllowSmoking,
-		req.ContactInfo, listingID,
+		req.Description, req.ContactInfo, listingID,
 	)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update listing", "code": "internal"})
@@ -593,7 +596,7 @@ func (h *Handler) fetchListingResponse(c *Context, id string) (*ListingResponse,
 		       available_from, min_lease_months,
 		       allow_pets, allow_subsidy, allow_tax_receipt,
 		       allow_household_registration, allow_cooking, has_parking, allow_smoking,
-		       status::text, created_at, updated_at
+		       COALESCE(description, ''), status::text, created_at, updated_at
 		FROM listings
 		WHERE id=$1 AND deleted_at IS NULL`,
 		id,
@@ -602,7 +605,7 @@ func (h *Handler) fetchListingResponse(c *Context, id string) (*ListingResponse,
 		&r.AvailableFrom, &r.MinLeaseMonths,
 		&r.AllowPets, &r.AllowSubsidy, &r.AllowTaxReceipt,
 		&r.AllowHouseholdRegistration, &r.AllowCooking, &r.HasParking, &r.AllowSmoking,
-		&r.Status, &r.CreatedAt, &r.UpdatedAt,
+		&r.Description, &r.Status, &r.CreatedAt, &r.UpdatedAt,
 	)
 	if err != nil {
 		return nil, err

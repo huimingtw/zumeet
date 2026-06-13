@@ -1036,6 +1036,7 @@ function ListingFormModal({
     allow_cooking: existing?.allow_cooking ?? false,
     has_parking: existing?.has_parking ?? false,
     allow_smoking: existing?.allow_smoking ?? false,
+    description: existing?.description ?? "",
     contact_info: "",
     compliance_confirmed: false,
   });
@@ -1232,6 +1233,20 @@ function ListingFormModal({
                 {label}
               </label>
             ))}
+          </div>
+
+          <div>
+            <label htmlFor="description" className="mb-1 block text-sm font-medium text-gray-700">
+              房源說明（選填）
+            </label>
+            <textarea
+              id="description"
+              rows={4}
+              value={form.description}
+              onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+              className="input resize-none"
+              placeholder="描述房源特色、生活環境、附近交通或其他租客需要知道的資訊"
+            />
           </div>
 
           <div>

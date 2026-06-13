@@ -25,6 +25,7 @@ export interface TenantProfile {
   needs_parking: boolean;
   smoking: boolean;
   occupation?: string;
+  description?: string;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -46,6 +47,7 @@ export interface Listing {
   allow_cooking: boolean;
   has_parking: boolean;
   allow_smoking: boolean;
+  description?: string;
   status: string;
   photos: string[];
   created_at: string;
