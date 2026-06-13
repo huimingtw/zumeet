@@ -1,4 +1,6 @@
 CLAUDE.md
+DESIGN.md
+AGENTS.md
 SPEC.md
 
 # Environment files (never commit actual secrets)
