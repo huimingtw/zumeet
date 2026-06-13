@@ -134,6 +134,8 @@ func (h *Handler) BrowseListingsForProfile(c *Context) {
 			-- suspension guards
 			AND NOT EXISTS (SELECT 1 FROM users lu WHERE lu.id = l.landlord_id AND lu.suspended_at IS NOT NULL AND lu.deleted_at IS NULL)
 			AND NOT EXISTS (SELECT 1 FROM users tu WHERE tu.id = tp.tenant_id    AND tu.suspended_at IS NOT NULL AND tu.deleted_at IS NULL)
+			-- self-exclusion: tenant must not see their own listings
+			AND l.landlord_id != tp.tenant_id
 			-- block exclusion (user-level, both directions)
 			AND l.landlord_id NOT IN (
 				SELECT blocked_id  FROM blocks WHERE blocker_id = tp.tenant_id   AND deleted_at IS NULL
@@ -255,6 +257,8 @@ func (h *Handler) BrowseTenantProfilesForListing(c *Context) {
 			-- suspension guards
 			AND NOT EXISTS (SELECT 1 FROM users lu WHERE lu.id = l.landlord_id AND lu.suspended_at IS NOT NULL AND lu.deleted_at IS NULL)
 			AND NOT EXISTS (SELECT 1 FROM users tu WHERE tu.id = tp.tenant_id    AND tu.suspended_at IS NOT NULL AND tu.deleted_at IS NULL)
+			-- self-exclusion: landlord must not see their own tenant profiles
+			AND tp.tenant_id != l.landlord_id
 			-- block exclusion
 			AND tp.tenant_id NOT IN (
 				SELECT blocked_id  FROM blocks WHERE blocker_id = l.landlord_id AND deleted_at IS NULL

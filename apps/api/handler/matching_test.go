@@ -348,6 +348,66 @@ func TestMatching_SuspendedLandlord_Excluded(t *testing.T) {
 	}
 }
 
+func TestMatching_TenantCannotSeeOwnListings(t *testing.T) {
+	truncate(t)
+	// single user holds both landlord and tenant roles
+	dualID := seedUser(t, "m-dual1@example.com", "landlord")
+	_, err := testPool.Exec(context.Background(),
+		`INSERT INTO user_roles (user_id, role) VALUES ($1, 'tenant'::user_role)`, dualID)
+	if err != nil {
+		t.Fatalf("add tenant role: %v", err)
+	}
+
+	activeListing(t, dualID, "taipei-daan", 20000, false, false)
+	profileID := activeTenantProfile(t, dualID, "taipei-daan", 15000, 25000, false, false)
+
+	cookie := validAccessCookie(t, dualID, "m-dual1@example.com", []string{"tenant", "landlord"})
+	req := httptest.NewRequest("GET", "/api/v1/tenant-profiles/"+profileID+"/listings", nil)
+	req.AddCookie(cookie)
+	w := httptest.NewRecorder()
+	testR.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+	var resp map[string]any
+	json.NewDecoder(w.Body).Decode(&resp)
+	items := resp["items"].([]any)
+	if len(items) != 0 {
+		t.Errorf("tenant must not see their own listings, got %d", len(items))
+	}
+}
+
+func TestMatching_LandlordCannotSeeOwnTenantProfiles(t *testing.T) {
+	truncate(t)
+	// single user holds both landlord and tenant roles
+	dualID := seedUser(t, "m-dual2@example.com", "landlord")
+	_, err := testPool.Exec(context.Background(),
+		`INSERT INTO user_roles (user_id, role) VALUES ($1, 'tenant'::user_role)`, dualID)
+	if err != nil {
+		t.Fatalf("add tenant role: %v", err)
+	}
+
+	listingID := activeListing(t, dualID, "taipei-daan", 20000, false, false)
+	activeTenantProfile(t, dualID, "taipei-daan", 15000, 25000, false, false)
+
+	cookie := validAccessCookie(t, dualID, "m-dual2@example.com", []string{"tenant", "landlord"})
+	req := httptest.NewRequest("GET", "/api/v1/listings/"+listingID+"/tenant-profiles", nil)
+	req.AddCookie(cookie)
+	w := httptest.NewRecorder()
+	testR.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+	var resp map[string]any
+	json.NewDecoder(w.Body).Decode(&resp)
+	items := resp["items"].([]any)
+	if len(items) != 0 {
+		t.Errorf("landlord must not see their own tenant profiles, got %d", len(items))
+	}
+}
+
 func TestMatching_Pagination(t *testing.T) {
 	truncate(t)
 	tenantID := seedUser(t, "m-page-t@example.com", "tenant")
