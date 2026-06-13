@@ -2,6 +2,7 @@ package dblogger
 
 import (
 	"context"
+	"fmt"
 	"regexp"
 	"strings"
 	"time"
@@ -39,6 +40,21 @@ func (t *PgxTracer) normalize(sql string) string {
 	return t.spacesRe.ReplaceAllString(strings.ReplaceAll(sql, "\n", " "), " ")
 }
 
+// interpolate replaces $1, $2, ... placeholders with quoted actual values.
+func interpolate(sql string, args []any) string {
+	for i, arg := range args {
+		placeholder := fmt.Sprintf("$%d", i+1)
+		var val string
+		if arg == nil {
+			val = "NULL"
+		} else {
+			val = fmt.Sprintf("'%v'", arg)
+		}
+		sql = strings.ReplaceAll(sql, placeholder, val)
+	}
+	return sql
+}
+
 func (t *PgxTracer) TraceQueryStart(ctx context.Context, _ *pgx.Conn, data pgx.TraceQueryStartData) context.Context {
 	return context.WithValue(ctx, pgxTraceKey{}, &pgxQueryTrace{
 		sql:   data.SQL,
@@ -58,8 +74,7 @@ func (t *PgxTracer) TraceQueryEnd(ctx context.Context, _ *pgx.Conn, data pgx.Tra
 
 	fields := []zap.Field{
 		zap.String("request_id", rid),
-		zap.String("sql", t.normalize(qt.sql)),
-		zap.Any("args", qt.args),
+		zap.String("sql", interpolate(t.normalize(qt.sql), qt.args)),
 		zap.Duration("elapsed", elapsed),
 		zap.Int64("rows", data.CommandTag.RowsAffected()),
 	}
