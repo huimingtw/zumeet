@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -19,7 +20,7 @@ const (
 	maxPhotoSizeBytes = 5 * 1024 * 1024 // 5 MB
 )
 
-// ListingRequest is used for POST and PUT.
+// ListingRequest is used for POST (create).
 // Location is supplied as a (city, district) pair — the natural key of the
 // locations table (UNIQUE (city, district)) — and resolved to a location_id.
 type ListingRequest struct {
@@ -42,6 +43,28 @@ type ListingRequest struct {
 	ComplianceConfirmed        bool      `json:"compliance_confirmed"`
 	// soft attributes; stored as-is (whitelist validation omitted in MVP)
 	Attributes map[string]any `json:"attributes"`
+}
+
+// UpdateListingRequest is used for PUT (update). contact_info is optional —
+// omitting or sending empty string keeps the existing stored value.
+type UpdateListingRequest struct {
+	City                       string    `json:"city" binding:"required"`
+	District                   string    `json:"district" binding:"required"`
+	Rent                       int       `json:"rent" binding:"required,min=1"`
+	RoomType                   string    `json:"room_type" binding:"required"`
+	AreaPing                   float64   `json:"area_ping" binding:"required,min=1"`
+	AvailableFrom              time.Time `json:"available_from" binding:"required"`
+	MinLeaseMonths             int       `json:"min_lease_months" binding:"required,min=1"`
+	AllowPets                  bool      `json:"allow_pets"`
+	AllowSubsidy               bool      `json:"allow_subsidy"`
+	AllowTaxReceipt            bool      `json:"allow_tax_receipt"`
+	AllowHouseholdRegistration bool      `json:"allow_household_registration"`
+	AllowCooking               bool      `json:"allow_cooking"`
+	HasParking                 bool      `json:"has_parking"`
+	AllowSmoking               bool      `json:"allow_smoking"`
+	Description                string    `json:"description"`
+	ContactInfo                string    `json:"contact_info"`
+	Attributes                 map[string]any `json:"attributes"`
 }
 
 type PhotoDetail struct {
@@ -99,6 +122,14 @@ func (h *Handler) CreateListing(c *Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid room_type", "code": "invalid_room_type"})
 		return
 	}
+	if req.Rent > 999999 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "租金不得超過 999,999 元", "code": "invalid_rent"})
+		return
+	}
+	if req.AreaPing >= 1000 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "坪數不得超過 999.99", "code": "invalid_area_ping"})
+		return
+	}
 
 	// resolve (city, district) -> location_id
 	locationID, err := h.resolveLocationID(c.Request.Context(), req.City, req.District)
@@ -133,6 +164,7 @@ func (h *Handler) CreateListing(c *Context) {
 		req.ContactInfo, now, now,
 	)
 	if err != nil {
+		log.Printf("CreateListing db error: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create listing", "code": "internal"})
 		return
 	}
@@ -194,13 +226,21 @@ func (h *Handler) UpdateListing(c *Context) {
 		return
 	}
 
-	var req ListingRequest
+	var req UpdateListingRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error(), "code": "invalid_request"})
 		return
 	}
 	if !validRoomType(req.RoomType) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid room_type", "code": "invalid_room_type"})
+		return
+	}
+	if req.Rent > 999999 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "租金不得超過 999,999 元", "code": "invalid_rent"})
+		return
+	}
+	if req.AreaPing >= 1000 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "坪數不得超過 999.99", "code": "invalid_area_ping"})
 		return
 	}
 
@@ -210,19 +250,32 @@ func (h *Handler) UpdateListing(c *Context) {
 		return
 	}
 
-	_, err = h.db.Exec(c.Request.Context(), `
+	// contact_info is optional on update: keep existing value when not provided.
+	var contactInfoExpr string
+	var args []any
+	args = append(args,
+		locationID, req.Rent, req.RoomType, req.AreaPing,
+		req.AvailableFrom, req.MinLeaseMonths,
+		req.AllowPets, req.AllowSubsidy, req.AllowTaxReceipt,
+		req.AllowHouseholdRegistration, req.AllowCooking, req.HasParking, req.AllowSmoking,
+		req.Description,
+	)
+	if req.ContactInfo != "" {
+		args = append(args, req.ContactInfo)
+		contactInfoExpr = fmt.Sprintf("contact_info=$%d,", len(args))
+	}
+	args = append(args, listingID)
+	idxLast := len(args)
+
+	_, err = h.db.Exec(c.Request.Context(), fmt.Sprintf(`
 		UPDATE listings SET
 			location_id=$1, rent=$2, room_type=$3::room_type, area_ping=$4,
 			available_from=$5, min_lease_months=$6,
 			allow_pets=$7, allow_subsidy=$8, allow_tax_receipt=$9,
 			allow_household_registration=$10, allow_cooking=$11, has_parking=$12, allow_smoking=$13,
-			description=$14, contact_info=$15, updated_at=NOW()
-		WHERE id=$16 AND deleted_at IS NULL`,
-		locationID, req.Rent, req.RoomType, req.AreaPing,
-		req.AvailableFrom, req.MinLeaseMonths,
-		req.AllowPets, req.AllowSubsidy, req.AllowTaxReceipt,
-		req.AllowHouseholdRegistration, req.AllowCooking, req.HasParking, req.AllowSmoking,
-		req.Description, req.ContactInfo, listingID,
+			description=$14, %s updated_at=NOW()
+		WHERE id=$%d AND deleted_at IS NULL`, contactInfoExpr, idxLast),
+		args...,
 	)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update listing", "code": "internal"})

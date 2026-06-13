@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -1049,26 +1049,48 @@ function ListingFormModal({
   });
 
   const [form, setForm] = useState({
-    city: existing ? (LOCATION_CITY_DISTRICT[existing.location_id]?.city ?? "") : "",
-    district: existing ? (LOCATION_CITY_DISTRICT[existing.location_id]?.district ?? "") : "",
-    rent: existing?.rent ?? 0,
-    room_type: existing?.room_type ?? "",
-    area_ping: existing?.area_ping ?? 0,
-    available_from: existing?.available_from
-      ? new Date(existing.available_from).toISOString().split("T")[0]
-      : "",
-    min_lease_months: existing?.min_lease_months ?? 6,
-    allow_pets: existing?.allow_pets ?? false,
-    allow_subsidy: existing?.allow_subsidy ?? false,
-    allow_tax_receipt: existing?.allow_tax_receipt ?? false,
-    allow_household_registration: existing?.allow_household_registration ?? false,
-    allow_cooking: existing?.allow_cooking ?? false,
-    has_parking: existing?.has_parking ?? false,
-    allow_smoking: existing?.allow_smoking ?? false,
-    description: existing?.description ?? "",
+    city: "",
+    district: "",
+    rent: 0,
+    room_type: "",
+    area_ping: 0,
+    available_from: "",
+    min_lease_months: 6,
+    allow_pets: false,
+    allow_subsidy: false,
+    allow_tax_receipt: false,
+    allow_household_registration: false,
+    allow_cooking: false,
+    has_parking: false,
+    allow_smoking: false,
+    description: "",
     contact_info: "",
     compliance_confirmed: false,
   });
+
+  useEffect(() => {
+    if (!existing) return;
+    setForm((f) => ({
+      ...f,
+      city: LOCATION_CITY_DISTRICT[existing.location_id]?.city ?? "",
+      district: LOCATION_CITY_DISTRICT[existing.location_id]?.district ?? "",
+      rent: existing.rent,
+      room_type: existing.room_type,
+      area_ping: existing.area_ping,
+      available_from: existing.available_from
+        ? new Date(existing.available_from).toISOString().split("T")[0]
+        : "",
+      min_lease_months: existing.min_lease_months,
+      allow_pets: existing.allow_pets,
+      allow_subsidy: existing.allow_subsidy,
+      allow_tax_receipt: existing.allow_tax_receipt,
+      allow_household_registration: existing.allow_household_registration,
+      allow_cooking: existing.allow_cooking,
+      has_parking: existing.has_parking,
+      allow_smoking: existing.allow_smoking,
+      description: existing.description ?? "",
+    }));
+  }, [existing]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [savedId, setSavedId] = useState<string | null>(null);
@@ -1078,6 +1100,16 @@ function ListingFormModal({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!form.city) { setError("請選擇縣市"); return; }
+    if (!form.district) { setError("請選擇地區"); return; }
+    if (!form.rent || form.rent <= 0) { setError("請填寫租金"); return; }
+    if (form.rent > 999999) { setError("租金不得超過 999,999 元"); return; }
+    if (!form.area_ping || form.area_ping <= 0) { setError("請填寫坪數"); return; }
+    if (form.area_ping >= 1000) { setError("坪數不得超過 999.99"); return; }
+    if (!form.room_type) { setError("請選擇房型"); return; }
+    if (!form.available_from) { setError("請填寫可入住日"); return; }
+    if (!form.min_lease_months || form.min_lease_months <= 0) { setError("請填寫最短租期"); return; }
+    if (!editingId && !form.contact_info.trim()) { setError("請填寫聯絡方式"); return; }
     if (!editingId && !form.compliance_confirmed) {
       setError("請勾選合規確認才能建立房源");
       return;
@@ -1144,48 +1176,28 @@ function ListingFormModal({
             </button>
           </div>
         ) : (
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} noValidate className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label htmlFor="city" className="mb-1 block text-sm font-medium text-gray-700">
-                縣市
-              </label>
-              <select
-                id="city"
-                required
+              <p className="mb-1 text-sm font-medium text-gray-700">縣市</p>
+              <Dropdown
                 value={form.city}
-                onChange={(e) => setForm((f) => ({ ...f, city: e.target.value, district: "" }))}
-                className="input"
-              >
-                <option value="">請選擇縣市</option>
-                {LOCATION_GROUPS.map((g) => (
-                  <option key={g.cityCode} value={g.cityLabel}>
-                    {g.cityLabel}
-                  </option>
-                ))}
-              </select>
+                placeholder="請選擇縣市"
+                options={LOCATION_GROUPS.map((g) => ({ value: g.cityLabel, label: g.cityLabel }))}
+                onChange={(v) => setForm((f) => ({ ...f, city: v, district: "" }))}
+              />
             </div>
             <div>
-              <label htmlFor="district" className="mb-1 block text-sm font-medium text-gray-700">
-                地區
-              </label>
-              <select
-                id="district"
-                required
+              <p className="mb-1 text-sm font-medium text-gray-700">地區</p>
+              <Dropdown
                 value={form.district}
-                onChange={(e) => setForm((f) => ({ ...f, district: e.target.value }))}
+                placeholder="請選擇地區"
                 disabled={!form.city}
-                className="input disabled:opacity-50"
-              >
-                <option value="">請選擇地區</option>
-                {(LOCATION_GROUPS.find((g) => g.cityLabel === form.city)?.districts ?? []).map(
-                  (d) => (
-                    <option key={d.id} value={d.districtLabel}>
-                      {d.districtLabel}
-                    </option>
-                  )
+                options={(LOCATION_GROUPS.find((g) => g.cityLabel === form.city)?.districts ?? []).map(
+                  (d) => ({ value: d.districtLabel, label: d.districtLabel })
                 )}
-              </select>
+                onChange={(v) => setForm((f) => ({ ...f, district: v }))}
+              />
             </div>
           </div>
 
@@ -1398,6 +1410,72 @@ function ListingFormModal({
 }
 
 // ---- Shared UI ----
+
+function Dropdown({
+  value,
+  placeholder,
+  options,
+  onChange,
+  disabled = false,
+}: {
+  value: string;
+  placeholder: string;
+  options: { value: string; label: string }[];
+  onChange: (value: string) => void;
+  disabled?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function handler(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => setOpen((v) => !v)}
+        className={`input flex w-full items-center justify-between text-left ${
+          disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer"
+        } ${value ? "text-gray-900" : "text-gray-400"}`}
+      >
+        <span className="truncate">{value || placeholder}</span>
+        <ChevronDown
+          size={16}
+          strokeWidth={1.5}
+          className={`ml-2 flex-shrink-0 text-gray-400 transition-transform ${open ? "rotate-180" : ""}`}
+        />
+      </button>
+
+      {open && (
+        <div className="absolute z-30 mt-1 max-h-56 w-full overflow-y-auto rounded-xl border border-gray-200 bg-white py-1 shadow-lg">
+          {options.map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => {
+                onChange(opt.value);
+                setOpen(false);
+              }}
+              className={`w-full px-4 py-2 text-left text-sm transition hover:bg-gray-50 ${
+                opt.value === value ? "font-medium text-primary-600" : "text-gray-700"
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function EmptyState({
   icon,

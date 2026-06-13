@@ -1081,6 +1081,16 @@ function ProfileFormModal({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!form.name.trim()) { setError("請填寫需求名稱"); return; }
+    if (!form.budget_min || form.budget_min <= 0) { setError("請填寫最低預算"); return; }
+    if (!form.budget_max || form.budget_max <= 0) { setError("請填寫最高預算"); return; }
+    if (form.budget_min > form.budget_max) { setError("最低預算不能高於最高預算"); return; }
+    if (form.locations.length === 0) { setError("請至少選擇一個地區"); return; }
+    if (form.preferred_room_types.length === 0) { setError("請至少選擇一種偏好房型"); return; }
+    if (form.min_area_ping !== "" && Number(form.min_area_ping) >= 1000) { setError("最大坪數不得超過 999.99"); return; }
+    if (!form.available_from) { setError("請填寫最快入住日"); return; }
+    if (!form.min_lease_months || form.min_lease_months <= 0) { setError("請填寫最短租期"); return; }
+    if (!editingProfile && !form.contact_info.trim()) { setError("請填寫聯絡方式"); return; }
     setLoading(true);
     setError("");
     const payload = {
@@ -1128,7 +1138,7 @@ function ProfileFormModal({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} noValidate className="space-y-4">
           <div>
             <label htmlFor="profile-name" className="mb-1 block text-sm font-medium text-gray-700">
               需求名稱（如：台北套房）
