@@ -66,6 +66,7 @@ func main() {
 
 	storageSvc, err := service.NewMinioStorageService(
 		cfg.StorageEndpoint,
+		cfg.StoragePublicURL,
 		cfg.StorageAccessKey,
 		cfg.StorageSecretKey,
 		cfg.StorageBucket,

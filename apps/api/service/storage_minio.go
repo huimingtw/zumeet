@@ -10,13 +10,14 @@ import (
 )
 
 type MinioStorageService struct {
-	client   *minio.Client
-	bucket   string
-	endpoint string
-	useSSL   bool
+	client    *minio.Client
+	bucket    string
+	endpoint  string
+	publicURL string // overrides endpoint in generated URLs (e.g. localhost vs docker hostname)
+	useSSL    bool
 }
 
-func NewMinioStorageService(endpoint, accessKey, secretKey, bucket string, useSSL bool) (*MinioStorageService, error) {
+func NewMinioStorageService(endpoint, publicURL, accessKey, secretKey, bucket string, useSSL bool) (*MinioStorageService, error) {
 	client, err := minio.New(endpoint, &minio.Options{
 		Creds:  credentials.NewStaticV4(accessKey, secretKey, ""),
 		Secure: useSSL,
@@ -25,10 +26,11 @@ func NewMinioStorageService(endpoint, accessKey, secretKey, bucket string, useSS
 		return nil, fmt.Errorf("minio client: %w", err)
 	}
 	return &MinioStorageService{
-		client:   client,
-		bucket:   bucket,
-		endpoint: endpoint,
-		useSSL:   useSSL,
+		client:    client,
+		bucket:    bucket,
+		endpoint:  endpoint,
+		publicURL: publicURL,
+		useSSL:    useSSL,
 	}, nil
 }
 
@@ -56,11 +58,15 @@ func (s *MinioStorageService) Upload(ctx context.Context, key string, r io.Reade
 		return "", fmt.Errorf("put object: %w", err)
 	}
 
-	scheme := "http"
-	if s.useSSL {
-		scheme = "https"
+	base := s.publicURL
+	if base == "" {
+		scheme := "http"
+		if s.useSSL {
+			scheme = "https"
+		}
+		base = fmt.Sprintf("%s://%s", scheme, s.endpoint)
 	}
-	return fmt.Sprintf("%s://%s/%s/%s", scheme, s.endpoint, s.bucket, key), nil
+	return fmt.Sprintf("%s/%s/%s", base, s.bucket, key), nil
 }
 
 func (s *MinioStorageService) Delete(ctx context.Context, key string) error {

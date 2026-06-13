@@ -15,8 +15,8 @@ import {
   SendHorizonal,
 } from "lucide-react";
 import { api } from "@/lib/api";
-import { LOCATION_CITY_DISTRICT, LOCATIONS, ROOM_TYPE_LABELS } from "@/types";
 import type { Listing, MatchedTenantProfileCard, MutualMatch } from "@/types";
+import { LOCATION_CITY_DISTRICT, LOCATION_GROUPS, ROOM_TYPE_LABELS } from "@/types";
 
 type MainTab = "listings" | "browse" | "matches";
 type MatchesSubTab = "incoming" | "outgoing" | "matched";
@@ -316,7 +316,6 @@ function ListingCard({
   onChanged: () => void;
 }) {
   const qc = useQueryClient();
-  const [showPhotoMgr, setShowPhotoMgr] = useState(false);
 
   const changeStatus = useMutation({
     mutationFn: (status: string) => api.patch(`/listings/${listing.id}/status`, { status }),
@@ -394,13 +393,6 @@ function ListingCard({
           {/* Fixed secondary */}
           <button
             type="button"
-            onClick={() => setShowPhotoMgr(true)}
-            className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs text-gray-700 transition hover:bg-gray-50"
-          >
-            照片管理
-          </button>
-          <button
-            type="button"
             onClick={onEdit}
             className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs text-gray-700 transition hover:bg-gray-50"
           >
@@ -427,13 +419,6 @@ function ListingCard({
         </div>
       </div>
 
-      {showPhotoMgr && (
-        <PhotoManager
-          listingId={listing.id}
-          onClose={() => setShowPhotoMgr(false)}
-          onChanged={onChanged}
-        />
-      )}
     </div>
   );
 }
@@ -494,108 +479,6 @@ function MenuItem({
 // ---- Photo Manager ----
 
 type PhotoRecord = { id: string; public_url: string; position: number };
-
-function PhotoManager({
-  listingId,
-  onClose,
-  onChanged,
-}: {
-  listingId: string;
-  onClose: () => void;
-  onChanged: () => void;
-}) {
-  const qc = useQueryClient();
-  const fileRef = useRef<HTMLInputElement>(null);
-  const [uploading, setUploading] = useState(false);
-
-  const { data: listing } = useQuery({
-    queryKey: ["listing-detail", listingId],
-    queryFn: () =>
-      api.get(`/listings/${listingId}`).then((r) => r.data as { photo_list: PhotoRecord[] }),
-  });
-
-  async function upload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploading(true);
-    try {
-      const fd = new FormData();
-      fd.append("photo", file);
-      await api.post(`/listings/${listingId}/photos`, fd, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-      qc.invalidateQueries({ queryKey: ["listing-detail", listingId] });
-      onChanged();
-    } finally {
-      setUploading(false);
-      if (fileRef.current) fileRef.current.value = "";
-    }
-  }
-
-  const deletePhoto = useMutation({
-    mutationFn: (photoId: string) => api.delete(`/listings/${listingId}/photos/${photoId}`),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["listing-detail", listingId] });
-      onChanged();
-    },
-  });
-
-  const photos: PhotoRecord[] = listing?.photo_list ?? [];
-
-  return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
-    >
-      <div className="w-full max-w-md rounded-2xl bg-white p-6">
-        <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-base font-semibold text-gray-950">照片管理（最多 6 張）</h3>
-          <button
-            type="button"
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-700"
-            aria-label="關閉"
-          >
-            ✕
-          </button>
-        </div>
-        <div className="mb-4 grid grid-cols-3 gap-2">
-          {photos.map((p) => (
-            <div key={p.id} className="relative aspect-square overflow-hidden rounded-lg bg-gray-100">
-              <Image src={p.public_url} alt="" fill className="object-cover" sizes="120px" />
-              <button
-                type="button"
-                onClick={() => deletePhoto.mutate(p.id)}
-                className="absolute right-1 top-1 rounded-full bg-red-600 p-0.5 text-xs leading-none text-white"
-              >
-                ✕
-              </button>
-            </div>
-          ))}
-          {photos.length < 6 && (
-            <button
-              type="button"
-              onClick={() => fileRef.current?.click()}
-              disabled={uploading}
-              className="flex aspect-square items-center justify-center rounded-lg border-2 border-dashed border-gray-300 text-gray-400 transition hover:border-gray-400 hover:text-gray-500 disabled:opacity-40"
-            >
-              {uploading ? "上傳中…" : "+ 新增"}
-            </button>
-          )}
-        </div>
-        <input
-          ref={fileRef}
-          type="file"
-          accept="image/jpeg,image/png,image/webp"
-          className="hidden"
-          onChange={upload}
-        />
-        <p className="text-xs text-gray-400">接受 JPEG / PNG / WebP，每張最大 5MB。</p>
-      </div>
-    </div>
-  );
-}
 
 // ---- Browse Tab ----
 
@@ -1035,6 +918,121 @@ function MatchedTab() {
 
 // ---- Listing Form Modal ----
 
+function PhotoSection({
+  listingId,
+  onChanged,
+}: {
+  listingId: string;
+  onChanged: () => void;
+}) {
+  const qc = useQueryClient();
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [uploadProgress, setUploadProgress] = useState<{ done: number; total: number } | null>(
+    null
+  );
+  const [uploadError, setUploadError] = useState("");
+
+  const { data: listing } = useQuery({
+    queryKey: ["listing-detail", listingId],
+    queryFn: () =>
+      api.get(`/listings/${listingId}`).then((r) => r.data as { photo_list: PhotoRecord[] }),
+  });
+
+  async function upload(e: React.ChangeEvent<HTMLInputElement>) {
+    const remaining = 6 - photos.length;
+    const all = Array.from(e.target.files ?? []);
+    const files = all.slice(0, remaining);
+    if (files.length === 0) return;
+    setUploadProgress({ done: 0, total: files.length });
+    setUploadError(
+      all.length > remaining ? `已選 ${all.length} 張，僅上傳前 ${remaining} 張（上限 6 張）` : ""
+    );
+    let succeeded = 0;
+    try {
+      for (let i = 0; i < files.length; i++) {
+        const fd = new FormData();
+        fd.append("photo", files[i]);
+        try {
+          await api.post(`/listings/${listingId}/photos`, fd);
+          succeeded++;
+          setUploadProgress({ done: i + 1, total: files.length });
+        } catch (err: unknown) {
+          const msg =
+            err &&
+            typeof err === "object" &&
+            "response" in err
+              ? (err as { response?: { data?: { error?: string } } }).response?.data?.error
+              : undefined;
+          setUploadError(msg ?? "上傳失敗");
+          break;
+        }
+      }
+    } finally {
+      if (succeeded > 0) {
+        qc.invalidateQueries({ queryKey: ["listing-detail", listingId] });
+        onChanged();
+      }
+      setUploadProgress(null);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  }
+
+  const deletePhoto = useMutation({
+    mutationFn: (photoId: string) => api.delete(`/listings/${listingId}/photos/${photoId}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["listing-detail", listingId] });
+      onChanged();
+    },
+  });
+
+  const photos: PhotoRecord[] = listing?.photo_list ?? [];
+
+  return (
+    <div>
+      <p className="mb-2 text-sm font-medium text-gray-700">照片（最多 6 張）</p>
+      <div className="mb-3 grid grid-cols-3 gap-2">
+        {photos.map((p) => (
+          <div
+            key={p.id}
+            className="relative aspect-square overflow-hidden rounded-lg bg-gray-100"
+          >
+            <Image src={p.public_url} alt="" fill className="object-cover" sizes="120px" />
+            <button
+              type="button"
+              onClick={() => deletePhoto.mutate(p.id)}
+              className="absolute right-1 top-1 rounded-full bg-red-600 p-0.5 text-xs leading-none text-white"
+            >
+              ✕
+            </button>
+          </div>
+        ))}
+        {photos.length < 6 && (
+          <button
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            disabled={!!uploadProgress}
+            className="flex aspect-square items-center justify-center rounded-lg border-2 border-dashed border-gray-300 text-gray-400 transition hover:border-gray-400 hover:text-gray-500 disabled:opacity-40"
+          >
+            {uploadProgress
+              ? `${uploadProgress.done}/${uploadProgress.total}`
+              : "+ 新增"}
+          </button>
+        )}
+      </div>
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        multiple
+        className="hidden"
+        onChange={upload}
+      />
+      <p className="text-xs text-gray-400">接受 JPEG / PNG / WebP，每張最大 5MB。</p>
+      {uploadError && <p className="mt-1 text-xs text-red-600">{uploadError}</p>}
+    </div>
+  );
+}
+
 function ListingFormModal({
   editingId,
   onClose,
@@ -1051,7 +1049,8 @@ function ListingFormModal({
   });
 
   const [form, setForm] = useState({
-    location_id: existing?.location_id ?? "",
+    city: existing ? (LOCATION_CITY_DISTRICT[existing.location_id]?.city ?? "") : "",
+    district: existing ? (LOCATION_CITY_DISTRICT[existing.location_id]?.district ?? "") : "",
     rent: existing?.rent ?? 0,
     room_type: existing?.room_type ?? "",
     area_ping: existing?.area_ping ?? 0,
@@ -1072,6 +1071,10 @@ function ListingFormModal({
   });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [savedId, setSavedId] = useState<string | null>(null);
+  const [formSaved, setFormSaved] = useState(false);
+
+  const activeId = editingId ?? savedId;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -1081,12 +1084,8 @@ function ListingFormModal({
     }
     setLoading(true);
     setError("");
-    const loc = LOCATION_CITY_DISTRICT[form.location_id];
-    const { location_id: _loc, ...rest } = form;
     const payload = {
-      ...rest,
-      city: loc?.city ?? "",
-      district: loc?.district ?? "",
+      ...form,
       rent: Number(form.rent),
       area_ping: Number(form.area_ping),
       min_lease_months: Number(form.min_lease_months),
@@ -1097,10 +1096,12 @@ function ListingFormModal({
     try {
       if (editingId) {
         await api.put(`/listings/${editingId}`, payload);
+        setFormSaved(true);
+        setTimeout(() => setFormSaved(false), 2000);
       } else {
-        await api.post("/listings", payload);
+        const res = await api.post("/listings", payload);
+        setSavedId((res.data as { id: string }).id);
       }
-      onSaved();
     } catch (err: unknown) {
       if (err && typeof err === "object" && "response" in err) {
         const axiosErr = err as { response?: { data?: { error?: string } } };
@@ -1118,11 +1119,11 @@ function ListingFormModal({
       <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-t-2xl bg-white p-6 sm:rounded-2xl">
         <div className="mb-4 flex items-center justify-between">
           <h3 className="text-base font-semibold text-gray-950">
-            {editingId ? "編輯房源" : "新增房源"}
+            {editingId ? "編輯房源" : savedId ? "上傳照片" : "新增房源"}
           </h3>
           <button
             type="button"
-            onClick={onClose}
+            onClick={activeId ? onSaved : onClose}
             className="text-gray-400 hover:text-gray-700"
             aria-label="關閉"
           >
@@ -1130,25 +1131,62 @@ function ListingFormModal({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label htmlFor="location_id" className="mb-1 block text-sm font-medium text-gray-700">
-              地區
-            </label>
-            <select
-              id="location_id"
-              required
-              value={form.location_id}
-              onChange={(e) => setForm((f) => ({ ...f, location_id: e.target.value }))}
-              className="input"
+        {savedId ? (
+          <div className="space-y-4">
+            <p className="text-sm text-gray-500">房源已建立，可以上傳照片（選填）。</p>
+            <PhotoSection listingId={savedId} onChanged={onSaved} />
+            <button
+              type="button"
+              onClick={onSaved}
+              className="w-full rounded-lg bg-primary-600 py-3 text-sm font-medium text-white transition hover:bg-primary-500"
             >
-              <option value="">請選擇地區</option>
-              {LOCATIONS.map((loc) => (
-                <option key={loc.id} value={loc.id}>
-                  {loc.label}
-                </option>
-              ))}
-            </select>
+              完成
+            </button>
+          </div>
+        ) : (
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label htmlFor="city" className="mb-1 block text-sm font-medium text-gray-700">
+                縣市
+              </label>
+              <select
+                id="city"
+                required
+                value={form.city}
+                onChange={(e) => setForm((f) => ({ ...f, city: e.target.value, district: "" }))}
+                className="input"
+              >
+                <option value="">請選擇縣市</option>
+                {LOCATION_GROUPS.map((g) => (
+                  <option key={g.cityCode} value={g.cityLabel}>
+                    {g.cityLabel}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label htmlFor="district" className="mb-1 block text-sm font-medium text-gray-700">
+                地區
+              </label>
+              <select
+                id="district"
+                required
+                value={form.district}
+                onChange={(e) => setForm((f) => ({ ...f, district: e.target.value }))}
+                disabled={!form.city}
+                className="input disabled:opacity-50"
+              >
+                <option value="">請選擇地區</option>
+                {(LOCATION_GROUPS.find((g) => g.cityLabel === form.city)?.districts ?? []).map(
+                  (d) => (
+                    <option key={d.id} value={d.districtLabel}>
+                      {d.districtLabel}
+                    </option>
+                  )
+                )}
+              </select>
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -1321,16 +1359,39 @@ function ListingFormModal({
             </div>
           )}
 
+          {editingId && (
+            <>
+              <hr className="border-gray-100" />
+              <PhotoSection listingId={editingId} onChanged={() => {}} />
+            </>
+          )}
+
           {error && <p className="text-sm text-red-600">{error}</p>}
 
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || formSaved}
             className="w-full rounded-lg bg-primary-600 py-3 text-sm font-medium text-white transition hover:bg-primary-500 disabled:opacity-40"
           >
-            {loading ? "儲存中…" : "儲存房源"}
+            {loading
+              ? "儲存中…"
+              : editingId
+                ? formSaved
+                  ? "已儲存 ✓"
+                  : "儲存房源資訊"
+                : "建立房源"}
           </button>
+          {editingId && (
+            <button
+              type="button"
+              onClick={onSaved}
+              className="w-full rounded-lg border border-gray-200 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+            >
+              完成
+            </button>
+          )}
         </form>
+        )}
       </div>
     </div>
   );

@@ -18,6 +18,7 @@ type AppConfig struct {
 	GoogleTokenURL     string // overridable for test mock
 
 	StorageEndpoint  string
+	StoragePublicURL string
 	StorageBucket    string
 	StorageAccessKey string
 	StorageSecretKey string
@@ -41,6 +42,7 @@ func Load() *AppConfig {
 		GoogleTokenURL:     getEnv("GOOGLE_TOKEN_URL", "https://oauth2.googleapis.com/token"),
 
 		StorageEndpoint:  getEnv("STORAGE_ENDPOINT", "localhost:9000"),
+		StoragePublicURL: getEnv("STORAGE_PUBLIC_URL", ""),
 		StorageBucket:    getEnv("STORAGE_BUCKET", "zumeet"),
 		StorageAccessKey: getEnv("STORAGE_ACCESS_KEY", "minioadmin"),
 		StorageSecretKey: getEnv("STORAGE_SECRET_KEY", "minioadmin"),
