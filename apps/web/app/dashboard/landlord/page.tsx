@@ -530,21 +530,18 @@ function BrowseTab({
   return (
     <div>
       <div className="mb-4 flex items-center gap-2">
-        <label htmlFor="listing-select" className="text-sm font-medium text-gray-700">
-          使用房源
-        </label>
-        <select
-          id="listing-select"
-          value={currentId ?? ""}
-          onChange={(e) => onSelectListing(e.target.value)}
-          className="rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm text-gray-700"
-        >
-          {activeListings.map((l) => (
-            <option key={l.id} value={l.id}>
-              ${l.rent.toLocaleString()} {ROOM_TYPE_LABELS[l.room_type] ?? l.room_type}
-            </option>
-          ))}
-        </select>
+        <span className="text-sm font-medium text-gray-700">使用房源</span>
+        <div className="w-56">
+          <Dropdown
+            value={currentId ?? ""}
+            placeholder="請選擇房源"
+            options={activeListings.map((l) => ({
+              value: l.id,
+              label: `$${l.rent.toLocaleString()} ${ROOM_TYPE_LABELS[l.room_type] ?? l.room_type}`,
+            }))}
+            onChange={onSelectListing}
+          />
+        </div>
       </div>
 
       {isLoading && (
@@ -1054,7 +1051,7 @@ function ListingFormModal({
     rent: 0,
     room_type: "",
     area_ping: 0,
-    available_from: "",
+    available_from: new Date().toISOString().split("T")[0],
     min_lease_months: 6,
     allow_pets: false,
     allow_subsidy: false,
@@ -1265,6 +1262,7 @@ function ListingFormModal({
                 id="available_from"
                 required
                 type="date"
+                min={new Date().toISOString().split("T")[0]}
                 value={form.available_from}
                 onChange={(e) => setForm((f) => ({ ...f, available_from: e.target.value }))}
                 className="input"
@@ -1446,7 +1444,7 @@ function Dropdown({
           disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer"
         } ${value ? "text-gray-900" : "text-gray-400"}`}
       >
-        <span className="truncate">{value || placeholder}</span>
+        <span className="truncate">{value ? (options.find((o) => o.value === value)?.label ?? value) : placeholder}</span>
         <ChevronDown
           size={16}
           strokeWidth={1.5}
