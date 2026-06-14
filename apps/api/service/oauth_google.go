@@ -10,6 +10,9 @@ import (
 	"strings"
 )
 
+const googleAuthBaseURL = "https://accounts.google.com/o/oauth2/v2/auth"
+const googleScope = "openid email profile"
+
 type GoogleOAuthService struct {
 	clientID     string
 	clientSecret string
@@ -39,6 +42,17 @@ func NewGoogleOAuthService(clientID, clientSecret, redirectURL, tokenURL string)
 		userInfoURL:  userInfoURL,
 		httpClient:   http.DefaultClient,
 	}
+}
+
+func (g *GoogleOAuthService) GetAuthorizationURL(state string) string {
+	params := url.Values{}
+	params.Set("client_id", g.clientID)
+	params.Set("redirect_uri", g.redirectURL)
+	params.Set("response_type", "code")
+	params.Set("scope", googleScope)
+	params.Set("state", state)
+	params.Set("access_type", "online")
+	return googleAuthBaseURL + "?" + params.Encode()
 }
 
 func (g *GoogleOAuthService) ExchangeToken(ctx context.Context, code string) (*OAuthUser, error) {

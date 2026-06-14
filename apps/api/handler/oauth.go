@@ -16,10 +16,7 @@ import (
 	"github.com/oklog/ulid/v2"
 )
 
-const (
-	googleScope      = "openid email profile"
-	oauthStateMaxAge = 10 * time.Minute
-)
+const oauthStateMaxAge = 10 * time.Minute
 
 // oauthStateClaims is the payload carried in the signed state parameter.
 type oauthStateClaims struct {
@@ -69,26 +66,15 @@ func (h *Handler) verifyOAuthState(state string) (*oauthStateClaims, error) {
 	return &claims, nil
 }
 
-// GoogleOAuthRedirect redirects the browser to Google's authorization URL.
+// GoogleOAuthRedirect redirects the browser to the OAuth provider's authorization URL.
 func (h *Handler) GoogleOAuthRedirect(c *Context) {
-	// Generate random CSRF nonce
 	b := make([]byte, 16)
 	if _, err := rand.Read(b); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "INTERNAL_ERROR"})
 		return
 	}
 	nonce := base64.RawURLEncoding.EncodeToString(b)
-
-	params := url.Values{}
-	params.Set("client_id", h.cfg.GoogleClientID)
-	params.Set("redirect_uri", h.cfg.GoogleRedirectURL)
-	params.Set("response_type", "code")
-	params.Set("scope", googleScope)
-	params.Set("state", nonce)
-	params.Set("access_type", "online")
-
-	authURL := "https://accounts.google.com/o/oauth2/v2/auth?" + params.Encode()
-	c.Redirect(http.StatusFound, authURL)
+	c.Redirect(http.StatusFound, h.oauth.GetAuthorizationURL(nonce))
 }
 
 // GoogleOAuthCallback handles the Google OAuth callback.

@@ -22,6 +22,14 @@ import (
 func main() {
 	cfg := config.Load()
 
+	// Safety guards: fail fast rather than silently misconfigure production.
+	if cfg.AppEnv == "production" && cfg.EnableTestEndpoints {
+		log.Fatal("FATAL: ENABLE_TEST_ENDPOINTS must not be true in production")
+	}
+	if cfg.AppEnv == "production" && cfg.AuthProvider == "mock" {
+		log.Fatal("FATAL: AUTH_PROVIDER=mock is not permitted in production")
+	}
+
 	var logger *zap.Logger
 	var err error
 	if cfg.AppEnv == "production" {
@@ -49,12 +57,17 @@ func main() {
 	}
 	defer pool.Close()
 
-	oauthSvc := service.NewGoogleOAuthService(
-		cfg.GoogleClientID,
-		cfg.GoogleClientSecret,
-		cfg.GoogleRedirectURL,
-		cfg.GoogleTokenURL,
-	)
+	var oauthSvc service.OAuthService
+	if cfg.AuthProvider == "mock" {
+		oauthSvc = &handler.MockOAuthService{}
+	} else {
+		oauthSvc = service.NewGoogleOAuthService(
+			cfg.GoogleClientID,
+			cfg.GoogleClientSecret,
+			cfg.GoogleRedirectURL,
+			cfg.GoogleTokenURL,
+		)
+	}
 
 	storageSvc, err := service.NewMinioStorageService(
 		cfg.StorageEndpoint,

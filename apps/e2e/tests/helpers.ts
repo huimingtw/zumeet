@@ -1,7 +1,53 @@
-import { type Page, type APIRequestContext } from "@playwright/test";
+import type { APIRequestContext, Page } from "@playwright/test";
+import { API_URL, type SeedCookies, TEST_PHOTO_BUFFER } from "./scenario";
 
-const API_URL = process.env.API_URL || "http://localhost:8080";
+export { API_URL, TEST_PHOTO_BUFFER };
 
+/**
+ * Parses the raw `set-cookie` response header into Playwright cookie objects.
+ * Multiple cookies are separated by commas that don't appear inside a cookie value.
+ */
+export function parseCookies(
+  rawHeader: string,
+  hostname: string
+): SeedCookies[] {
+  if (!rawHeader) return [];
+  return rawHeader
+    .split(/,(?=[^ ].*?=)/)
+    .filter(Boolean)
+    .map((raw) => {
+      const parts = raw.split(";").map((p) => p.trim());
+      const [name, value] = parts[0].split("=");
+      return {
+        name: name.trim(),
+        value: value ?? "",
+        domain: hostname,
+        path: "/",
+        httpOnly: true,
+        secure: false,
+        sameSite: "Lax" as const,
+      };
+    });
+}
+
+/**
+ * Injects JWT cookies from a seed API response into the Playwright browser context.
+ * Call this after seedSession or Scenario builders to authenticate the browser.
+ */
+export async function loginAs(
+  page: Page,
+  cookies: SeedCookies[]
+): Promise<void> {
+  await page.context().clearCookies();
+  if (cookies.length > 0) {
+    await page.context().addCookies(cookies);
+  }
+}
+
+/**
+ * Seeds a user session via the test endpoint and injects cookies into the browser.
+ * Prefer using Scenario builders for full scenario setup; use this for simple auth-only cases.
+ */
 export async function seedSession(
   request: APIRequestContext,
   page: Page,
@@ -13,28 +59,9 @@ export async function seedSession(
   });
   if (!res.ok()) throw new Error(`seed session failed: ${await res.text()}`);
 
-  // Copy cookies from the API response into the browser context
-  const cookies = res.headers()["set-cookie"];
-  if (!cookies) return;
-
   const url = new URL(process.env.BASE_URL || "http://localhost:3000");
-  const parsedCookies = cookies
-    .split(/,(?=[^ ].*?=)/)
-    .map((raw) => {
-      const parts = raw.split(";").map((p) => p.trim());
-      const [name, value] = parts[0].split("=");
-      return {
-        name: name.trim(),
-        value: value ?? "",
-        domain: url.hostname,
-        path: "/",
-        httpOnly: true,
-        secure: false,
-        sameSite: "Lax" as const,
-      };
-    });
-
-  await page.context().addCookies(parsedCookies);
+  const cookies = parseCookies(res.headers()["set-cookie"] ?? "", url.hostname);
+  await page.context().addCookies(cookies);
 }
 
 export async function seedTenantProfile(
@@ -70,7 +97,6 @@ export async function seedListing(
   request: APIRequestContext,
   data?: Partial<Record<string, unknown>>
 ): Promise<string> {
-  // Create listing
   const res = await request.post(`${API_URL}/api/v1/listings`, {
     data: {
       location_id: "taipei-daan",

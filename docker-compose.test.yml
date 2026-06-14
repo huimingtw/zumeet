@@ -11,8 +11,10 @@ services:
   api:
     environment:
       APP_ENV: test
+      AUTH_PROVIDER: mock
+      ENABLE_TEST_ENDPOINTS: "true"
       DATABASE_URL: postgres://zumeet:secret@db:5432/zumeet_test
-      # Internal mock endpoint; router only mounts this route when APP_ENV=test
+      # Keep GOOGLE_TOKEN_URL for any tests that exercise the full OAuth redirect flow
       GOOGLE_TOKEN_URL: http://api:8080/test/oauth/google
 
   e2e:

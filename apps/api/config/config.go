@@ -12,6 +12,14 @@ type AppConfig struct {
 	JWTSecret      string
 	AdminJWTSecret string
 
+	// AuthProvider selects which OAuth implementation to use: "google" or "mock".
+	// "mock" is only permitted when AppEnv is "development" or "test".
+	AuthProvider string
+
+	// EnableTestEndpoints mounts /test/* routes for E2E and integration tests.
+	// Must never be true in production — main() enforces this at startup.
+	EnableTestEndpoints bool
+
 	GoogleClientID     string
 	GoogleClientSecret string
 	GoogleRedirectURL  string
@@ -35,6 +43,9 @@ func Load() *AppConfig {
 		DatabaseURL:    getEnv("DATABASE_URL", "postgres://zumeet:secret@localhost:5432/zumeet"),
 		JWTSecret:      getEnv("JWT_SECRET", ""),
 		AdminJWTSecret: getEnv("ADMIN_JWT_SECRET", ""),
+
+		AuthProvider:        getEnv("AUTH_PROVIDER", "google"),
+		EnableTestEndpoints: getEnvBool("ENABLE_TEST_ENDPOINTS", false),
 
 		GoogleClientID:     getEnv("GOOGLE_CLIENT_ID", ""),
 		GoogleClientSecret: getEnv("GOOGLE_CLIENT_SECRET", ""),

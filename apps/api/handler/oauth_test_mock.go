@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/url"
 	"sync"
 
 	"github.com/gin-gonic/gin"
@@ -34,6 +35,10 @@ func RegisterTestOAuthUser(code, sub, email, name string) {
 // MockOAuthService implements service.OAuthService for tests.
 // ExchangeToken looks up the code in testOAuthUsers — no HTTP call to Google.
 type MockOAuthService struct{}
+
+func (m *MockOAuthService) GetAuthorizationURL(state string) string {
+	return "/test/oauth/authorize?state=" + url.QueryEscape(state)
+}
 
 func (m *MockOAuthService) ExchangeToken(_ context.Context, code string) (*service.OAuthUser, error) {
 	testOAuthMu.RLock()
