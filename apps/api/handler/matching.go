@@ -16,6 +16,7 @@ import (
 type MatchedListingCard struct {
 	ID                         string    `json:"id" db:"id"`
 	LocationID                 string    `json:"location_id" db:"location_id"`
+	Name                       string    `json:"name" db:"name"`
 	Rent                       int       `json:"rent" db:"rent"`
 	RoomType                   string    `json:"room_type" db:"room_type"`
 	AreaPing                   float64   `json:"area_ping" db:"area_ping"`
@@ -46,6 +47,8 @@ type MatchedTenantProfileCard struct {
 	NeedsParking       bool      `json:"needs_parking"`
 	Smoking            bool      `json:"smoking"`
 	Occupation         string    `json:"occupation"`
+	Age                *int      `json:"age,omitempty"`
+	Description        string    `json:"description"`
 	InterestSent       bool      `json:"interest_sent"` // landlord already expressed interest
 }
 
@@ -90,7 +93,7 @@ func (h *Handler) BrowseListingsForProfile(c *Context) {
 
 	query := `
 		SELECT
-			l.id, l.location_id, l.rent, l.room_type::text AS room_type, l.area_ping,
+			l.id, l.location_id, COALESCE(l.name, '') AS name, l.rent, l.room_type::text AS room_type, l.area_ping,
 			l.available_from,
 			l.allow_pets, l.allow_subsidy, l.allow_tax_receipt,
 			l.allow_household_registration, l.allow_cooking, l.has_parking, l.allow_smoking,
@@ -216,6 +219,7 @@ func (h *Handler) BrowseTenantProfilesForListing(c *Context) {
 			tp.available_from, tp.min_lease_months,
 			tp.has_pets, tp.needs_subsidy, tp.needs_tax_receipt,
 			tp.needs_parking, tp.smoking, COALESCE(tp.occupation, '') AS occupation,
+			tp.age, COALESCE(tp.description, '') AS description,
 			EXISTS(
 				SELECT 1 FROM interests i
 				WHERE i.tenant_profile_id = tp.id
@@ -284,6 +288,8 @@ func (h *Handler) BrowseTenantProfilesForListing(c *Context) {
 		NeedsParking       bool      `db:"needs_parking"`
 		Smoking            bool      `db:"smoking"`
 		Occupation         string    `db:"occupation"`
+		Age                *int      `db:"age"`
+		Description        string    `db:"description"`
 		InterestSent       bool      `db:"interest_sent"`
 	}
 	queryRows, err := h.db.Query(c.Request.Context(), query, listingID, cursor, limit+1)
@@ -312,6 +318,8 @@ func (h *Handler) BrowseTenantProfilesForListing(c *Context) {
 			NeedsParking:       row.NeedsParking,
 			Smoking:            row.Smoking,
 			Occupation:         row.Occupation,
+			Age:                row.Age,
+			Description:        row.Description,
 			InterestSent:       row.InterestSent,
 		})
 	}

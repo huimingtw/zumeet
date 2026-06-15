@@ -26,6 +26,7 @@ const (
 type ListingRequest struct {
 	City                       string    `json:"city" binding:"required"`
 	District                   string    `json:"district" binding:"required"`
+	Name                       string    `json:"name"`
 	Rent                       int       `json:"rent" binding:"required,min=1"`
 	RoomType                   string    `json:"room_type" binding:"required"`
 	AreaPing                   float64   `json:"area_ping" binding:"required,min=1"`
@@ -50,6 +51,7 @@ type ListingRequest struct {
 type UpdateListingRequest struct {
 	City                       string    `json:"city" binding:"required"`
 	District                   string    `json:"district" binding:"required"`
+	Name                       string    `json:"name"`
 	Rent                       int       `json:"rent" binding:"required,min=1"`
 	RoomType                   string    `json:"room_type" binding:"required"`
 	AreaPing                   float64   `json:"area_ping" binding:"required,min=1"`
@@ -77,6 +79,7 @@ type ListingResponse struct {
 	ID                         string        `json:"id"`
 	LandlordID                 string        `json:"landlord_id"`
 	LocationID                 string        `json:"location_id"`
+	Name                       string        `json:"name"`
 	Rent                       int           `json:"rent"`
 	RoomType                   string        `json:"room_type"`
 	AreaPing                   float64       `json:"area_ping"`
@@ -143,19 +146,19 @@ func (h *Handler) CreateListing(c *Context) {
 
 	_, err = h.db.Exec(c.Request.Context(), `
 		INSERT INTO listings (
-			id, landlord_id, location_id, rent, room_type, area_ping,
+			id, landlord_id, location_id, name, rent, room_type, area_ping,
 			available_from, min_lease_months,
 			allow_pets, allow_subsidy, allow_tax_receipt,
 			allow_household_registration, allow_cooking, has_parking, allow_smoking,
 			description, contact_info, compliance_confirmed_at, status, created_at, updated_at
 		) VALUES (
-			$1,$2,$3,$4,$5::room_type,$6,
-			$7,$8,
-			$9,$10,$11,
-			$12,$13,$14,$15,
-			$16,$17,$18,'draft',$19,$19
+			$1,$2,$3,$4,$5,$6::room_type,$7,
+			$8,$9,
+			$10,$11,$12,
+			$13,$14,$15,$16,
+			$17,$18,$19,'draft',$20,$20
 		)`,
-		id, userID, locationID, req.Rent, req.RoomType, req.AreaPing,
+		id, userID, locationID, req.Name, req.Rent, req.RoomType, req.AreaPing,
 		req.AvailableFrom, req.MinLeaseMonths,
 		req.AllowPets, req.AllowSubsidy, req.AllowTaxReceipt,
 		req.AllowHouseholdRegistration, req.AllowCooking, req.HasParking, req.AllowSmoking,
@@ -254,7 +257,7 @@ func (h *Handler) UpdateListing(c *Context) {
 	var contactInfoExpr string
 	var args []any
 	args = append(args,
-		locationID, req.Rent, req.RoomType, req.AreaPing,
+		locationID, req.Name, req.Rent, req.RoomType, req.AreaPing,
 		req.AvailableFrom, req.MinLeaseMonths,
 		req.AllowPets, req.AllowSubsidy, req.AllowTaxReceipt,
 		req.AllowHouseholdRegistration, req.AllowCooking, req.HasParking, req.AllowSmoking,
@@ -269,11 +272,11 @@ func (h *Handler) UpdateListing(c *Context) {
 
 	_, err = h.db.Exec(c.Request.Context(), fmt.Sprintf(`
 		UPDATE listings SET
-			location_id=$1, rent=$2, room_type=$3::room_type, area_ping=$4,
-			available_from=$5, min_lease_months=$6,
-			allow_pets=$7, allow_subsidy=$8, allow_tax_receipt=$9,
-			allow_household_registration=$10, allow_cooking=$11, has_parking=$12, allow_smoking=$13,
-			description=$14, %s updated_at=NOW()
+			location_id=$1, name=$2, rent=$3, room_type=$4::room_type, area_ping=$5,
+			available_from=$6, min_lease_months=$7,
+			allow_pets=$8, allow_subsidy=$9, allow_tax_receipt=$10,
+			allow_household_registration=$11, allow_cooking=$12, has_parking=$13, allow_smoking=$14,
+			description=$15, %s updated_at=NOW()
 		WHERE id=$%d AND deleted_at IS NULL`, contactInfoExpr, idxLast),
 		args...,
 	)
@@ -675,7 +678,7 @@ func (h *Handler) listingOwner(c *Context, listingID string) (string, error) {
 func (h *Handler) fetchListingResponse(c *Context, id string) (*ListingResponse, error) {
 	var r ListingResponse
 	err := h.db.QueryRow(c.Request.Context(), `
-		SELECT id, landlord_id, location_id, rent, room_type::text, area_ping,
+		SELECT id, landlord_id, location_id, COALESCE(name, ''), rent, room_type::text, area_ping,
 		       available_from, min_lease_months,
 		       allow_pets, allow_subsidy, allow_tax_receipt,
 		       allow_household_registration, allow_cooking, has_parking, allow_smoking,
@@ -684,7 +687,7 @@ func (h *Handler) fetchListingResponse(c *Context, id string) (*ListingResponse,
 		WHERE id=$1 AND deleted_at IS NULL`,
 		id,
 	).Scan(
-		&r.ID, &r.LandlordID, &r.LocationID, &r.Rent, &r.RoomType, &r.AreaPing,
+		&r.ID, &r.LandlordID, &r.LocationID, &r.Name, &r.Rent, &r.RoomType, &r.AreaPing,
 		&r.AvailableFrom, &r.MinLeaseMonths,
 		&r.AllowPets, &r.AllowSubsidy, &r.AllowTaxReceipt,
 		&r.AllowHouseholdRegistration, &r.AllowCooking, &r.HasParking, &r.AllowSmoking,

@@ -466,8 +466,22 @@ function BrowseTab({
           <ListingCard
             key={listing.id}
             listing={listing}
-            onInterest={() => expressInterest.mutate(listing.id)}
             onClick={() => setDetailListing(listing)}
+            action={
+              listing.interest_sent ? (
+                <span className="rounded-full bg-[#EDE9FE] px-2.5 py-0.5 text-xs font-medium text-[#5B21B6]">
+                  已送出
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => expressInterest.mutate(listing.id)}
+                  className="rounded-lg bg-primary-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-primary-500"
+                >
+                  有興趣
+                </button>
+              )
+            }
           />
         ))}
       </div>
@@ -476,10 +490,19 @@ function BrowseTab({
         <ListingDetailDialog
           listing={detailListing}
           onClose={() => setDetailListing(null)}
-          onInterest={() => {
-            expressInterest.mutate(detailListing.id);
-            setDetailListing(null);
-          }}
+          action={
+            detailListing.interest_sent ? (
+              <p className="text-center text-sm text-gray-400">已送出興趣，等待房東回應</p>
+            ) : (
+              <button
+                type="button"
+                onClick={() => { expressInterest.mutate(detailListing.id); setDetailListing(null); }}
+                className="w-full rounded-lg bg-primary-600 py-3 text-sm font-medium text-white transition hover:bg-primary-500"
+              >
+                有興趣
+              </button>
+            )
+          }
         />
       )}
     </div>
@@ -488,11 +511,11 @@ function BrowseTab({
 
 function ListingCard({
   listing,
-  onInterest,
+  action,
   onClick,
 }: {
   listing: MatchedListingCard;
-  onInterest: () => void;
+  action: React.ReactNode;
   onClick: () => void;
 }) {
   const [photoIdx, setPhotoIdx] = useState(0);
@@ -581,21 +604,7 @@ function ListingCard({
             </div>
           )}
         </button>
-        <div className="mt-3 flex justify-end">
-          {listing.interest_sent ? (
-            <span className="rounded-full bg-[#EDE9FE] px-2.5 py-0.5 text-xs font-medium text-[#5B21B6]">
-              已送出
-            </span>
-          ) : (
-            <button
-              type="button"
-              onClick={onInterest}
-              className="rounded-lg bg-primary-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-primary-500"
-            >
-              有興趣
-            </button>
-          )}
-        </div>
+        <div className="mt-3 flex justify-end">{action}</div>
       </div>
     </div>
   );
@@ -604,11 +613,13 @@ function ListingCard({
 function ListingDetailDialog({
   listing,
   onClose,
-  onInterest,
+  action,
+  contactInfo,
 }: {
   listing: MatchedListingCard;
   onClose: () => void;
-  onInterest: () => void;
+  action?: React.ReactNode;
+  contactInfo?: string;
 }) {
   const [photoIdx, setPhotoIdx] = useState(0);
   const tags = [
@@ -625,7 +636,7 @@ function ListingDetailDialog({
     <div
       role="dialog"
       aria-modal="true"
-      className="fixed inset-0 z-50 flex items-end bg-black/50 sm:items-center"
+      className="fixed inset-0 z-50 flex items-end bg-black/50 sm:items-center sm:p-4"
     >
       <button
         type="button"
@@ -633,97 +644,107 @@ function ListingDetailDialog({
         aria-label="關閉"
         onClick={onClose}
       />
-      <div className="relative z-10 max-h-[85vh] w-full overflow-y-auto rounded-t-2xl bg-white sm:mx-auto sm:max-w-lg sm:rounded-2xl">
-        {/* Photo header */}
-        <div className="relative bg-black">
+
+      {/* Dialog shell: stacked on mobile, side-by-side on desktop */}
+      <div className="relative z-10 flex w-full flex-col overflow-hidden rounded-t-2xl bg-white sm:mx-auto sm:max-w-4xl sm:flex-row sm:rounded-2xl" style={{ maxHeight: "min(90vh, 640px)" }}>
+
+        {/* ── Left: photo panel ── */}
+        <div className="relative flex-shrink-0 bg-black sm:w-[58%]">
           {listing.photos.length > 0 ? (
-            <div className="relative aspect-video max-h-[45vh] w-full">
+            <div className="relative h-64 w-full sm:h-full">
               <Image
                 src={listing.photos[photoIdx]}
                 alt=""
                 fill
-                className="object-contain"
-                sizes="100vw"
+                className="object-cover"
+                sizes="(min-width: 640px) 58vw, 100vw"
               />
             </div>
           ) : (
-            <div className="h-16" />
+            <div className="flex h-48 items-center justify-center sm:h-full">
+              <span className="text-sm text-gray-500">暫無照片</span>
+            </div>
           )}
+
+          {/* Close button */}
           <button
             type="button"
             onClick={onClose}
-            className="absolute right-3 top-3 rounded-full bg-black/40 p-1 text-white"
+            className="absolute right-3 top-3 rounded-full bg-black/50 p-1.5 text-white backdrop-blur-sm"
             aria-label="關閉"
           >
             ✕
           </button>
+
+          {/* Photo nav */}
           {listing.photos.length > 1 && (
             <>
               <button
                 type="button"
                 onClick={() => setPhotoIdx((i) => (i - 1 + listing.photos.length) % listing.photos.length)}
-                className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-black/40 px-2 py-1 text-white"
+                className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-black/50 px-2.5 py-1.5 text-lg leading-none text-white backdrop-blur-sm"
               >
                 ‹
               </button>
               <button
                 type="button"
                 onClick={() => setPhotoIdx((i) => (i + 1) % listing.photos.length)}
-                className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-black/40 px-2 py-1 text-white"
+                className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-black/50 px-2.5 py-1.5 text-lg leading-none text-white backdrop-blur-sm"
               >
                 ›
               </button>
-              <span className="absolute bottom-2 right-3 rounded-full bg-black/40 px-2 py-0.5 text-xs text-white">
+              <span className="absolute bottom-3 right-3 rounded-full bg-black/50 px-2.5 py-1 text-xs text-white backdrop-blur-sm">
                 {photoIdx + 1} / {listing.photos.length}
               </span>
             </>
           )}
         </div>
 
-        {/* Content */}
-        <div className="p-6">
-          <div className="flex flex-wrap items-baseline gap-2">
-            <span className="text-xl font-semibold text-gray-950">
-              ${listing.rent.toLocaleString()}
-            </span>
-            <span className="text-sm text-gray-500">
-              {ROOM_TYPE_LABELS[listing.room_type] ?? listing.room_type}
-            </span>
-            <span className="text-sm text-gray-500">{listing.area_ping} 坪</span>
-          </div>
-          <div className="mt-2 flex items-center gap-1 text-sm text-gray-500">
-            <MapPin size={14} strokeWidth={1.5} />
-            {LOCATION_LABELS[listing.location_id] ?? listing.location_id}
-          </div>
-          <p className="mt-1 text-sm text-gray-400">
-            可入住：{new Date(listing.available_from).toLocaleDateString("zh-TW")}
-          </p>
-          {tags.length > 0 && (
-            <div className="mt-4 flex flex-wrap gap-2">
-              {tags.map((tag) => (
-                <span
-                  key={tag}
-                  className="rounded-full bg-primary-100 px-3 py-1 text-xs font-medium text-primary-600"
-                >
-                  {tag}
-                </span>
-              ))}
+        {/* ── Right: info panel ── */}
+        <div className="flex flex-col overflow-y-auto sm:w-[42%]">
+          <div className="flex-1 p-6">
+            {listing.name && (
+              <p className="mb-1 text-base font-semibold text-gray-950">{listing.name}</p>
+            )}
+            <div className="flex flex-wrap items-baseline gap-2">
+              <span className="text-2xl font-bold text-gray-950">
+                ${listing.rent.toLocaleString()}
+              </span>
+              <span className="text-sm text-gray-500">
+                {ROOM_TYPE_LABELS[listing.room_type] ?? listing.room_type}
+              </span>
+              <span className="text-sm text-gray-500">{listing.area_ping} 坪</span>
             </div>
-          )}
-          <p className="mt-4 text-xs text-gray-400">媒合成功後才會顯示房東聯絡方式</p>
-          <div className="mt-4">
-            {listing.interest_sent ? (
-              <p className="text-center text-sm text-gray-400">已送出興趣，等待房東回應</p>
+            <div className="mt-2 flex items-center gap-1 text-sm text-gray-500">
+              <MapPin size={14} strokeWidth={1.5} />
+              {LOCATION_LABELS[listing.location_id] ?? listing.location_id}
+            </div>
+            <p className="mt-1 text-sm text-gray-400">
+              可入住：{new Date(listing.available_from).toLocaleDateString("zh-TW")}
+            </p>
+            {tags.length > 0 && (
+              <div className="mt-4 flex flex-wrap gap-2">
+                {tags.map((tag) => (
+                  <span
+                    key={tag}
+                    className="rounded-full bg-primary-100 px-3 py-1 text-xs font-medium text-primary-600"
+                  >
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            )}
+            {contactInfo ? (
+              <div className="mt-4 rounded-lg border border-gray-200 bg-gray-50 p-3">
+                <p className="mb-1 text-xs text-gray-400">以下為對方自填資料，平台不保證真實性，請自行確認。</p>
+                <p className="text-sm font-medium text-gray-950">{contactInfo}</p>
+              </div>
             ) : (
-              <button
-                type="button"
-                onClick={onInterest}
-                className="w-full rounded-lg bg-primary-600 py-3 text-sm font-medium text-white transition hover:bg-primary-500"
-              >
-                有興趣
-              </button>
+              <p className="mt-6 text-xs text-gray-400">媒合成功後才會顯示房東聯絡方式</p>
             )}
           </div>
+
+          {action && <div className="border-t border-gray-100 p-4">{action}</div>}
         </div>
       </div>
     </div>
@@ -768,7 +789,84 @@ function MatchesView({
   );
 }
 
-// ---- Incoming (accordion per profile) ----
+// ---- Shared listing types for match pages ----
+
+type ListingFields = {
+  photos: string[];
+  available_from: string;
+  allow_pets: boolean;
+  allow_subsidy: boolean;
+  allow_tax_receipt: boolean;
+  allow_household_registration: boolean;
+  allow_cooking: boolean;
+  has_parking: boolean;
+  allow_smoking: boolean;
+};
+
+type IncomingListingItem = ListingFields & {
+  listing_id: string;
+  listing_name?: string;
+  rent: number;
+  room_type: string;
+  area_ping: number;
+  location_id?: string;
+  interest_sent?: boolean;
+};
+
+type OutgoingItem = ListingFields & {
+  listing_id: string;
+  listing_name?: string;
+  rent: number;
+  room_type: string;
+  area_ping: number;
+  location_id?: string;
+  tenant_profile_name: string;
+};
+
+type MatchItem = ListingFields & {
+  match_id: string;
+  listing_id: string;
+  listing_name?: string;
+  contact_info: string;
+  matched_at: string;
+  rent?: number;
+  room_type?: string;
+  area_ping?: number;
+  location_id?: string;
+  profile_name?: string;
+};
+
+function toListingCard(item: {
+  listing_id: string;
+  listing_name?: string;
+  rent: number;
+  room_type: string;
+  area_ping: number;
+  location_id?: string;
+  interest_sent?: boolean;
+} & ListingFields): MatchedListingCard {
+  return {
+    id: item.listing_id,
+    name: item.listing_name ?? "",
+    location_id: item.location_id ?? "",
+    rent: item.rent,
+    room_type: item.room_type,
+    area_ping: item.area_ping,
+    available_from: item.available_from,
+    allow_pets: item.allow_pets,
+    allow_subsidy: item.allow_subsidy,
+    allow_tax_receipt: item.allow_tax_receipt,
+    allow_household_registration: item.allow_household_registration,
+    allow_cooking: item.allow_cooking,
+    has_parking: item.has_parking,
+    allow_smoking: item.allow_smoking,
+    photos: item.photos ?? [],
+    interest_sent: item.interest_sent ?? false,
+  };
+}
+
+
+// ---- Incoming (accordion per profile, all expanded by default) ----
 
 function IncomingTab() {
   const { data: profiles = [], isLoading } = useQuery<TenantProfile[]>({
@@ -776,7 +874,11 @@ function IncomingTab() {
     queryFn: () => api.get("/tenant-profiles").then((r) => r.data),
   });
   const qc = useQueryClient();
-  const [expanded, setExpanded] = useState<string | null>(null);
+  const [expandedSet, setExpandedSet] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (profiles.length > 0) setExpandedSet(new Set(profiles.map((p) => p.id)));
+  }, [profiles]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (isLoading) return <Loading />;
 
@@ -790,14 +892,22 @@ function IncomingTab() {
     );
   }
 
+  function toggle(id: string) {
+    setExpandedSet((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
   return (
     <div className="space-y-3">
       {profiles.map((profile) => (
         <ProfileIncoming
           key={profile.id}
           profile={profile}
-          expanded={expanded === profile.id}
-          onToggle={() => setExpanded(expanded === profile.id ? null : profile.id)}
+          expanded={expandedSet.has(profile.id)}
+          onToggle={() => toggle(profile.id)}
           onMatched={() => qc.invalidateQueries({ queryKey: ["matched"] })}
         />
       ))}
@@ -817,14 +927,13 @@ function ProfileIncoming({
   onMatched: () => void;
 }) {
   const qc = useQueryClient();
-  const { data, isLoading } = useQuery<{ items: MatchedListingCard[] }>({
+  const { data, isLoading } = useQuery<{ items: IncomingListingItem[] }>({
     queryKey: ["incoming", profile.id],
     queryFn: () =>
-      api
-        .get(`/tenant-profiles/${profile.id}/interests/incoming?limit=50`)
-        .then((r) => r.data),
+      api.get(`/tenant-profiles/${profile.id}/interests/incoming?limit=50`).then((r) => r.data),
     enabled: expanded,
   });
+  const [detail, setDetail] = useState<MatchedListingCard | null>(null);
 
   const expressInterest = useMutation({
     mutationFn: (listingId: string) =>
@@ -835,90 +944,98 @@ function ProfileIncoming({
     },
   });
 
-  const pendingCount = (data?.items ?? []).filter((i) => !i.interest_sent).length;
+  const items = data?.items ?? [];
+  const pendingCount = items.filter((i) => !i.interest_sent).length;
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
-      <button
-        type="button"
-        onClick={onToggle}
-        className="flex w-full items-center justify-between px-4 py-3 text-left"
-      >
-        <span className="text-sm font-medium text-gray-700">{profile.name}</span>
-        <div className="flex items-center gap-2">
-          {expanded && pendingCount > 0 && (
-            <span className="rounded-full bg-primary-600 px-2 py-0.5 text-xs font-medium text-white">
-              {pendingCount}
-            </span>
-          )}
-          <ChevronDown
-            size={16}
-            strokeWidth={1.5}
-            className={`text-gray-400 transition-transform ${expanded ? "rotate-180" : ""}`}
-          />
-        </div>
-      </button>
-      {expanded && (
-        <div className="border-t border-gray-100 px-4 py-3">
-          {isLoading && <Loading />}
-          {!isLoading && (data?.items ?? []).length === 0 && (
-            <p className="py-4 text-center text-sm text-gray-400">目前無 incoming 興趣</p>
-          )}
-          <div className="space-y-2">
-            {(data?.items ?? []).map((listing) => (
-              <div
-                key={listing.id}
-                className="flex items-center justify-between rounded-lg border border-gray-100 px-3 py-2.5"
-              >
-                <div className="text-sm">
-                  <span className="font-medium text-gray-900">
-                    ${listing.rent.toLocaleString()}
-                  </span>
-                  <span className="ml-2 text-gray-500">
-                    {ROOM_TYPE_LABELS[listing.room_type] ?? listing.room_type}{" "}
-                    {listing.area_ping}坪
-                  </span>
-                  <span className="ml-2 text-gray-400">
-                    {LOCATION_LABELS[listing.location_id] ?? listing.location_id}
-                  </span>
-                </div>
-                {listing.interest_sent ? (
-                  <span className="rounded-full bg-[#EDE9FE] px-2.5 py-0.5 text-xs font-medium text-[#5B21B6]">
-                    已送出
-                  </span>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => expressInterest.mutate(listing.id)}
-                    className="rounded-lg bg-primary-600 px-3 py-1 text-xs font-medium text-white transition hover:bg-primary-500"
-                  >
-                    回應興趣
-                  </button>
-                )}
-              </div>
-            ))}
+    <>
+      <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
+        <button
+          type="button"
+          onClick={onToggle}
+          className="flex w-full items-center justify-between px-4 py-3 text-left"
+        >
+          <span className="text-sm font-medium text-gray-700">{profile.name}</span>
+          <div className="flex items-center gap-2">
+            {pendingCount > 0 && (
+              <span className="rounded-full bg-primary-600 px-2 py-0.5 text-xs font-medium text-white">
+                {pendingCount}
+              </span>
+            )}
+            <ChevronDown
+              size={16}
+              strokeWidth={1.5}
+              className={`text-gray-400 transition-transform ${expanded ? "rotate-180" : ""}`}
+            />
           </div>
-        </div>
+        </button>
+        {expanded && (
+          <div className="border-t border-gray-100 px-3 py-3">
+            {isLoading && <Loading />}
+            {!isLoading && items.length === 0 && (
+              <p className="py-4 text-center text-sm text-gray-400">目前無房東表示興趣</p>
+            )}
+            <div className="space-y-3">
+              {items.map((item) => {
+                const card = toListingCard(item);
+                return (
+                  <ListingCard
+                    key={item.listing_id}
+                    listing={card}
+                    onClick={() => setDetail(card)}
+                    action={
+                      item.interest_sent ? (
+                        <span className="rounded-full bg-[#EDE9FE] px-2.5 py-0.5 text-xs font-medium text-[#5B21B6]">
+                          已送出
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => expressInterest.mutate(item.listing_id)}
+                          className="rounded-lg bg-primary-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-primary-500"
+                        >
+                          回應興趣
+                        </button>
+                      )
+                    }
+                  />
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+      {detail && (
+        <ListingDetailDialog
+          listing={detail}
+          onClose={() => setDetail(null)}
+          action={
+            detail.interest_sent ? (
+              <p className="text-center text-sm text-gray-400">已送出興趣，等待房東回應</p>
+            ) : (
+              <button
+                type="button"
+                onClick={() => { expressInterest.mutate(detail.id); setDetail(null); }}
+                className="w-full rounded-lg bg-primary-600 py-3 text-sm font-medium text-white transition hover:bg-primary-500"
+              >
+                回應興趣
+              </button>
+            )
+          }
+        />
       )}
-    </div>
+    </>
   );
 }
 
 // ---- Outgoing ----
-
-type OutgoingItem = {
-  listing_id: string;
-  rent: number;
-  room_type: string;
-  area_ping: number;
-  tenant_profile_name: string;
-};
 
 function OutgoingTab() {
   const { data, isLoading } = useQuery<{ items: OutgoingItem[] }>({
     queryKey: ["outgoing"],
     queryFn: () => api.get("/matches/outgoing?limit=50").then((r) => r.data),
   });
+  const [detail, setDetail] = useState<MatchedListingCard | null>(null);
 
   if (isLoading) return <Loading />;
 
@@ -933,48 +1050,43 @@ function OutgoingTab() {
   }
 
   return (
-    <div className="space-y-2">
-      {(data?.items ?? []).map((i) => (
-        <div
-          key={i.listing_id}
-          className="flex items-center justify-between rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm"
-        >
-          <div className="text-sm">
-            <span className="font-medium text-gray-900">${i.rent.toLocaleString()}</span>
-            <span className="ml-2 text-gray-500">
-              {ROOM_TYPE_LABELS[i.room_type] ?? i.room_type} {i.area_ping}坪
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-400">需求卡：{i.tenant_profile_name}</span>
-            <span className="rounded-full bg-[#EDE9FE] px-2.5 py-0.5 text-xs font-medium text-[#5B21B6]">
-              已送出
-            </span>
-          </div>
-        </div>
-      ))}
-    </div>
+    <>
+      <div className="space-y-3">
+        {(data?.items ?? []).map((i) => {
+          const card = toListingCard(i);
+          return (
+            <ListingCard
+              key={i.listing_id}
+              listing={card}
+              onClick={() => setDetail(card)}
+              action={
+                <span className="rounded-full bg-[#EDE9FE] px-2.5 py-0.5 text-xs font-medium text-[#5B21B6]">
+                  等待中
+                </span>
+              }
+            />
+          );
+        })}
+      </div>
+      {detail && (
+        <ListingDetailDialog
+          listing={detail}
+          onClose={() => setDetail(null)}
+          action={<p className="text-center text-sm text-gray-400">已送出興趣，等待房東回應</p>}
+        />
+      )}
+    </>
   );
 }
 
 // ---- Matched ----
-
-type MatchItem = {
-  match_id: string;
-  listing_id: string;
-  contact_info: string;
-  matched_at: string;
-  rent?: number;
-  room_type?: string;
-  area_ping?: number;
-  profile_name?: string;
-};
 
 function MatchedTab() {
   const { data, isLoading } = useQuery<{ items: MatchItem[] }>({
     queryKey: ["matched"],
     queryFn: () => api.get("/matches/mutual?limit=50").then((r) => r.data),
   });
+  const [detail, setDetail] = useState<{ card: MatchedListingCard; contactInfo: string } | null>(null);
 
   if (isLoading) return <Loading />;
 
@@ -989,31 +1101,52 @@ function MatchedTab() {
   }
 
   return (
-    <div className="space-y-3">
-      {(data?.items ?? []).map((m) => (
-        <div key={m.match_id} className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-          <div className="flex items-center gap-2 text-xs text-gray-400">
-            <span className="rounded-full bg-[#D1FAE5] px-2 py-0.5 font-medium text-[#065F46]">
-              媒合成功
-            </span>
-            <span>{new Date(m.matched_at).toLocaleDateString("zh-TW")}</span>
-            {m.profile_name && <span>需求卡：{m.profile_name}</span>}
-          </div>
-          {m.rent && (
-            <p className="mt-2 text-sm font-medium text-gray-900">
-              ${m.rent.toLocaleString()} ／{" "}
-              {ROOM_TYPE_LABELS[m.room_type ?? ""] ?? m.room_type} {m.area_ping}坪
-            </p>
-          )}
-          <div className="mt-3 rounded-lg border border-gray-200 bg-gray-50 p-3">
-            <p className="mb-1 text-xs text-gray-400">
-              以下為對方自填資料，平台不保證真實性，請自行確認。
-            </p>
-            <p className="text-sm font-medium text-gray-950">{m.contact_info}</p>
-          </div>
-        </div>
-      ))}
-    </div>
+    <>
+      <div className="space-y-3">
+        {(data?.items ?? []).map((m) => {
+          const card = toListingCard({
+            listing_id: m.listing_id,
+            listing_name: m.listing_name,
+            rent: m.rent ?? 0,
+            room_type: m.room_type ?? "",
+            area_ping: m.area_ping ?? 0,
+            location_id: m.location_id,
+            photos: m.photos,
+            available_from: m.available_from,
+            allow_pets: m.allow_pets,
+            allow_subsidy: m.allow_subsidy,
+            allow_tax_receipt: m.allow_tax_receipt,
+            allow_household_registration: m.allow_household_registration,
+            allow_cooking: m.allow_cooking,
+            has_parking: m.has_parking,
+            allow_smoking: m.allow_smoking,
+          });
+          return (
+            <div key={m.match_id}>
+              <div className="mb-1 flex items-center gap-2 px-1 text-xs text-gray-400">
+                <span className="rounded-full bg-[#D1FAE5] px-2 py-0.5 font-medium text-[#065F46]">
+                  媒合成功
+                </span>
+                <span>{new Date(m.matched_at).toLocaleDateString("zh-TW")}</span>
+                {m.profile_name && <span>需求卡：{m.profile_name}</span>}
+              </div>
+              <ListingCard
+                listing={card}
+                onClick={() => setDetail({ card, contactInfo: m.contact_info })}
+                action={<span className="text-xs text-primary-600">查看聯絡方式 ›</span>}
+              />
+            </div>
+          );
+        })}
+      </div>
+      {detail && (
+        <ListingDetailDialog
+          listing={detail.card}
+          onClose={() => setDetail(null)}
+          contactInfo={detail.contactInfo}
+        />
+      )}
+    </>
   );
 }
 
@@ -1048,11 +1181,13 @@ function ProfileFormModal({
     needs_parking: editingProfile?.needs_parking ?? false,
     smoking: editingProfile?.smoking ?? false,
     occupation: editingProfile?.occupation ?? "",
+    age: editingProfile?.age ? String(editingProfile.age) : "",
     description: editingProfile?.description ?? "",
     contact_info: "",
   }));
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [formSaved, setFormSaved] = useState(false);
   const [locPickerOpen, setLocPickerOpen] = useState(false);
 
   function toggleLoc(id: string) {
@@ -1094,11 +1229,14 @@ function ProfileFormModal({
       budget_max: Number(form.budget_max),
       min_lease_months: Number(form.min_lease_months),
       min_area_ping: form.min_area_ping ? Number(form.min_area_ping) : null,
+      age: form.age ? Number(form.age) : null,
       available_from: form.available_from ? `${form.available_from}T00:00:00Z` : form.available_from,
     };
     try {
       if (editingProfile) {
         await api.put(`/tenant-profiles/${editingProfile.id}`, payload);
+        setFormSaved(true);
+        setTimeout(() => setFormSaved(false), 2000);
       } else {
         await api.post("/tenant-profiles", payload);
       }
@@ -1116,8 +1254,14 @@ function ProfileFormModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 sm:items-center">
-      <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-t-2xl bg-white p-6 sm:rounded-2xl">
+    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
+      <button
+        type="button"
+        className="absolute inset-0 bg-black/50"
+        aria-label="關閉"
+        onClick={onClose}
+      />
+      <div className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-t-2xl bg-white p-6 sm:rounded-2xl">
         <div className="mb-4 flex items-center justify-between">
           <h3 className="text-base font-semibold text-gray-950">
             {editingProfile ? "編輯需求卡" : "新增需求卡"}
@@ -1327,17 +1471,34 @@ function ProfileFormModal({
             </div>
           )}
 
-          <div>
-            <label htmlFor="occupation" className="mb-1 block text-sm font-medium text-gray-700">
-              職業（選填）
-            </label>
-            <input
-              id="occupation"
-              value={form.occupation}
-              onChange={(e) => setForm((f) => ({ ...f, occupation: e.target.value }))}
-              className="input"
-              placeholder="例：上班族、學生、自由工作者"
-            />
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label htmlFor="occupation" className="mb-1 block text-sm font-medium text-gray-700">
+                職業（選填）
+              </label>
+              <input
+                id="occupation"
+                value={form.occupation}
+                onChange={(e) => setForm((f) => ({ ...f, occupation: e.target.value }))}
+                className="input"
+                placeholder="例：上班族、學生"
+              />
+            </div>
+            <div>
+              <label htmlFor="age" className="mb-1 block text-sm font-medium text-gray-700">
+                年齡（選填）
+              </label>
+              <input
+                id="age"
+                type="number"
+                min={18}
+                max={120}
+                value={form.age}
+                onChange={(e) => setForm((f) => ({ ...f, age: e.target.value }))}
+                className="input"
+                placeholder="例：28"
+              />
+            </div>
           </div>
 
           <div>
@@ -1376,11 +1537,26 @@ function ProfileFormModal({
 
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || formSaved}
             className="w-full rounded-lg bg-primary-600 py-3 text-sm font-medium text-white transition hover:bg-primary-500 disabled:opacity-40"
           >
-            {loading ? "儲存中…" : "儲存需求卡"}
+            {loading
+              ? "儲存中…"
+              : editingProfile
+                ? formSaved
+                  ? "已儲存 ✓"
+                  : "儲存"
+                : "建立需求卡"}
           </button>
+          {editingProfile && (
+            <button
+              type="button"
+              onClick={onClose}
+              className="w-full rounded-lg border border-gray-200 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+            >
+              關閉
+            </button>
+          )}
         </form>
       </div>
     </div>

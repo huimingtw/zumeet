@@ -148,6 +148,7 @@ CREATE TABLE IF NOT EXISTS tenant_profiles (
   needs_parking                BOOLEAN NOT NULL DEFAULT FALSE,
   smoking                      BOOLEAN NOT NULL,
   occupation                   TEXT,
+  age                          INTEGER,
   description                  TEXT,
   preferences                  JSONB NOT NULL DEFAULT '{}'::jsonb,
   contact_info                 TEXT NOT NULL,
@@ -172,6 +173,7 @@ CREATE TABLE IF NOT EXISTS listings (
   id                           TEXT PRIMARY KEY,
   landlord_id                  TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   location_id                  TEXT NOT NULL REFERENCES locations(id),
+  name                         TEXT,
   rent                         INTEGER NOT NULL,
   room_type                    room_type NOT NULL,
   area_ping                    NUMERIC(5,2) NOT NULL,
@@ -306,3 +308,7 @@ CREATE INDEX IF NOT EXISTS idx_matches_deleted_at
 -- Active listing_photos: position must be unique per listing (soft-deleted positions can be reused)
 CREATE UNIQUE INDEX IF NOT EXISTS idx_listing_photos_position_active
   ON listing_photos (listing_id, position) WHERE deleted_at IS NULL;
+
+-- Idempotent migrations for new columns (safe to run on existing DBs)
+ALTER TABLE listings ADD COLUMN IF NOT EXISTS name TEXT;
+ALTER TABLE tenant_profiles ADD COLUMN IF NOT EXISTS age INTEGER;

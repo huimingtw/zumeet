@@ -25,6 +25,7 @@ export interface TenantProfile {
   needs_parking: boolean;
   smoking: boolean;
   occupation?: string;
+  age?: number;
   description?: string;
   is_active: boolean;
   created_at: string;
@@ -35,6 +36,7 @@ export interface Listing {
   id: string;
   landlord_id: string;
   location_id: string;
+  name: string;
   rent: number;
   room_type: string;
   area_ping: number;
@@ -57,6 +59,7 @@ export interface Listing {
 export interface MatchedListingCard {
   id: string;
   location_id: string;
+  name: string;
   rent: number;
   room_type: string;
   area_ping: number;
@@ -86,6 +89,8 @@ export interface MatchedTenantProfileCard {
   needs_parking: boolean;
   smoking: boolean;
   occupation?: string;
+  age?: number;
+  description?: string;
   interest_sent: boolean;
 }
 
@@ -93,6 +98,7 @@ export interface MutualMatch {
   match_id: string;
   tenant_profile_id: string;
   listing_id: string;
+  listing_name?: string;
   contact_info: string;
   matched_at: string;
 }

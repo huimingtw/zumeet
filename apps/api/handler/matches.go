@@ -12,46 +12,76 @@ import (
 // ---- response types ----
 
 type MutualMatchResponse struct {
-	MatchID         string    `json:"match_id" db:"match_id"`
-	TenantProfileID string    `json:"tenant_profile_id" db:"tenant_profile_id"`
-	ProfileName     string    `json:"profile_name,omitempty" db:"profile_name"` // tenant-side
-	ListingID       string    `json:"listing_id" db:"listing_id"`
-	ContactInfo     string    `json:"contact_info" db:"contact_info"`
-	MatchedAt       time.Time `json:"matched_at" db:"matched_at"`
-	LocationID      string    `json:"location_id,omitempty" db:"location_id"`
-	Rent            int       `json:"rent,omitempty" db:"rent"`
-	RoomType        string    `json:"room_type,omitempty" db:"room_type"`
-	AreaPing        float64   `json:"area_ping,omitempty" db:"area_ping"`
+	MatchID                    string    `json:"match_id" db:"match_id"`
+	TenantProfileID            string    `json:"tenant_profile_id" db:"tenant_profile_id"`
+	ProfileName                string    `json:"profile_name,omitempty" db:"profile_name"` // tenant-side
+	ListingID                  string    `json:"listing_id" db:"listing_id"`
+	ListingName                string    `json:"listing_name,omitempty" db:"listing_name"`
+	ContactInfo                string    `json:"contact_info" db:"contact_info"`
+	MatchedAt                  time.Time `json:"matched_at" db:"matched_at"`
+	LocationID                 string    `json:"location_id,omitempty" db:"location_id"`
+	Rent                       int       `json:"rent,omitempty" db:"rent"`
+	RoomType                   string    `json:"room_type,omitempty" db:"room_type"`
+	AreaPing                   float64   `json:"area_ping,omitempty" db:"area_ping"`
+	AvailableFrom              time.Time `json:"available_from" db:"available_from"`
+	AllowPets                  bool      `json:"allow_pets" db:"allow_pets"`
+	AllowSubsidy               bool      `json:"allow_subsidy" db:"allow_subsidy"`
+	AllowTaxReceipt            bool      `json:"allow_tax_receipt" db:"allow_tax_receipt"`
+	AllowHouseholdRegistration bool      `json:"allow_household_registration" db:"allow_household_registration"`
+	AllowCooking               bool      `json:"allow_cooking" db:"allow_cooking"`
+	HasParking                 bool      `json:"has_parking" db:"has_parking"`
+	AllowSmoking               bool      `json:"allow_smoking" db:"allow_smoking"`
+	Photos                     []string  `json:"photos" db:"-"`
 }
 
 type IncomingInterestResponse struct {
-	ID              string    `json:"id,omitempty" db:"id"`
-	TenantProfileID string    `json:"tenant_profile_id" db:"tenant_profile_id"`
-	ProfileName     string    `json:"profile_name,omitempty" db:"profile_name"`
-	ListingID       string    `json:"listing_id" db:"listing_id"`
-	CreatedAt       time.Time `json:"created_at" db:"created_at"`
-	LocationID      string    `json:"location_id,omitempty" db:"location_id"`
-	Rent            int       `json:"rent,omitempty" db:"rent"`
-	RoomType        string    `json:"room_type,omitempty" db:"room_type"`
-	AreaPing        float64   `json:"area_ping,omitempty" db:"area_ping"`
-	BudgetMin       int       `json:"budget_min,omitempty" db:"budget_min"`
-	BudgetMax       int       `json:"budget_max,omitempty" db:"budget_max"`
-	InterestSent    bool      `json:"interest_sent" db:"interest_sent"`
+	ID                         string    `json:"id,omitempty" db:"id"`
+	TenantProfileID            string    `json:"tenant_profile_id" db:"tenant_profile_id"`
+	ProfileName                string    `json:"profile_name,omitempty" db:"profile_name"`
+	ListingID                  string    `json:"listing_id" db:"listing_id"`
+	ListingName                string    `json:"listing_name,omitempty" db:"listing_name"`
+	CreatedAt                  time.Time `json:"created_at" db:"created_at"`
+	LocationID                 string    `json:"location_id,omitempty" db:"location_id"`
+	Rent                       int       `json:"rent,omitempty" db:"rent"`
+	RoomType                   string    `json:"room_type,omitempty" db:"room_type"`
+	AreaPing                   float64   `json:"area_ping,omitempty" db:"area_ping"`
+	AvailableFrom              time.Time `json:"available_from" db:"available_from"`
+	AllowPets                  bool      `json:"allow_pets" db:"allow_pets"`
+	AllowSubsidy               bool      `json:"allow_subsidy" db:"allow_subsidy"`
+	AllowTaxReceipt            bool      `json:"allow_tax_receipt" db:"allow_tax_receipt"`
+	AllowHouseholdRegistration bool      `json:"allow_household_registration" db:"allow_household_registration"`
+	AllowCooking               bool      `json:"allow_cooking" db:"allow_cooking"`
+	HasParking                 bool      `json:"has_parking" db:"has_parking"`
+	AllowSmoking               bool      `json:"allow_smoking" db:"allow_smoking"`
+	Photos                     []string  `json:"photos" db:"-"`
+	BudgetMin                  int       `json:"budget_min,omitempty" db:"budget_min"`
+	BudgetMax                  int       `json:"budget_max,omitempty" db:"budget_max"`
+	InterestSent               bool      `json:"interest_sent" db:"interest_sent"`
 }
 
 type OutgoingInterestResponse struct {
-	ID                string    `json:"id,omitempty" db:"id"`
-	TenantProfileID   string    `json:"tenant_profile_id" db:"tenant_profile_id"`
-	ProfileName       string    `json:"profile_name,omitempty" db:"profile_name"`
-	TenantProfileName string    `json:"tenant_profile_name,omitempty" db:"tenant_profile_name"`
-	ListingID         string    `json:"listing_id" db:"listing_id"`
-	CreatedAt         time.Time `json:"created_at" db:"created_at"`
-	LocationID        string    `json:"location_id,omitempty" db:"location_id"`
-	Rent              int       `json:"rent,omitempty" db:"rent"`
-	RoomType          string    `json:"room_type,omitempty" db:"room_type"`
-	AreaPing          float64   `json:"area_ping,omitempty" db:"area_ping"`
-	BudgetMin         int       `json:"budget_min,omitempty" db:"budget_min"`
-	BudgetMax         int       `json:"budget_max,omitempty" db:"budget_max"`
+	ID                         string    `json:"id,omitempty" db:"id"`
+	TenantProfileID            string    `json:"tenant_profile_id" db:"tenant_profile_id"`
+	ProfileName                string    `json:"profile_name,omitempty" db:"profile_name"`
+	TenantProfileName          string    `json:"tenant_profile_name,omitempty" db:"tenant_profile_name"`
+	ListingID                  string    `json:"listing_id" db:"listing_id"`
+	ListingName                string    `json:"listing_name,omitempty" db:"listing_name"`
+	CreatedAt                  time.Time `json:"created_at" db:"created_at"`
+	LocationID                 string    `json:"location_id,omitempty" db:"location_id"`
+	Rent                       int       `json:"rent,omitempty" db:"rent"`
+	RoomType                   string    `json:"room_type,omitempty" db:"room_type"`
+	AreaPing                   float64   `json:"area_ping,omitempty" db:"area_ping"`
+	AvailableFrom              time.Time `json:"available_from" db:"available_from"`
+	AllowPets                  bool      `json:"allow_pets" db:"allow_pets"`
+	AllowSubsidy               bool      `json:"allow_subsidy" db:"allow_subsidy"`
+	AllowTaxReceipt            bool      `json:"allow_tax_receipt" db:"allow_tax_receipt"`
+	AllowHouseholdRegistration bool      `json:"allow_household_registration" db:"allow_household_registration"`
+	AllowCooking               bool      `json:"allow_cooking" db:"allow_cooking"`
+	HasParking                 bool      `json:"has_parking" db:"has_parking"`
+	AllowSmoking               bool      `json:"allow_smoking" db:"allow_smoking"`
+	Photos                     []string  `json:"photos" db:"-"`
+	BudgetMin                  int       `json:"budget_min,omitempty" db:"budget_min"`
+	BudgetMax                  int       `json:"budget_max,omitempty" db:"budget_max"`
 }
 
 // ---- profile-level endpoints ----
@@ -72,8 +102,11 @@ func (h *Handler) GetProfileMatches(c *Context) {
 
 	rows, err := h.db.Query(c.Request.Context(), `
 		SELECT m.id AS match_id, m.tenant_profile_id, m.listing_id,
-		       tp.name AS profile_name, l.contact_info, m.matched_at,
-		       l.location_id, l.rent, l.room_type::text AS room_type, l.area_ping
+		       tp.name AS profile_name, COALESCE(l.name, '') AS listing_name,
+		       l.contact_info, m.matched_at,
+		       l.location_id, l.rent, l.room_type::text AS room_type, l.area_ping,
+		       l.available_from, l.allow_pets, l.allow_subsidy, l.allow_tax_receipt,
+		       l.allow_household_registration, l.allow_cooking, l.has_parking, l.allow_smoking
 		FROM matches m
 		JOIN listings l ON l.id = m.listing_id
 		JOIN tenant_profiles tp ON tp.id = m.tenant_profile_id
@@ -99,6 +132,9 @@ func (h *Handler) GetProfileMatches(c *Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
 		return
 	}
+	for i := range result {
+		result[i].Photos = h.listingPhotos(c.Request.Context(), result[i].ListingID)
+	}
 	c.JSON(http.StatusOK, gin.H{"items": result, "next_cursor": ""})
 }
 
@@ -118,8 +154,11 @@ func (h *Handler) GetProfileIncomingInterests(c *Context) {
 
 	// incoming = landlord has active interest, tenant has NOT yet responded
 	rows, err := h.db.Query(c.Request.Context(), `
-		SELECT l.id, i.tenant_profile_id, tp.name AS profile_name, i.listing_id, i.created_at,
+		SELECT l.id, i.tenant_profile_id, tp.name AS profile_name, i.listing_id,
+		       COALESCE(l.name, '') AS listing_name, i.created_at,
 		       l.location_id, l.rent, l.room_type::text AS room_type, l.area_ping,
+		       l.available_from, l.allow_pets, l.allow_subsidy, l.allow_tax_receipt,
+		       l.allow_household_registration, l.allow_cooking, l.has_parking, l.allow_smoking,
 		       false AS interest_sent
 		FROM interests i
 		JOIN listings l ON l.id = i.listing_id
@@ -155,6 +194,9 @@ func (h *Handler) GetProfileIncomingInterests(c *Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
 		return
 	}
+	for i := range result {
+		result[i].Photos = h.listingPhotos(c.Request.Context(), result[i].ListingID)
+	}
 	c.JSON(http.StatusOK, gin.H{"items": result, "next_cursor": ""})
 }
 
@@ -175,8 +217,10 @@ func (h *Handler) GetProfileOutgoingInterests(c *Context) {
 	// outgoing = tenant has active interest, landlord has NOT yet responded
 	rows, err := h.db.Query(c.Request.Context(), `
 		SELECT l.id, i.tenant_profile_id, tp.name AS profile_name, tp.name AS tenant_profile_name,
-		       i.listing_id, i.created_at,
-		       l.location_id, l.rent, l.room_type::text AS room_type, l.area_ping
+		       i.listing_id, COALESCE(l.name, '') AS listing_name, i.created_at,
+		       l.location_id, l.rent, l.room_type::text AS room_type, l.area_ping,
+		       l.available_from, l.allow_pets, l.allow_subsidy, l.allow_tax_receipt,
+		       l.allow_household_registration, l.allow_cooking, l.has_parking, l.allow_smoking
 		FROM interests i
 		JOIN listings l ON l.id = i.listing_id
 		JOIN tenant_profiles tp ON tp.id = i.tenant_profile_id
@@ -211,6 +255,9 @@ func (h *Handler) GetProfileOutgoingInterests(c *Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
 		return
 	}
+	for i := range result {
+		result[i].Photos = h.listingPhotos(c.Request.Context(), result[i].ListingID)
+	}
 	c.JSON(http.StatusOK, gin.H{"items": result, "next_cursor": ""})
 }
 
@@ -223,11 +270,13 @@ func (h *Handler) GetAllMutualMatches(c *Context) {
 	// Works for both tenant and landlord
 	rows, err := h.db.Query(c.Request.Context(), `
 		SELECT m.id AS match_id, m.tenant_profile_id, m.listing_id,
-		       tp.name AS profile_name,
+		       tp.name AS profile_name, COALESCE(l.name, '') AS listing_name,
 		       CASE WHEN m.tenant_id = $1 THEN l.contact_info
 		            ELSE tp.contact_info END AS contact_info,
 		       m.matched_at,
-		       l.location_id, l.rent, l.room_type::text AS room_type, l.area_ping
+		       l.location_id, l.rent, l.room_type::text AS room_type, l.area_ping,
+		       l.available_from, l.allow_pets, l.allow_subsidy, l.allow_tax_receipt,
+		       l.allow_household_registration, l.allow_cooking, l.has_parking, l.allow_smoking
 		FROM matches m
 		JOIN listings l ON l.id = m.listing_id
 		JOIN tenant_profiles tp ON tp.id = m.tenant_profile_id
@@ -253,6 +302,9 @@ func (h *Handler) GetAllMutualMatches(c *Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
 		return
 	}
+	for i := range result {
+		result[i].Photos = h.listingPhotos(c.Request.Context(), result[i].ListingID)
+	}
 	c.JSON(http.StatusOK, gin.H{"items": result, "next_cursor": ""})
 }
 
@@ -263,8 +315,11 @@ func (h *Handler) GetAllIncomingInterests(c *Context) {
 	// Incoming for tenant: landlord expressed interest, tenant hasn't
 	// Incoming for landlord: tenant expressed interest, landlord hasn't
 	rows, err := h.db.Query(c.Request.Context(), `
-		SELECT l.id, i.tenant_profile_id, tp.name AS profile_name, i.listing_id, i.created_at,
+		SELECT l.id, i.tenant_profile_id, tp.name AS profile_name, i.listing_id,
+		       COALESCE(l.name, '') AS listing_name, i.created_at,
 		       l.location_id, l.rent, l.room_type::text AS room_type, l.area_ping,
+		       l.available_from, l.allow_pets, l.allow_subsidy, l.allow_tax_receipt,
+		       l.allow_household_registration, l.allow_cooking, l.has_parking, l.allow_smoking,
 		       tp.budget_min, tp.budget_max, false AS interest_sent
 		FROM interests i
 		JOIN listings l ON l.id = i.listing_id
@@ -305,6 +360,9 @@ func (h *Handler) GetAllIncomingInterests(c *Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
 		return
 	}
+	for i := range result {
+		result[i].Photos = h.listingPhotos(c.Request.Context(), result[i].ListingID)
+	}
 	c.JSON(http.StatusOK, gin.H{"items": result, "next_cursor": ""})
 }
 
@@ -314,8 +372,10 @@ func (h *Handler) GetAllOutgoingInterests(c *Context) {
 
 	rows, err := h.db.Query(c.Request.Context(), `
 		SELECT l.id, i.tenant_profile_id, tp.name AS profile_name, tp.name AS tenant_profile_name,
-		       i.listing_id, i.created_at,
+		       i.listing_id, COALESCE(l.name, '') AS listing_name, i.created_at,
 		       l.location_id, l.rent, l.room_type::text AS room_type, l.area_ping,
+		       l.available_from, l.allow_pets, l.allow_subsidy, l.allow_tax_receipt,
+		       l.allow_household_registration, l.allow_cooking, l.has_parking, l.allow_smoking,
 		       tp.budget_min, tp.budget_max
 		FROM interests i
 		JOIN listings l ON l.id = i.listing_id
@@ -355,6 +415,9 @@ func (h *Handler) GetAllOutgoingInterests(c *Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
 		return
+	}
+	for i := range result {
+		result[i].Photos = h.listingPhotos(c.Request.Context(), result[i].ListingID)
 	}
 	c.JSON(http.StatusOK, gin.H{"items": result, "next_cursor": ""})
 }

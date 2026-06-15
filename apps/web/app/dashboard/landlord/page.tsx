@@ -343,7 +343,10 @@ function ListingCard({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-base font-semibold text-gray-950">
+            {listing.name && (
+              <span className="text-base font-semibold text-gray-950">{listing.name}</span>
+            )}
+            <span className={listing.name ? "text-sm text-gray-500" : "text-base font-semibold text-gray-950"}>
               ${listing.rent.toLocaleString()}
             </span>
             <span className="text-sm text-gray-500">
@@ -537,7 +540,7 @@ function BrowseTab({
             placeholder="請選擇房源"
             options={activeListings.map((l) => ({
               value: l.id,
-              label: `$${l.rent.toLocaleString()} ${ROOM_TYPE_LABELS[l.room_type] ?? l.room_type}`,
+              label: l.name || `$${l.rent.toLocaleString()} ${ROOM_TYPE_LABELS[l.room_type] ?? l.room_type}`,
             }))}
             onChange={onSelectListing}
           />
@@ -571,6 +574,15 @@ function BrowseTab({
   );
 }
 
+function profileHeader(profile: Pick<MatchedTenantProfileCard, "occupation" | "age" | "has_pets">) {
+  const parts = [
+    profile.occupation,
+    profile.age != null ? `${profile.age} 歲` : null,
+    profile.has_pets ? "養寵物" : null,
+  ].filter(Boolean) as string[];
+  return parts.length > 0 ? `[${parts.join("，")}]` : "租客";
+}
+
 function TenantProfileCard({
   profile,
   onInterest,
@@ -579,7 +591,6 @@ function TenantProfileCard({
   onInterest: () => void;
 }) {
   const tags = [
-    profile.has_pets && "有寵物",
     profile.needs_subsidy && "需租補",
     profile.needs_tax_receipt && "需收據",
     profile.needs_parking && "需車位",
@@ -591,17 +602,14 @@ function TenantProfileCard({
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-baseline gap-2">
-            <span className="text-sm font-semibold text-gray-950">{profile.name}</span>
-            <span className="text-sm text-gray-500">
-              預算 ${profile.budget_min.toLocaleString()}–${profile.budget_max.toLocaleString()}
-            </span>
+            <span className="text-sm font-semibold text-gray-950">{profileHeader(profile)}</span>
           </div>
           <p className="mt-1 text-sm text-gray-500">
-            {profile.preferred_room_types.map((t) => ROOM_TYPE_LABELS[t] ?? t).join("、")} ／ 可入住：
-            {new Date(profile.available_from).toLocaleDateString("zh-TW")}
+            預算 ${profile.budget_min.toLocaleString()}–${profile.budget_max.toLocaleString()} ／{" "}
+            {profile.preferred_room_types.map((t) => ROOM_TYPE_LABELS[t] ?? t).join("、")}
           </p>
-          {profile.occupation && (
-            <p className="mt-0.5 text-xs text-gray-400">職業：{profile.occupation}</p>
+          {profile.description && (
+            <p className="mt-1.5 text-sm text-gray-600">{profile.description}</p>
           )}
           {tags.length > 0 && (
             <div className="mt-2 flex flex-wrap gap-1">
@@ -682,7 +690,11 @@ function IncomingTab() {
     queryFn: () => api.get("/listings").then((r) => r.data),
   });
   const qc = useQueryClient();
-  const [expanded, setExpanded] = useState<string | null>(null);
+  const [expandedSet, setExpandedSet] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (listings.length > 0) setExpandedSet(new Set(listings.map((l) => l.id)));
+  }, [listings]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (isLoading) return <Loading />;
 
@@ -696,14 +708,22 @@ function IncomingTab() {
     );
   }
 
+  function toggle(id: string) {
+    setExpandedSet((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
   return (
     <div className="space-y-3">
       {listings.map((listing) => (
         <ListingIncoming
           key={listing.id}
           listing={listing}
-          expanded={expanded === listing.id}
-          onToggle={() => setExpanded(expanded === listing.id ? null : listing.id)}
+          expanded={expandedSet.has(listing.id)}
+          onToggle={() => toggle(listing.id)}
           onMatched={() => qc.invalidateQueries({ queryKey: ["matched"] })}
         />
       ))}
@@ -749,7 +769,7 @@ function ListingIncoming({
         className="flex w-full items-center justify-between px-4 py-3 text-left"
       >
         <span className="text-sm font-medium text-gray-700">
-          ${listing.rent.toLocaleString()} {ROOM_TYPE_LABELS[listing.room_type] ?? listing.room_type}
+          {listing.name || `$${listing.rent.toLocaleString()} ${ROOM_TYPE_LABELS[listing.room_type] ?? listing.room_type}`}
         </span>
         <div className="flex items-center gap-2">
           {expanded && pendingCount > 0 && (
@@ -777,13 +797,12 @@ function ListingIncoming({
                 className="flex items-center justify-between rounded-lg border border-gray-100 px-3 py-2.5"
               >
                 <div className="text-sm">
-                  <span className="font-medium text-gray-900">{profile.name}</span>
+                  <span className="font-medium text-gray-900">
+                    {profileHeader(profile)}
+                  </span>
                   <span className="ml-2 text-gray-500">
                     預算 ${profile.budget_min.toLocaleString()}–${profile.budget_max.toLocaleString()}
                   </span>
-                  {profile.occupation && (
-                    <span className="ml-2 text-gray-400">{profile.occupation}</span>
-                  )}
                 </div>
                 {profile.interest_sent ? (
                   <span className="rounded-full bg-[#EDE9FE] px-2.5 py-0.5 text-xs font-medium text-[#5B21B6]">
@@ -861,6 +880,8 @@ function OutgoingTab() {
 type MatchItem = {
   match_id: string;
   tenant_profile_id: string;
+  listing_id: string;
+  listing_name?: string;
   contact_info: string;
   matched_at: string;
   profile_name?: string;
@@ -899,6 +920,7 @@ function MatchedTab() {
               </span>
               <span>{new Date(match.matched_at).toLocaleDateString("zh-TW")}</span>
               {match.profile_name && <span>需求卡：{match.profile_name}</span>}
+              {match.listing_name && <span>房源：{match.listing_name}</span>}
             </div>
             <div className="mt-3 rounded-lg border border-gray-200 bg-gray-50 p-3">
               <p className="mb-1 text-xs text-gray-400">
@@ -1049,6 +1071,7 @@ function ListingFormModal({
   const [form, setForm] = useState({
     city: "",
     district: "",
+    name: "",
     rent: 0,
     room_type: "",
     area_ping: 0,
@@ -1072,6 +1095,7 @@ function ListingFormModal({
       ...f,
       city: LOCATION_CITY_DISTRICT[existing.location_id]?.city ?? "",
       district: LOCATION_CITY_DISTRICT[existing.location_id]?.district ?? "",
+      name: existing.name ?? "",
       rent: existing.rent,
       room_type: existing.room_type,
       area_ping: existing.area_ping,
@@ -1181,6 +1205,19 @@ function ListingFormModal({
           </div>
         ) : (
         <form onSubmit={handleSubmit} noValidate className="space-y-4">
+          <div>
+            <label htmlFor="listing-name" className="mb-1 block text-sm font-medium text-gray-700">
+              房源名稱（選填）
+            </label>
+            <input
+              id="listing-name"
+              value={form.name}
+              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+              className="input"
+              placeholder="例：台北大安捷運套房"
+            />
+          </div>
+
           <div className="grid grid-cols-2 gap-3">
             <div>
               <p className="mb-1 text-sm font-medium text-gray-700">縣市</p>
