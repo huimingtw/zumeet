@@ -102,6 +102,7 @@ func New(h *handler.Handler, cfg *config.AppConfig, logger *zap.Logger) *gin.Eng
 			ls.PATCH("/:listingId/status", t.Public(h.UpdateListingStatus))
 			ls.DELETE("/:listingId", t.Public(h.DeleteListing))
 			ls.POST("/:listingId/photos", t.Public(h.UploadListingPhoto))
+			ls.PATCH("/:listingId/photos/order", t.Public(h.ReorderListingPhotos))
 			ls.DELETE("/:listingId/photos/:photoId", t.Public(h.DeleteListingPhoto))
 			ls.GET("/:listingId/tenant-profiles", t.Public(h.BrowseTenantProfilesForListing))
 		}

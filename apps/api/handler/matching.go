@@ -33,16 +33,16 @@ type MatchedListingCard struct {
 	AllowCooking               bool      `json:"allow_cooking" db:"allow_cooking"`
 	HasParking                 bool      `json:"has_parking" db:"has_parking"`
 	AllowSmoking               bool      `json:"allow_smoking" db:"allow_smoking"`
+	Description                string    `json:"description" db:"description"`
 	Photos                     []string  `json:"photos" db:"-"`
 	InterestSent               bool      `json:"interest_sent" db:"interest_sent"` // tenant already expressed interest
 }
 
 // MatchedTenantProfileCard is what a landlord sees when browsing tenant profiles.
+// Budget is intentionally omitted — landlords must not see tenants' budgets.
 type MatchedTenantProfileCard struct {
 	ID                 string    `json:"id"`
 	Name               string    `json:"name"`
-	BudgetMin          int       `json:"budget_min"`
-	BudgetMax          int       `json:"budget_max"`
 	PreferredRoomTypes []string  `json:"preferred_room_types"`
 	AvailableFrom      time.Time `json:"available_from"`
 	MinLeaseMonths     int       `json:"min_lease_months"`
@@ -103,6 +103,7 @@ func (h *Handler) BrowseListingsForProfile(c *Context) {
 			l.available_from,
 			l.allow_pets, l.allow_subsidy, l.allow_tax_receipt,
 			l.allow_household_registration, l.allow_cooking, l.has_parking, l.allow_smoking,
+			COALESCE(l.description, '') AS description,
 			EXISTS(
 				SELECT 1 FROM interests i
 				WHERE i.tenant_profile_id = $1
@@ -220,7 +221,7 @@ func (h *Handler) BrowseTenantProfilesForListing(c *Context) {
 
 	query := `
 		SELECT
-			tp.id, tp.name, tp.budget_min, tp.budget_max,
+			tp.id, tp.name,
 			array_to_string(tp.preferred_room_types::text[], ',') AS preferred_room_types,
 			tp.available_from, tp.min_lease_months,
 			tp.has_pets, tp.needs_subsidy, tp.needs_tax_receipt,
@@ -283,8 +284,6 @@ func (h *Handler) BrowseTenantProfilesForListing(c *Context) {
 	type matchedTenantProfileRow struct {
 		ID                 string    `db:"id"`
 		Name               string    `db:"name"`
-		BudgetMin          int       `db:"budget_min"`
-		BudgetMax          int       `db:"budget_max"`
 		PreferredRoomTypes string    `db:"preferred_room_types"`
 		AvailableFrom      time.Time `db:"available_from"`
 		MinLeaseMonths     int       `db:"min_lease_months"`
@@ -313,8 +312,6 @@ func (h *Handler) BrowseTenantProfilesForListing(c *Context) {
 		cards = append(cards, MatchedTenantProfileCard{
 			ID:                 row.ID,
 			Name:               row.Name,
-			BudgetMin:          row.BudgetMin,
-			BudgetMax:          row.BudgetMax,
 			PreferredRoomTypes: splitStringList(row.PreferredRoomTypes),
 			AvailableFrom:      row.AvailableFrom,
 			MinLeaseMonths:     row.MinLeaseMonths,

@@ -595,15 +595,11 @@ function TenantProfileCard({
 
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex items-center justify-between gap-4">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-baseline gap-2">
             <span className="text-sm font-semibold text-gray-950">{profileHeader(profile)}</span>
           </div>
-          <p className="mt-1 text-sm text-gray-500">
-            預算 ${profile.budget_min.toLocaleString()}–${profile.budget_max.toLocaleString()} ／{" "}
-            {profile.preferred_room_types.map((t) => ROOM_TYPE_LABELS[t] ?? t).join("、")}
-          </p>
           {profile.description && (
             <p className="mt-1.5 text-sm text-gray-600">{profile.description}</p>
           )}
@@ -620,7 +616,7 @@ function TenantProfileCard({
             </div>
           )}
         </div>
-        <div className="flex-shrink-0">
+        <div className="flex flex-shrink-0 items-center">
           {profile.interest_sent ? (
             <span className="rounded-full bg-[#EDE9FE] px-2.5 py-0.5 text-xs font-medium text-[#5B21B6]">
               已送出
@@ -796,9 +792,6 @@ function ListingIncoming({
                   <span className="font-medium text-gray-900">
                     {profileHeader(profile)}
                   </span>
-                  <span className="ml-2 text-gray-500">
-                    預算 ${profile.budget_min.toLocaleString()}–${profile.budget_max.toLocaleString()}
-                  </span>
                 </div>
                 {profile.interest_sent ? (
                   <span className="rounded-full bg-[#EDE9FE] px-2.5 py-0.5 text-xs font-medium text-[#5B21B6]">
@@ -858,9 +851,6 @@ function OutgoingTab() {
         >
           <div className="text-sm">
             <span className="font-medium text-gray-900">{i.profile_name}</span>
-            <span className="ml-2 text-gray-500">
-              預算 ${i.budget_min.toLocaleString()}–${i.budget_max.toLocaleString()}
-            </span>
           </div>
           <span className="rounded-full bg-[#EDE9FE] px-2.5 py-0.5 text-xs font-medium text-[#5B21B6]">
             已送出
@@ -1000,16 +990,71 @@ function PhotoSection({
     },
   });
 
-  const photos: PhotoRecord[] = listing?.photo_list ?? [];
+  const reorderPhotos = useMutation({
+    mutationFn: (photoIds: string[]) =>
+      api.patch(`/listings/${listingId}/photos/order`, { photo_ids: photoIds }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["listing-detail", listingId] });
+      onChanged();
+    },
+  });
+
+  const serverPhotos: PhotoRecord[] = listing?.photo_list ?? [];
+  // Local order overlay so drag feels instant; cleared when server order matches.
+  const [localOrder, setLocalOrder] = useState<string[] | null>(null);
+  const [dragId, setDragId] = useState<string | null>(null);
+  const photos: PhotoRecord[] =
+    localOrder
+      ? (localOrder
+          .map((id) => serverPhotos.find((p) => p.id === id))
+          .filter(Boolean) as PhotoRecord[])
+      : serverPhotos;
+
+  useEffect(() => {
+    if (!localOrder) return;
+    const serverIds = serverPhotos.map((p) => p.id).join(",");
+    if (serverIds === localOrder.join(",")) setLocalOrder(null);
+  }, [serverPhotos, localOrder]);
+
+  function onDragStart(id: string) {
+    setDragId(id);
+  }
+  function onDragOver(e: React.DragEvent, overId: string) {
+    e.preventDefault();
+    if (!dragId || dragId === overId) return;
+    const current = (localOrder ?? serverPhotos.map((p) => p.id)).slice();
+    const from = current.indexOf(dragId);
+    const to = current.indexOf(overId);
+    if (from < 0 || to < 0) return;
+    current.splice(from, 1);
+    current.splice(to, 0, dragId);
+    setLocalOrder(current);
+  }
+  function onDragEnd() {
+    const order = localOrder;
+    setDragId(null);
+    if (!order) return;
+    const original = serverPhotos.map((p) => p.id);
+    if (order.join(",") === original.join(",")) return;
+    reorderPhotos.mutate(order);
+  }
 
   return (
     <div>
-      <p className="mb-2 text-sm font-medium text-gray-700">照片（最多 10 張）</p>
+      <p className="mb-2 text-sm font-medium text-gray-700">
+        照片（最多 10 張，可拖曳調整順序）
+      </p>
       <div className="mb-3 grid grid-cols-3 gap-2">
         {photos.map((p) => (
           <div
             key={p.id}
-            className="relative aspect-square overflow-hidden rounded-lg bg-gray-100"
+            draggable
+            onDragStart={() => onDragStart(p.id)}
+            onDragOver={(e) => onDragOver(e, p.id)}
+            onDragEnd={onDragEnd}
+            className={`relative aspect-square cursor-grab overflow-hidden rounded-lg bg-gray-100 transition ${
+              dragId === p.id ? "opacity-50" : ""
+            } active:cursor-grabbing`}
           >
             <Image src={p.public_url} alt="" fill className="object-cover" sizes="120px" />
             <button

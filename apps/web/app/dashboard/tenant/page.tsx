@@ -589,6 +589,7 @@ function ListingCard({
 	const tags = getListingTags(listing);
 	const layout = formatLayout(listing);
 	const total = totalMonthly(listing);
+	const perPing = pricePerPing(listing);
 
 	return (
 		<div className="flex gap-4 rounded-xl border border-gray-200 bg-white p-5 shadow-sm transition hover:shadow-md">
@@ -652,6 +653,11 @@ function ListingCard({
 					<span className="text-sm text-gray-500">
 						{listing.area_ping} 坪
 					</span>
+					{perPing != null && (
+						<span className="text-sm text-gray-500">
+							（每坪 ${perPing.toLocaleString()}）
+						</span>
+					)}
 					{layout && <span className="text-sm text-gray-500">{layout}</span>}
 				</div>
 				{listing.management_fee > 0 && (
@@ -732,11 +738,12 @@ function ListingDetailDialog({
 		return () => window.removeEventListener("keydown", onKey);
 	}, [onClose, photoCount]);
 
+
 	return (
 		<div
 			role="dialog"
 			aria-modal="true"
-			className="fixed inset-0 z-50 flex items-end bg-black/50 sm:items-center sm:p-4"
+			className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 sm:items-center sm:p-4"
 		>
 			<button
 				type="button"
@@ -745,29 +752,26 @@ function ListingDetailDialog({
 				onClick={onClose}
 			/>
 
-			{/* Dialog shell: stacked on mobile, side-by-side on desktop */}
+			{/* Dialog shell: width unchanged. On desktop, the right info column drives the row height;
+			    the photo column stretches to match and the image fills it (object-cover).
+			    A min-height keeps very short content from squishing the photo. */}
 			<div
-				className="relative z-10 flex w-full flex-col overflow-hidden rounded-t-2xl bg-white sm:mx-auto sm:flex-row sm:rounded-2xl"
-				style={{
-					width: "min(80vw, 1280px)",
-					height: "min(80vh, 800px)",
-					maxHeight: "80vh",
-				}}
+				className="relative z-10 flex w-screen flex-col overflow-hidden rounded-t-2xl bg-white sm:w-[min(80vw,1280px)] sm:min-h-[520px] sm:flex-row sm:rounded-2xl"
+				style={{ maxHeight: "90vh" }}
 			>
-				{/* ── Left: photo panel ── */}
-				<div className="relative flex-shrink-0 bg-black sm:w-[62%]">
+				{/* ── Left: photo panel — stretches to dialog height; image fills via object-cover. ── */}
+				<div className="relative flex-shrink-0 bg-gray-100 sm:w-[62%] sm:self-stretch">
 					{listing.photos.length > 0 ? (
-						<div className="relative h-64 w-full sm:h-full">
-							<Image
+						<div className="relative h-64 w-full sm:absolute sm:inset-0 sm:h-auto">
+							{/* eslint-disable-next-line @next/next/no-img-element */}
+							<img
 								src={listing.photos[photoIdx]}
 								alt=""
-								fill
-								className="object-contain"
-								sizes="(min-width: 640px) 50vw, 100vw"
+								className="block h-full w-full object-cover"
 							/>
 						</div>
 					) : (
-						<div className="flex h-48 items-center justify-center sm:h-full">
+						<div className="flex h-48 w-full items-center justify-center sm:absolute sm:inset-0 sm:h-auto">
 							<span className="text-sm text-gray-500">暫無照片</span>
 						</div>
 					)}
@@ -813,9 +817,9 @@ function ListingDetailDialog({
 					)}
 				</div>
 
-				{/* ── Right: info panel ── */}
-				<div className="flex flex-col overflow-y-auto sm:w-[38%]">
-					<div className="flex-1 p-6">
+				{/* ── Right: info panel: drives the dialog height; scrolls if content exceeds 90vh. ── */}
+				<div className="flex max-h-[90vh] min-w-0 flex-col sm:w-[38%]">
+					<div className="min-h-0 overflow-y-auto p-6">
 						{listing.name && (
 							<p className="mb-1 text-base font-semibold text-gray-950">
 								{listing.name}
@@ -848,12 +852,28 @@ function ListingDetailDialog({
 						)}
 						<div className="mt-2 flex items-center gap-1 text-sm text-gray-500">
 							<MapPin size={14} strokeWidth={1.5} />
-							{LOCATION_LABELS[listing.location_id] ?? listing.location_id}
+							{listing.address ? (
+								<a
+									href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(listing.address)}`}
+									target="_blank"
+									rel="noopener noreferrer"
+									className="text-primary-600 hover:underline"
+								>
+									{listing.address}
+								</a>
+							) : (
+								LOCATION_LABELS[listing.location_id] ?? listing.location_id
+							)}
 						</div>
 						<p className="mt-1 text-sm text-gray-400">
 							可入住：
 							{new Date(listing.available_from).toLocaleDateString("zh-TW")}
 						</p>
+						{listing.description && (
+							<p className="mt-3 whitespace-pre-wrap text-sm text-gray-700">
+								{listing.description}
+							</p>
+						)}
 						{tags.length > 0 && (
 							<div className="mt-4 flex flex-wrap gap-2">
 								{tags.map((tag) => (
@@ -866,7 +886,7 @@ function ListingDetailDialog({
 								))}
 							</div>
 						)}
-						{contactInfo ? (
+						{contactInfo && (
 							<div className="mt-4 rounded-lg border border-gray-200 bg-gray-50 p-3">
 								<p className="mb-1 text-xs text-gray-400">
 									以下為對方自填資料，平台不保證真實性，請自行確認。
@@ -875,16 +895,10 @@ function ListingDetailDialog({
 									{contactInfo}
 								</p>
 							</div>
-						) : (
-							<p className="mt-6 text-xs text-gray-400">
-								媒合成功後才會顯示房東聯絡方式
-							</p>
 						)}
 					</div>
 
-					{action && (
-						<div className="border-t border-gray-100 p-4">{action}</div>
-					)}
+					{action && <div className="px-6 pb-6">{action}</div>}
 				</div>
 			</div>
 		</div>
@@ -948,6 +962,8 @@ type ListingFields = {
 	allow_cooking: boolean;
 	has_parking: boolean;
 	allow_smoking: boolean;
+	description?: string;
+	address?: string;
 };
 
 type IncomingListingItem = ListingFields & {
@@ -1016,6 +1032,8 @@ function toListingCard(
 		allow_smoking: item.allow_smoking,
 		photos: item.photos ?? [],
 		interest_sent: item.interest_sent ?? false,
+		description: item.description,
+		address: item.address,
 	};
 }
 

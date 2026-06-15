@@ -86,6 +86,8 @@ export interface MatchedListingCard {
   allow_smoking: boolean;
   photos: string[];
   interest_sent: boolean;
+  address?: string;
+  description?: string;
 }
 
 export interface MatchedTenantProfileCard {

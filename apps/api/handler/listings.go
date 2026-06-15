@@ -668,6 +668,115 @@ func (h *Handler) DeleteListingPhoto(c *Context) {
 	c.Status(http.StatusNoContent)
 }
 
+// ReorderListingPhotos handles PATCH /api/v1/listings/:listingId/photos/order
+// Body: { "photo_ids": ["<id>", "<id>", ...] } — desired order, 1-indexed positions assigned by array order.
+func (h *Handler) ReorderListingPhotos(c *Context) {
+	userID := middleware.MustUserID(c)
+	listingID := c.Param("listingId")
+
+	if err := h.RequireRole(c.Request.Context(), userID, "landlord"); err != nil {
+		if errors.Is(err, ErrForbidden) {
+			respondForbidden(c, ErrForbidden)
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
+		return
+	}
+
+	ownerID, err := h.listingOwner(c, listingID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "listing not found", "code": "not_found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
+		return
+	}
+	if ownerID != userID {
+		respondForbidden(c, ErrForbidden)
+		return
+	}
+
+	var req struct {
+		PhotoIDs []string `json:"photo_ids" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid body", "code": "invalid_body"})
+		return
+	}
+
+	// validate: no duplicates, matches set of active photos for this listing
+	seen := make(map[string]struct{}, len(req.PhotoIDs))
+	for _, id := range req.PhotoIDs {
+		if _, dup := seen[id]; dup {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "duplicate photo id", "code": "invalid_order"})
+			return
+		}
+		seen[id] = struct{}{}
+	}
+
+	rows, err := h.db.Query(c.Request.Context(),
+		`SELECT id FROM listing_photos WHERE listing_id=$1 AND deleted_at IS NULL`,
+		listingID,
+	)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
+		return
+	}
+	existing, err := pgx.CollectRows(rows, pgx.RowTo[string])
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
+		return
+	}
+	if len(existing) != len(req.PhotoIDs) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "photo set mismatch", "code": "invalid_order"})
+		return
+	}
+	for _, id := range existing {
+		if _, ok := seen[id]; !ok {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "photo set mismatch", "code": "invalid_order"})
+			return
+		}
+	}
+
+	tx, err := h.db.Begin(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
+		return
+	}
+	defer tx.Rollback(c.Request.Context())
+
+	// Two-step to avoid colliding with UNIQUE (listing_id, position) WHERE deleted_at IS NULL:
+	// 1) park all rows in negative positions, 2) set final positions.
+	if _, err := tx.Exec(c.Request.Context(),
+		`UPDATE listing_photos SET position = -position
+		 WHERE listing_id=$1 AND deleted_at IS NULL`,
+		listingID,
+	); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
+		return
+	}
+	positions := make([]int32, len(req.PhotoIDs))
+	for i := range req.PhotoIDs {
+		positions[i] = int32(i + 1)
+	}
+	if _, err := tx.Exec(c.Request.Context(),
+		`UPDATE listing_photos AS lp
+		 SET position = v.pos
+		 FROM (SELECT unnest($2::text[]) AS id, unnest($3::int[]) AS pos) AS v
+		 WHERE lp.id = v.id AND lp.listing_id = $1 AND lp.deleted_at IS NULL`,
+		listingID, req.PhotoIDs, positions,
+	); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
+		return
+	}
+	if err := tx.Commit(c.Request.Context()); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
+		return
+	}
+	c.Status(http.StatusNoContent)
+}
+
 // ListLandlordListings handles GET /api/v1/listings (landlord's own listings)
 func (h *Handler) ListLandlordListings(c *Context) {
 	userID := middleware.MustUserID(c)
