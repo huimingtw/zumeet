@@ -21,8 +21,13 @@ type MutualMatchResponse struct {
 	MatchedAt                  time.Time `json:"matched_at" db:"matched_at"`
 	LocationID                 string    `json:"location_id,omitempty" db:"location_id"`
 	Rent                       int       `json:"rent,omitempty" db:"rent"`
+	ManagementFee              int       `json:"management_fee" db:"management_fee"`
 	RoomType                   string    `json:"room_type,omitempty" db:"room_type"`
 	AreaPing                   float64   `json:"area_ping,omitempty" db:"area_ping"`
+	NumBedrooms                *int      `json:"num_bedrooms,omitempty" db:"num_bedrooms"`
+	NumLivingRooms             *int      `json:"num_living_rooms,omitempty" db:"num_living_rooms"`
+	NumBathrooms               *int      `json:"num_bathrooms,omitempty" db:"num_bathrooms"`
+	NumBalconies               *int      `json:"num_balconies,omitempty" db:"num_balconies"`
 	AvailableFrom              time.Time `json:"available_from" db:"available_from"`
 	AllowPets                  bool      `json:"allow_pets" db:"allow_pets"`
 	AllowSubsidy               bool      `json:"allow_subsidy" db:"allow_subsidy"`
@@ -43,8 +48,13 @@ type IncomingInterestResponse struct {
 	CreatedAt                  time.Time `json:"created_at" db:"created_at"`
 	LocationID                 string    `json:"location_id,omitempty" db:"location_id"`
 	Rent                       int       `json:"rent,omitempty" db:"rent"`
+	ManagementFee              int       `json:"management_fee" db:"management_fee"`
 	RoomType                   string    `json:"room_type,omitempty" db:"room_type"`
 	AreaPing                   float64   `json:"area_ping,omitempty" db:"area_ping"`
+	NumBedrooms                *int      `json:"num_bedrooms,omitempty" db:"num_bedrooms"`
+	NumLivingRooms             *int      `json:"num_living_rooms,omitempty" db:"num_living_rooms"`
+	NumBathrooms               *int      `json:"num_bathrooms,omitempty" db:"num_bathrooms"`
+	NumBalconies               *int      `json:"num_balconies,omitempty" db:"num_balconies"`
 	AvailableFrom              time.Time `json:"available_from" db:"available_from"`
 	AllowPets                  bool      `json:"allow_pets" db:"allow_pets"`
 	AllowSubsidy               bool      `json:"allow_subsidy" db:"allow_subsidy"`
@@ -69,8 +79,13 @@ type OutgoingInterestResponse struct {
 	CreatedAt                  time.Time `json:"created_at" db:"created_at"`
 	LocationID                 string    `json:"location_id,omitempty" db:"location_id"`
 	Rent                       int       `json:"rent,omitempty" db:"rent"`
+	ManagementFee              int       `json:"management_fee" db:"management_fee"`
 	RoomType                   string    `json:"room_type,omitempty" db:"room_type"`
 	AreaPing                   float64   `json:"area_ping,omitempty" db:"area_ping"`
+	NumBedrooms                *int      `json:"num_bedrooms,omitempty" db:"num_bedrooms"`
+	NumLivingRooms             *int      `json:"num_living_rooms,omitempty" db:"num_living_rooms"`
+	NumBathrooms               *int      `json:"num_bathrooms,omitempty" db:"num_bathrooms"`
+	NumBalconies               *int      `json:"num_balconies,omitempty" db:"num_balconies"`
 	AvailableFrom              time.Time `json:"available_from" db:"available_from"`
 	AllowPets                  bool      `json:"allow_pets" db:"allow_pets"`
 	AllowSubsidy               bool      `json:"allow_subsidy" db:"allow_subsidy"`
@@ -104,7 +119,8 @@ func (h *Handler) GetProfileMatches(c *Context) {
 		SELECT m.id AS match_id, m.tenant_profile_id, m.listing_id,
 		       tp.name AS profile_name, COALESCE(l.name, '') AS listing_name,
 		       l.contact_info, m.matched_at,
-		       l.location_id, l.rent, l.room_type::text AS room_type, l.area_ping,
+		       l.location_id, l.rent, l.management_fee, l.room_type::text AS room_type, l.area_ping,
+		       l.num_bedrooms, l.num_living_rooms, l.num_bathrooms, l.num_balconies,
 		       l.available_from, l.allow_pets, l.allow_subsidy, l.allow_tax_receipt,
 		       l.allow_household_registration, l.allow_cooking, l.has_parking, l.allow_smoking
 		FROM matches m
@@ -156,7 +172,8 @@ func (h *Handler) GetProfileIncomingInterests(c *Context) {
 	rows, err := h.db.Query(c.Request.Context(), `
 		SELECT l.id, i.tenant_profile_id, tp.name AS profile_name, i.listing_id,
 		       COALESCE(l.name, '') AS listing_name, i.created_at,
-		       l.location_id, l.rent, l.room_type::text AS room_type, l.area_ping,
+		       l.location_id, l.rent, l.management_fee, l.room_type::text AS room_type, l.area_ping,
+		       l.num_bedrooms, l.num_living_rooms, l.num_bathrooms, l.num_balconies,
 		       l.available_from, l.allow_pets, l.allow_subsidy, l.allow_tax_receipt,
 		       l.allow_household_registration, l.allow_cooking, l.has_parking, l.allow_smoking,
 		       false AS interest_sent
@@ -218,7 +235,8 @@ func (h *Handler) GetProfileOutgoingInterests(c *Context) {
 	rows, err := h.db.Query(c.Request.Context(), `
 		SELECT l.id, i.tenant_profile_id, tp.name AS profile_name, tp.name AS tenant_profile_name,
 		       i.listing_id, COALESCE(l.name, '') AS listing_name, i.created_at,
-		       l.location_id, l.rent, l.room_type::text AS room_type, l.area_ping,
+		       l.location_id, l.rent, l.management_fee, l.room_type::text AS room_type, l.area_ping,
+		       l.num_bedrooms, l.num_living_rooms, l.num_bathrooms, l.num_balconies,
 		       l.available_from, l.allow_pets, l.allow_subsidy, l.allow_tax_receipt,
 		       l.allow_household_registration, l.allow_cooking, l.has_parking, l.allow_smoking
 		FROM interests i
@@ -274,7 +292,8 @@ func (h *Handler) GetAllMutualMatches(c *Context) {
 		       CASE WHEN m.tenant_id = $1 THEN l.contact_info
 		            ELSE tp.contact_info END AS contact_info,
 		       m.matched_at,
-		       l.location_id, l.rent, l.room_type::text AS room_type, l.area_ping,
+		       l.location_id, l.rent, l.management_fee, l.room_type::text AS room_type, l.area_ping,
+		       l.num_bedrooms, l.num_living_rooms, l.num_bathrooms, l.num_balconies,
 		       l.available_from, l.allow_pets, l.allow_subsidy, l.allow_tax_receipt,
 		       l.allow_household_registration, l.allow_cooking, l.has_parking, l.allow_smoking
 		FROM matches m
@@ -317,7 +336,8 @@ func (h *Handler) GetAllIncomingInterests(c *Context) {
 	rows, err := h.db.Query(c.Request.Context(), `
 		SELECT l.id, i.tenant_profile_id, tp.name AS profile_name, i.listing_id,
 		       COALESCE(l.name, '') AS listing_name, i.created_at,
-		       l.location_id, l.rent, l.room_type::text AS room_type, l.area_ping,
+		       l.location_id, l.rent, l.management_fee, l.room_type::text AS room_type, l.area_ping,
+		       l.num_bedrooms, l.num_living_rooms, l.num_bathrooms, l.num_balconies,
 		       l.available_from, l.allow_pets, l.allow_subsidy, l.allow_tax_receipt,
 		       l.allow_household_registration, l.allow_cooking, l.has_parking, l.allow_smoking,
 		       tp.budget_min, tp.budget_max, false AS interest_sent
@@ -373,7 +393,8 @@ func (h *Handler) GetAllOutgoingInterests(c *Context) {
 	rows, err := h.db.Query(c.Request.Context(), `
 		SELECT l.id, i.tenant_profile_id, tp.name AS profile_name, tp.name AS tenant_profile_name,
 		       i.listing_id, COALESCE(l.name, '') AS listing_name, i.created_at,
-		       l.location_id, l.rent, l.room_type::text AS room_type, l.area_ping,
+		       l.location_id, l.rent, l.management_fee, l.room_type::text AS room_type, l.area_ping,
+		       l.num_bedrooms, l.num_living_rooms, l.num_bathrooms, l.num_balconies,
 		       l.available_from, l.allow_pets, l.allow_subsidy, l.allow_tax_receipt,
 		       l.allow_household_registration, l.allow_cooking, l.has_parking, l.allow_smoking,
 		       tp.budget_min, tp.budget_max

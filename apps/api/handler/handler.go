@@ -20,11 +20,12 @@ type LocationInput struct {
 var ErrForbidden = errors.New("forbidden")
 
 type Handler struct {
-	db      *pgxpool.Pool
-	oauth   service.OAuthService
-	storage service.StorageService
-	email   service.EmailService
-	cfg     *config.AppConfig
+	db       *pgxpool.Pool
+	oauth    service.OAuthService
+	storage  service.StorageService
+	email    service.EmailService
+	geocoder service.GeocodingService
+	cfg      *config.AppConfig
 }
 
 func New(
@@ -32,14 +33,16 @@ func New(
 	oauth service.OAuthService,
 	storage service.StorageService,
 	email service.EmailService,
+	geocoder service.GeocodingService,
 	cfg *config.AppConfig,
 ) *Handler {
 	return &Handler{
-		db:      db,
-		oauth:   oauth,
-		storage: storage,
-		email:   email,
-		cfg:     cfg,
+		db:       db,
+		oauth:    oauth,
+		storage:  storage,
+		email:    email,
+		geocoder: geocoder,
+		cfg:      cfg,
 	}
 }
 

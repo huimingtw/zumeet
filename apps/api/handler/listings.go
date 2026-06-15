@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	maxListingPhotos  = 6
+	maxListingPhotos  = 10
 	maxPhotoSizeBytes = 5 * 1024 * 1024 // 5 MB
 )
 
@@ -26,10 +26,16 @@ const (
 type ListingRequest struct {
 	City                       string    `json:"city" binding:"required"`
 	District                   string    `json:"district" binding:"required"`
+	Address                    string    `json:"address"`
 	Name                       string    `json:"name"`
 	Rent                       int       `json:"rent" binding:"required,min=1"`
+	ManagementFee              int       `json:"management_fee"`
 	RoomType                   string    `json:"room_type" binding:"required"`
 	AreaPing                   float64   `json:"area_ping" binding:"required,min=1"`
+	NumBedrooms                *int      `json:"num_bedrooms"`
+	NumLivingRooms             *int      `json:"num_living_rooms"`
+	NumBathrooms               *int      `json:"num_bathrooms"`
+	NumBalconies               *int      `json:"num_balconies"`
 	AvailableFrom              time.Time `json:"available_from" binding:"required"`
 	MinLeaseMonths             int       `json:"min_lease_months" binding:"required,min=1"`
 	AllowPets                  bool      `json:"allow_pets"`
@@ -51,10 +57,16 @@ type ListingRequest struct {
 type UpdateListingRequest struct {
 	City                       string    `json:"city" binding:"required"`
 	District                   string    `json:"district" binding:"required"`
+	Address                    string    `json:"address"`
 	Name                       string    `json:"name"`
 	Rent                       int       `json:"rent" binding:"required,min=1"`
+	ManagementFee              int       `json:"management_fee"`
 	RoomType                   string    `json:"room_type" binding:"required"`
 	AreaPing                   float64   `json:"area_ping" binding:"required,min=1"`
+	NumBedrooms                *int      `json:"num_bedrooms"`
+	NumLivingRooms             *int      `json:"num_living_rooms"`
+	NumBathrooms               *int      `json:"num_bathrooms"`
+	NumBalconies               *int      `json:"num_balconies"`
 	AvailableFrom              time.Time `json:"available_from" binding:"required"`
 	MinLeaseMonths             int       `json:"min_lease_months" binding:"required,min=1"`
 	AllowPets                  bool      `json:"allow_pets"`
@@ -79,10 +91,16 @@ type ListingResponse struct {
 	ID                         string        `json:"id"`
 	LandlordID                 string        `json:"landlord_id"`
 	LocationID                 string        `json:"location_id"`
+	Address                    string        `json:"address"`
 	Name                       string        `json:"name"`
 	Rent                       int           `json:"rent"`
+	ManagementFee              int           `json:"management_fee"`
 	RoomType                   string        `json:"room_type"`
 	AreaPing                   float64       `json:"area_ping"`
+	NumBedrooms                *int          `json:"num_bedrooms"`
+	NumLivingRooms             *int          `json:"num_living_rooms"`
+	NumBathrooms               *int          `json:"num_bathrooms"`
+	NumBalconies               *int          `json:"num_balconies"`
 	AvailableFrom              time.Time     `json:"available_from"`
 	MinLeaseMonths             int           `json:"min_lease_months"`
 	AllowPets                  bool          `json:"allow_pets"`
@@ -96,6 +114,8 @@ type ListingResponse struct {
 	Status                     string        `json:"status"`
 	Photos                     []string      `json:"photos" db:"-"`
 	PhotoList                  []PhotoDetail `json:"photo_list" db:"-"`
+	Lat                        *float64      `json:"lat"`
+	Lng                        *float64      `json:"lng"`
 	CreatedAt                  time.Time     `json:"created_at"`
 	UpdatedAt                  time.Time     `json:"updated_at"`
 }
@@ -133,6 +153,16 @@ func (h *Handler) CreateListing(c *Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "坪數不得超過 999.99", "code": "invalid_area_ping"})
 		return
 	}
+	if req.ManagementFee < 0 || req.ManagementFee > 999999 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "管理費需介於 0 ~ 999,999 元", "code": "invalid_management_fee"})
+		return
+	}
+	if req.RoomType == "whole_floor" {
+		if req.NumBedrooms == nil || req.NumLivingRooms == nil || req.NumBathrooms == nil || req.NumBalconies == nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "整層房型必須填寫房廳衛陽台數量", "code": "missing_whole_floor_fields"})
+			return
+		}
+	}
 
 	// resolve (city, district) -> location_id
 	locationID, err := h.resolveLocationID(c.Request.Context(), req.City, req.District)
@@ -141,30 +171,45 @@ func (h *Handler) CreateListing(c *Context) {
 		return
 	}
 
+	var latPtr, lngPtr *float64
+	if addr := strings.TrimSpace(req.Address); addr != "" {
+		if lat, lng, gerr := h.geocoder.Geocode(c.Request.Context(), addr); gerr == nil {
+			latPtr = &lat
+			lngPtr = &lng
+		} else {
+			log.Printf("geocode failed (listing create): %v", gerr)
+		}
+	}
+
 	id := ulid.Make().String()
 	now := time.Now().UTC()
 
 	_, err = h.db.Exec(c.Request.Context(), `
 		INSERT INTO listings (
-			id, landlord_id, location_id, name, rent, room_type, area_ping,
+			id, landlord_id, location_id, address, name, rent, management_fee, room_type, area_ping,
+			num_bedrooms, num_living_rooms, num_bathrooms, num_balconies,
 			available_from, min_lease_months,
 			allow_pets, allow_subsidy, allow_tax_receipt,
 			allow_household_registration, allow_cooking, has_parking, allow_smoking,
-			description, contact_info, compliance_confirmed_at, status, created_at, updated_at
+			description, contact_info, lat, lng,
+			compliance_confirmed_at, status, created_at, updated_at
 		) VALUES (
-			$1,$2,$3,$4,$5,$6::room_type,$7,
-			$8,$9,
-			$10,$11,$12,
-			$13,$14,$15,$16,
-			$17,$18,$19,'draft',$20,$20
+			$1,$2,$3,$4,$5,$6,$7,$8::room_type,$9,
+			$10,$11,$12,$13,
+			$14,$15,
+			$16,$17,$18,
+			$19,$20,$21,$22,
+			$23,$24,$25,$26,
+			$27,'draft',$28,$28
 		)`,
-		id, userID, locationID, req.Name, req.Rent, req.RoomType, req.AreaPing,
+		id, userID, locationID, strings.TrimSpace(req.Address), req.Name, req.Rent, req.ManagementFee, req.RoomType, req.AreaPing,
+		req.NumBedrooms, req.NumLivingRooms, req.NumBathrooms, req.NumBalconies,
 		req.AvailableFrom, req.MinLeaseMonths,
 		req.AllowPets, req.AllowSubsidy, req.AllowTaxReceipt,
 		req.AllowHouseholdRegistration, req.AllowCooking, req.HasParking, req.AllowSmoking,
 		req.Description,
 		// contact_info intentionally not logged
-		req.ContactInfo, now, now,
+		req.ContactInfo, latPtr, lngPtr, now, now,
 	)
 	if err != nil {
 		log.Printf("CreateListing db error: %v", err)
@@ -246,6 +291,16 @@ func (h *Handler) UpdateListing(c *Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "坪數不得超過 999.99", "code": "invalid_area_ping"})
 		return
 	}
+	if req.ManagementFee < 0 || req.ManagementFee > 999999 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "管理費需介於 0 ~ 999,999 元", "code": "invalid_management_fee"})
+		return
+	}
+	if req.RoomType == "whole_floor" {
+		if req.NumBedrooms == nil || req.NumLivingRooms == nil || req.NumBathrooms == nil || req.NumBalconies == nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "整層房型必須填寫房廳衛陽台數量", "code": "missing_whole_floor_fields"})
+			return
+		}
+	}
 
 	locationID, err := h.resolveLocationID(c.Request.Context(), req.City, req.District)
 	if err != nil {
@@ -253,15 +308,27 @@ func (h *Handler) UpdateListing(c *Context) {
 		return
 	}
 
+	address := strings.TrimSpace(req.Address)
+	var latPtr, lngPtr *float64
+	if address != "" {
+		if lat, lng, gerr := h.geocoder.Geocode(c.Request.Context(), address); gerr == nil {
+			latPtr = &lat
+			lngPtr = &lng
+		} else {
+			log.Printf("geocode failed (listing update): %v", gerr)
+		}
+	}
+
 	// contact_info is optional on update: keep existing value when not provided.
 	var contactInfoExpr string
 	var args []any
 	args = append(args,
-		locationID, req.Name, req.Rent, req.RoomType, req.AreaPing,
+		locationID, address, req.Name, req.Rent, req.ManagementFee, req.RoomType, req.AreaPing,
+		req.NumBedrooms, req.NumLivingRooms, req.NumBathrooms, req.NumBalconies,
 		req.AvailableFrom, req.MinLeaseMonths,
 		req.AllowPets, req.AllowSubsidy, req.AllowTaxReceipt,
 		req.AllowHouseholdRegistration, req.AllowCooking, req.HasParking, req.AllowSmoking,
-		req.Description,
+		req.Description, latPtr, lngPtr,
 	)
 	if req.ContactInfo != "" {
 		args = append(args, req.ContactInfo)
@@ -272,11 +339,12 @@ func (h *Handler) UpdateListing(c *Context) {
 
 	_, err = h.db.Exec(c.Request.Context(), fmt.Sprintf(`
 		UPDATE listings SET
-			location_id=$1, name=$2, rent=$3, room_type=$4::room_type, area_ping=$5,
-			available_from=$6, min_lease_months=$7,
-			allow_pets=$8, allow_subsidy=$9, allow_tax_receipt=$10,
-			allow_household_registration=$11, allow_cooking=$12, has_parking=$13, allow_smoking=$14,
-			description=$15, %s updated_at=NOW()
+			location_id=$1, address=$2, name=$3, rent=$4, management_fee=$5, room_type=$6::room_type, area_ping=$7,
+			num_bedrooms=$8, num_living_rooms=$9, num_bathrooms=$10, num_balconies=$11,
+			available_from=$12, min_lease_months=$13,
+			allow_pets=$14, allow_subsidy=$15, allow_tax_receipt=$16,
+			allow_household_registration=$17, allow_cooking=$18, has_parking=$19, allow_smoking=$20,
+			description=$21, lat=$22, lng=$23, %s updated_at=NOW()
 		WHERE id=$%d AND deleted_at IS NULL`, contactInfoExpr, idxLast),
 		args...,
 	)
@@ -678,20 +746,24 @@ func (h *Handler) listingOwner(c *Context, listingID string) (string, error) {
 func (h *Handler) fetchListingResponse(c *Context, id string) (*ListingResponse, error) {
 	var r ListingResponse
 	err := h.db.QueryRow(c.Request.Context(), `
-		SELECT id, landlord_id, location_id, COALESCE(name, ''), rent, room_type::text, area_ping,
+		SELECT id, landlord_id, location_id, COALESCE(address, ''), COALESCE(name, ''),
+		       rent, management_fee, room_type::text, area_ping,
+		       num_bedrooms, num_living_rooms, num_bathrooms, num_balconies,
 		       available_from, min_lease_months,
 		       allow_pets, allow_subsidy, allow_tax_receipt,
 		       allow_household_registration, allow_cooking, has_parking, allow_smoking,
-		       COALESCE(description, ''), status::text, created_at, updated_at
+		       COALESCE(description, ''), status::text, lat, lng, created_at, updated_at
 		FROM listings
 		WHERE id=$1 AND deleted_at IS NULL`,
 		id,
 	).Scan(
-		&r.ID, &r.LandlordID, &r.LocationID, &r.Name, &r.Rent, &r.RoomType, &r.AreaPing,
+		&r.ID, &r.LandlordID, &r.LocationID, &r.Address, &r.Name,
+		&r.Rent, &r.ManagementFee, &r.RoomType, &r.AreaPing,
+		&r.NumBedrooms, &r.NumLivingRooms, &r.NumBathrooms, &r.NumBalconies,
 		&r.AvailableFrom, &r.MinLeaseMonths,
 		&r.AllowPets, &r.AllowSubsidy, &r.AllowTaxReceipt,
 		&r.AllowHouseholdRegistration, &r.AllowCooking, &r.HasParking, &r.AllowSmoking,
-		&r.Description, &r.Status, &r.CreatedAt, &r.UpdatedAt,
+		&r.Description, &r.Status, &r.Lat, &r.Lng, &r.CreatedAt, &r.UpdatedAt,
 	)
 	if err != nil {
 		return nil, err

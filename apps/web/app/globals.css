@@ -36,6 +36,14 @@ body {
   color: #9ca3af;
 }
 
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 select.input {
   appearance: auto;
 }

@@ -276,17 +276,17 @@ func TestListing_MaxPhotos(t *testing.T) {
 	cookie := validAccessCookie(t, userID, "ls-maxphoto@example.com", []string{"landlord"})
 	listingID := seedListing(t, userID, "taipei-daan")
 
-	for i := 0; i < 6; i++ {
+	for i := 0; i < 10; i++ {
 		id := uploadTestPhoto(t, listingID, cookie)
 		if id == "" {
 			t.Fatalf("photo %d upload failed", i+1)
 		}
 	}
 
-	// 7th photo must fail
+	// 11th photo must fail
 	w := multipartPhotoRequest(t, listingID, cookie)
 	if w.Code != http.StatusBadRequest {
-		t.Errorf("7th photo: expected 400, got %d", w.Code)
+		t.Errorf("11th photo: expected 400, got %d", w.Code)
 	}
 }
 

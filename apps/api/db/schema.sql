@@ -312,3 +312,10 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_listing_photos_position_active
 -- Idempotent migrations for new columns (safe to run on existing DBs)
 ALTER TABLE listings ADD COLUMN IF NOT EXISTS name TEXT;
 ALTER TABLE tenant_profiles ADD COLUMN IF NOT EXISTS age INTEGER;
+
+ALTER TABLE listings ADD COLUMN IF NOT EXISTS address TEXT NOT NULL DEFAULT '';
+ALTER TABLE listings ADD COLUMN IF NOT EXISTS management_fee INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE listings ADD COLUMN IF NOT EXISTS num_bedrooms SMALLINT;
+ALTER TABLE listings ADD COLUMN IF NOT EXISTS num_living_rooms SMALLINT;
+ALTER TABLE listings ADD COLUMN IF NOT EXISTS num_bathrooms SMALLINT;
+ALTER TABLE listings ADD COLUMN IF NOT EXISTS num_balconies SMALLINT;

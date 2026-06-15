@@ -18,8 +18,13 @@ type MatchedListingCard struct {
 	LocationID                 string    `json:"location_id" db:"location_id"`
 	Name                       string    `json:"name" db:"name"`
 	Rent                       int       `json:"rent" db:"rent"`
+	ManagementFee              int       `json:"management_fee" db:"management_fee"`
 	RoomType                   string    `json:"room_type" db:"room_type"`
 	AreaPing                   float64   `json:"area_ping" db:"area_ping"`
+	NumBedrooms                *int      `json:"num_bedrooms" db:"num_bedrooms"`
+	NumLivingRooms             *int      `json:"num_living_rooms" db:"num_living_rooms"`
+	NumBathrooms               *int      `json:"num_bathrooms" db:"num_bathrooms"`
+	NumBalconies               *int      `json:"num_balconies" db:"num_balconies"`
 	AvailableFrom              time.Time `json:"available_from" db:"available_from"`
 	AllowPets                  bool      `json:"allow_pets" db:"allow_pets"`
 	AllowSubsidy               bool      `json:"allow_subsidy" db:"allow_subsidy"`
@@ -93,7 +98,8 @@ func (h *Handler) BrowseListingsForProfile(c *Context) {
 
 	query := `
 		SELECT
-			l.id, l.location_id, COALESCE(l.name, '') AS name, l.rent, l.room_type::text AS room_type, l.area_ping,
+			l.id, l.location_id, COALESCE(l.name, '') AS name, l.rent, l.management_fee, l.room_type::text AS room_type, l.area_ping,
+			l.num_bedrooms, l.num_living_rooms, l.num_bathrooms, l.num_balconies,
 			l.available_from,
 			l.allow_pets, l.allow_subsidy, l.allow_tax_receipt,
 			l.allow_household_registration, l.allow_cooking, l.has_parking, l.allow_smoking,

@@ -34,6 +34,8 @@ type AppConfig struct {
 
 	ResendAPIKey  string
 	AdminFromEmail string
+
+	GoogleMapsAPIKey string
 }
 
 func Load() *AppConfig {
@@ -61,6 +63,8 @@ func Load() *AppConfig {
 
 		ResendAPIKey:   getEnv("RESEND_API_KEY", ""),
 		AdminFromEmail: getEnv("ADMIN_FROM_EMAIL", "noreply@zumeet.tw"),
+
+		GoogleMapsAPIKey: getEnv("GOOGLE_MAPS_API_KEY", ""),
 	}
 }
 

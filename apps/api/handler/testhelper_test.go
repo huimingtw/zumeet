@@ -22,6 +22,7 @@ import (
 	"github.com/zumeet/api/handler"
 	"github.com/zumeet/api/middleware"
 	"github.com/zumeet/api/router"
+	"github.com/zumeet/api/service"
 )
 
 var (
@@ -49,7 +50,7 @@ func TestMain(m *testing.M) {
 	}
 	defer testPool.Close()
 
-	testH = handler.New(testPool, &handler.MockOAuthService{}, &noopStorage{}, &noopEmail{}, testCfg)
+	testH = handler.New(testPool, &handler.MockOAuthService{}, &noopStorage{}, &noopEmail{}, service.NoopGeocodingService{}, testCfg)
 	testR = router.New(testH, testCfg, zap.NewNop())
 
 	if err := appdb.TruncateTables(testPool); err != nil {

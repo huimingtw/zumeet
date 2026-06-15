@@ -15,6 +15,7 @@ import {
   SendHorizonal,
 } from "lucide-react";
 import { api } from "@/lib/api";
+import { getProfileTags } from "@/lib/listingTags";
 import type { Listing, MatchedTenantProfileCard, MutualMatch } from "@/types";
 import { LOCATION_CITY_DISTRICT, LOCATION_GROUPS, ROOM_TYPE_LABELS } from "@/types";
 
@@ -590,12 +591,7 @@ function TenantProfileCard({
   profile: MatchedTenantProfileCard;
   onInterest: () => void;
 }) {
-  const tags = [
-    profile.needs_subsidy && "需租補",
-    profile.needs_tax_receipt && "需收據",
-    profile.needs_parking && "需車位",
-    profile.smoking && "抽菸",
-  ].filter(Boolean) as string[];
+  const tags = getProfileTags(profile);
 
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
@@ -958,13 +954,13 @@ function PhotoSection({
   });
 
   async function upload(e: React.ChangeEvent<HTMLInputElement>) {
-    const remaining = 6 - photos.length;
+    const remaining = 10 - photos.length;
     const all = Array.from(e.target.files ?? []);
     const files = all.slice(0, remaining);
     if (files.length === 0) return;
     setUploadProgress({ done: 0, total: files.length });
     setUploadError(
-      all.length > remaining ? `已選 ${all.length} 張，僅上傳前 ${remaining} 張（上限 6 張）` : ""
+      all.length > remaining ? `已選 ${all.length} 張，僅上傳前 ${remaining} 張（上限 10 張）` : ""
     );
     let succeeded = 0;
     try {
@@ -1008,7 +1004,7 @@ function PhotoSection({
 
   return (
     <div>
-      <p className="mb-2 text-sm font-medium text-gray-700">照片（最多 6 張）</p>
+      <p className="mb-2 text-sm font-medium text-gray-700">照片（最多 10 張）</p>
       <div className="mb-3 grid grid-cols-3 gap-2">
         {photos.map((p) => (
           <div
@@ -1026,7 +1022,7 @@ function PhotoSection({
             </button>
           </div>
         ))}
-        {photos.length < 6 && (
+        {photos.length < 10 && (
           <button
             type="button"
             onClick={() => fileRef.current?.click()}
@@ -1071,10 +1067,16 @@ function ListingFormModal({
   const [form, setForm] = useState({
     city: "",
     district: "",
+    address: "",
     name: "",
     rent: 0,
+    management_fee: 0,
     room_type: "",
     area_ping: 0,
+    num_bedrooms: 0,
+    num_living_rooms: 0,
+    num_bathrooms: 0,
+    num_balconies: 0,
     available_from: new Date().toISOString().split("T")[0],
     min_lease_months: 6,
     allow_pets: false,
@@ -1095,10 +1097,16 @@ function ListingFormModal({
       ...f,
       city: LOCATION_CITY_DISTRICT[existing.location_id]?.city ?? "",
       district: LOCATION_CITY_DISTRICT[existing.location_id]?.district ?? "",
+      address: existing.address ?? "",
       name: existing.name ?? "",
       rent: existing.rent,
+      management_fee: existing.management_fee ?? 0,
       room_type: existing.room_type,
       area_ping: existing.area_ping,
+      num_bedrooms: existing.num_bedrooms ?? 0,
+      num_living_rooms: existing.num_living_rooms ?? 0,
+      num_bathrooms: existing.num_bathrooms ?? 0,
+      num_balconies: existing.num_balconies ?? 0,
       available_from: existing.available_from
         ? new Date(existing.available_from).toISOString().split("T")[0]
         : "",
@@ -1128,7 +1136,19 @@ function ListingFormModal({
     if (form.rent > 999999) { setError("租金不得超過 999,999 元"); return; }
     if (!form.area_ping || form.area_ping <= 0) { setError("請填寫坪數"); return; }
     if (form.area_ping >= 1000) { setError("坪數不得超過 999.99"); return; }
+    if (form.management_fee < 0 || form.management_fee > 999999) {
+      setError("管理費需介於 0 ~ 999,999 元"); return;
+    }
     if (!form.room_type) { setError("請選擇房型"); return; }
+    if (form.room_type === "whole_floor") {
+      if (
+        form.num_bedrooms <= 0 || form.num_living_rooms <= 0 ||
+        form.num_bathrooms <= 0 || form.num_balconies < 0
+      ) {
+        setError("整層房型請填寫房廳衛陽台數量");
+        return;
+      }
+    }
     if (!form.available_from) { setError("請填寫可入住日"); return; }
     if (!form.min_lease_months || form.min_lease_months <= 0) { setError("請填寫最短租期"); return; }
     if (!editingId && !form.contact_info.trim()) { setError("請填寫聯絡方式"); return; }
@@ -1138,11 +1158,17 @@ function ListingFormModal({
     }
     setLoading(true);
     setError("");
+    const isWholeFloor = form.room_type === "whole_floor";
     const payload = {
       ...form,
       rent: Number(form.rent),
+      management_fee: Number(form.management_fee || 0),
       area_ping: Number(form.area_ping),
       min_lease_months: Number(form.min_lease_months),
+      num_bedrooms: isWholeFloor ? Number(form.num_bedrooms) : null,
+      num_living_rooms: isWholeFloor ? Number(form.num_living_rooms) : null,
+      num_bathrooms: isWholeFloor ? Number(form.num_bathrooms) : null,
+      num_balconies: isWholeFloor ? Number(form.num_balconies) : null,
       available_from: form.available_from
         ? `${form.available_from}T00:00:00Z`
         : form.available_from,
@@ -1176,7 +1202,7 @@ function ListingFormModal({
         aria-label="關閉"
         onClick={activeId ? onSaved : onClose}
       />
-      <div className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-t-2xl bg-white p-6 sm:rounded-2xl">
+      <div className="no-scrollbar relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-t-2xl bg-white p-6 sm:rounded-2xl">
         <div className="mb-4 flex items-center justify-between">
           <h3 className="text-base font-semibold text-gray-950">
             {editingId ? "編輯房源" : savedId ? "上傳照片" : "新增房源"}
@@ -1242,7 +1268,21 @@ function ListingFormModal({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label htmlFor="address" className="mb-1 block text-sm font-medium text-gray-700">
+              詳細地址
+            </label>
+            <input
+              id="address"
+              value={form.address}
+              onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
+              className="input"
+              placeholder="例：台北市大安區忠孝東路四段 100 號 5 樓"
+            />
+            <p className="mt-1 text-xs text-gray-400">媒合成功後才會顯示給租客。系統將自動定位經緯度。</p>
+          </div>
+
+          <div className="grid grid-cols-3 gap-3">
             <div>
               <label htmlFor="rent" className="mb-1 block text-sm font-medium text-gray-700">
                 租金（元/月）
@@ -1254,6 +1294,19 @@ function ListingFormModal({
                 min={1}
                 value={form.rent || ""}
                 onChange={(e) => setForm((f) => ({ ...f, rent: Number(e.target.value) }))}
+                className="input"
+              />
+            </div>
+            <div>
+              <label htmlFor="management_fee" className="mb-1 block text-sm font-medium text-gray-700">
+                管理費（元/月）
+              </label>
+              <input
+                id="management_fee"
+                type="number"
+                min={0}
+                value={form.management_fee || ""}
+                onChange={(e) => setForm((f) => ({ ...f, management_fee: Number(e.target.value) }))}
                 className="input"
               />
             </div>
@@ -1293,6 +1346,34 @@ function ListingFormModal({
               ))}
             </div>
           </div>
+
+          {form.room_type === "whole_floor" && (
+            <div>
+              <p className="mb-1 text-sm font-medium text-gray-700">格局</p>
+              <div className="grid grid-cols-4 gap-2">
+                {([
+                  ["num_bedrooms", "房"],
+                  ["num_living_rooms", "廳"],
+                  ["num_bathrooms", "衛"],
+                  ["num_balconies", "陽台"],
+                ] as const).map(([key, label]) => (
+                  <div key={key}>
+                    <input
+                      type="number"
+                      min={0}
+                      value={form[key] || ""}
+                      onChange={(e) =>
+                        setForm((f) => ({ ...f, [key]: Number(e.target.value) }))
+                      }
+                      className="input"
+                      placeholder={label}
+                    />
+                    <p className="mt-1 text-center text-xs text-gray-400">{label}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -1337,13 +1418,11 @@ function ListingFormModal({
             <p className="text-sm font-medium text-gray-700">房源條件</p>
             {(
               [
-                ["allow_pets", "接受寵物"],
-                ["allow_subsidy", "接受租補"],
-                ["allow_tax_receipt", "開立報稅收據"],
-                ["allow_household_registration", "可入籍"],
-                ["allow_cooking", "可開伙"],
-                ["has_parking", "有車位"],
-                ["allow_smoking", "可抽菸"],
+                ["allow_pets", "寵物"],
+                ["allow_subsidy", "租屋補助"],
+                ["allow_tax_receipt", "報稅"],
+                ["allow_household_registration", "入籍"],
+                ["allow_cooking", "開伙"],
               ] as const
             ).map(([key, label]) => (
               <label

@@ -36,10 +36,16 @@ export interface Listing {
   id: string;
   landlord_id: string;
   location_id: string;
+  address?: string;
   name: string;
   rent: number;
+  management_fee: number;
   room_type: string;
   area_ping: number;
+  num_bedrooms?: number | null;
+  num_living_rooms?: number | null;
+  num_bathrooms?: number | null;
+  num_balconies?: number | null;
   available_from: string;
   min_lease_months: number;
   allow_pets: boolean;
@@ -52,6 +58,8 @@ export interface Listing {
   description?: string;
   status: string;
   photos: string[];
+  lat?: number | null;
+  lng?: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -61,8 +69,13 @@ export interface MatchedListingCard {
   location_id: string;
   name: string;
   rent: number;
+  management_fee: number;
   room_type: string;
   area_ping: number;
+  num_bedrooms?: number | null;
+  num_living_rooms?: number | null;
+  num_bathrooms?: number | null;
+  num_balconies?: number | null;
   available_from: string;
   allow_pets: boolean;
   allow_subsidy: boolean;

@@ -88,7 +88,14 @@ func main() {
 		emailSvc = &service.NoopEmailService{}
 	}
 
-	h := handler.New(pool, oauthSvc, storageSvc, emailSvc, cfg)
+	var geocoder service.GeocodingService
+	if cfg.GoogleMapsAPIKey != "" {
+		geocoder = service.NewGoogleGeocodingService(cfg.GoogleMapsAPIKey)
+	} else {
+		geocoder = service.NoopGeocodingService{}
+	}
+
+	h := handler.New(pool, oauthSvc, storageSvc, emailSvc, geocoder, cfg)
 	r := router.New(h, cfg, logger)
 
 	srv := &http.Server{
