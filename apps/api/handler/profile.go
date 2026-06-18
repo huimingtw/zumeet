@@ -24,12 +24,11 @@ type AddRoleRequest struct {
 func (h *Handler) AddRole(c *Context) {
 	userID := middleware.MustUserID(c)
 	var req AddRoleRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error(), "code": "BAD_REQUEST"})
+	if !bindJSON(c, &req) {
 		return
 	}
 	if req.Role != "tenant" && req.Role != "landlord" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid role", "code": "BAD_REQUEST"})
+		respondFieldError(c, "role", "身分不是有效選項")
 		return
 	}
 	if _, err := h.db.Exec(c.Request.Context(),

@@ -25,6 +25,13 @@ type AppConfig struct {
 	GoogleRedirectURL  string
 	GoogleTokenURL     string // overridable for test mock
 
+	// FrontendURL is the base URL the API uses when redirecting the browser
+	// to the web app (e.g. after OAuth). In production this is the canonical
+	// origin; in dev it can be set to an empty string to emit same-origin
+	// (relative) redirects, which is useful when both apps sit behind a single
+	// reverse proxy / tunnel.
+	FrontendURL string
+
 	StorageEndpoint  string
 	StoragePublicURL string
 	StorageBucket    string
@@ -54,6 +61,8 @@ func Load() *AppConfig {
 		GoogleRedirectURL:  getEnv("GOOGLE_REDIRECT_URL", "http://localhost:8080/api/v1/auth/google/callback"),
 		GoogleTokenURL:     getEnv("GOOGLE_TOKEN_URL", "https://oauth2.googleapis.com/token"),
 
+		FrontendURL: getEnvOrEmpty("FRONTEND_URL", "http://localhost:3000"),
+
 		StorageEndpoint:  getEnv("STORAGE_ENDPOINT", "localhost:9000"),
 		StoragePublicURL: getEnv("STORAGE_PUBLIC_URL", ""),
 		StorageBucket:    getEnv("STORAGE_BUCKET", "zumeet"),
@@ -70,6 +79,17 @@ func Load() *AppConfig {
 
 func getEnv(key, defaultVal string) string {
 	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return defaultVal
+}
+
+// getEnvOrEmpty returns the env value if the key is set (even to an empty
+// string), and defaultVal only when the key is entirely unset. This lets
+// callers explicitly opt into "no value" via FOO="" without falling back
+// to a built-in default.
+func getEnvOrEmpty(key, defaultVal string) string {
+	if v, ok := os.LookupEnv(key); ok {
 		return v
 	}
 	return defaultVal

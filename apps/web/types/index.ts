@@ -1,3 +1,14 @@
+export interface ApiFieldError {
+  field: string;
+  message: string;
+}
+
+export interface ApiError {
+  error: string;
+  code: string;
+  fields?: ApiFieldError[];
+}
+
 export interface MeResponse {
   id: string;
   email: string;
@@ -116,6 +127,10 @@ export interface MutualMatch {
   listing_name?: string;
   contact_info: string;
   matched_at: string;
+  tenant_occupation?: string;
+  tenant_age?: number;
+  tenant_has_pets?: boolean;
+  tenant_description?: string;
 }
 
 export interface Interest {

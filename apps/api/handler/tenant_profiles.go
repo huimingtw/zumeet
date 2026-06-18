@@ -162,12 +162,11 @@ func (h *Handler) CreateTenantProfile(c *Context) {
 	}
 
 	var req TenantProfileRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error(), "code": "BAD_REQUEST"})
+	if !bindJSON(c, &req) {
 		return
 	}
-	if err := validateProfileRequest(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error(), "code": "BAD_REQUEST"})
+	if errs := validateProfileRequest(&req); len(errs) > 0 {
+		respondFieldErrors(c, errs)
 		return
 	}
 
@@ -266,12 +265,11 @@ func (h *Handler) UpdateTenantProfile(c *Context) {
 	}
 
 	var req TenantProfileRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error(), "code": "BAD_REQUEST"})
+	if !bindJSON(c, &req) {
 		return
 	}
-	if err := validateProfileRequest(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error(), "code": "BAD_REQUEST"})
+	if errs := validateProfileRequest(&req); len(errs) > 0 {
+		respondFieldErrors(c, errs)
 		return
 	}
 
@@ -367,8 +365,7 @@ func (h *Handler) ToggleTenantProfileStatus(c *Context) {
 	var body struct {
 		IsActive bool `json:"is_active"`
 	}
-	if err := c.ShouldBindJSON(&body); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error(), "code": "BAD_REQUEST"})
+	if !bindJSON(c, &body) {
 		return
 	}
 
@@ -386,14 +383,15 @@ func (h *Handler) ToggleTenantProfileStatus(c *Context) {
 
 // ---- helpers ----
 
-func validateProfileRequest(req *TenantProfileRequest) error {
+func validateProfileRequest(req *TenantProfileRequest) []FieldError {
+	var errs []FieldError
 	if req.BudgetMin > req.BudgetMax {
-		return errors.New("budget_min must be <= budget_max")
+		errs = append(errs, FieldError{Field: "budget_max", Message: "最高預算需大於或等於最低預算"})
 	}
 	if req.MinAreaPing != nil && *req.MinAreaPing <= 0 {
-		return errors.New("min_area_ping must be > 0")
+		errs = append(errs, FieldError{Field: "min_area_ping", Message: "最小坪數需大於 0"})
 	}
-	return nil
+	return errs
 }
 
 type profileScanner interface {

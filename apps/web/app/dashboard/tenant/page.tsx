@@ -7,15 +7,17 @@ import {
 	Heart,
 	Inbox,
 	MapPin,
+	MoreVertical,
 	Search,
 	SearchX,
 	SendHorizonal,
+	X,
 } from "lucide-react";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { type ReactNode, Suspense, useEffect, useRef, useState } from "react";
 import { LocationPicker } from "@/components/LocationPicker";
-import { api } from "@/lib/api";
+import { api, extractFieldErrors } from "@/lib/api";
 import { formatLayout, getListingTags, pricePerPing, totalMonthly } from "@/lib/listingTags";
 import type { MatchedListingCard, TenantProfile } from "@/types";
 import {
@@ -355,6 +357,19 @@ function ProfileCard({
 	onDeleted: () => void;
 }) {
 	const qc = useQueryClient();
+	const [menuOpen, setMenuOpen] = useState(false);
+	const menuRef = useRef<HTMLDivElement>(null);
+
+	useEffect(() => {
+		if (!menuOpen) return;
+		function handler(e: MouseEvent) {
+			if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+				setMenuOpen(false);
+			}
+		}
+		document.addEventListener("mousedown", handler);
+		return () => document.removeEventListener("mousedown", handler);
+	}, [menuOpen]);
 
 	const toggleStatus = useMutation({
 		mutationFn: () =>
@@ -370,8 +385,8 @@ function ProfileCard({
 	});
 
 	return (
-		<div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm transition hover:shadow-md">
-			<div className="flex flex-wrap items-start justify-between gap-3">
+		<div className="rounded-xl border border-gray-200 bg-white shadow-sm transition hover:shadow-md">
+			<div className="flex items-start justify-between p-4 sm:p-5">
 				<div className="min-w-0 flex-1">
 					<div className="flex flex-wrap items-center gap-2">
 						<h3 className="text-sm font-semibold text-gray-950">
@@ -395,7 +410,9 @@ function ProfileCard({
 							.join("、")}
 					</p>
 				</div>
-				<div className="flex flex-shrink-0 flex-wrap gap-2">
+
+				{/* Desktop: compact "找房源" + kebab */}
+				<div className="ml-2 hidden flex-shrink-0 items-center gap-2 sm:flex">
 					{profile.is_active && (
 						<button
 							type="button"
@@ -405,31 +422,57 @@ function ProfileCard({
 							找房源
 						</button>
 					)}
+					<div ref={menuRef} className="relative">
+						<button
+							type="button"
+							onClick={() => setMenuOpen((v) => !v)}
+							className="rounded-lg p-1.5 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700"
+							aria-label="更多動作"
+						>
+							<MoreVertical size={18} strokeWidth={1.5} />
+						</button>
+						{menuOpen && (
+							<div className="absolute right-0 z-30 mt-1 w-32 overflow-hidden rounded-xl border border-gray-200 bg-white py-1 shadow-lg">
+								<button type="button" onClick={() => { setMenuOpen(false); onEdit(); }} className="w-full px-4 py-2 text-left text-sm text-gray-700 transition hover:bg-gray-50">編輯</button>
+								<button type="button" onClick={() => { setMenuOpen(false); toggleStatus.mutate(); }} className="w-full px-4 py-2 text-left text-sm text-gray-700 transition hover:bg-gray-50">{profile.is_active ? "停用" : "啟用"}</button>
+								<button type="button" onClick={() => { setMenuOpen(false); if (confirm("確定刪除這張需求卡？")) deleteProfile.mutate(); }} className="w-full px-4 py-2 text-left text-sm text-red-600 transition hover:bg-red-50">刪除</button>
+							</div>
+						)}
+					</div>
+				</div>
+
+				{/* Mobile: kebab only (找房源 goes to bottom bar) */}
+				<div ref={menuRef} className="relative ml-2 flex-shrink-0 sm:hidden">
 					<button
 						type="button"
-						onClick={onEdit}
-						className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs text-gray-700 transition hover:bg-gray-50"
+						onClick={() => setMenuOpen((v) => !v)}
+						className="rounded-lg p-1.5 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700"
+						aria-label="更多動作"
 					>
-						編輯
+						<MoreVertical size={18} strokeWidth={1.5} />
 					</button>
-					<button
-						type="button"
-						onClick={() => toggleStatus.mutate()}
-						className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs text-gray-700 transition hover:bg-gray-50"
-					>
-						{profile.is_active ? "停用" : "啟用"}
-					</button>
-					<button
-						type="button"
-						onClick={() => {
-							if (confirm("確定刪除這張需求卡？")) deleteProfile.mutate();
-						}}
-						className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs text-red-600 transition hover:bg-red-50"
-					>
-						刪除
-					</button>
+					{menuOpen && (
+						<div className="absolute right-0 z-30 mt-1 w-32 overflow-hidden rounded-xl border border-gray-200 bg-white py-1 shadow-lg">
+							<button type="button" onClick={() => { setMenuOpen(false); onEdit(); }} className="w-full px-4 py-2 text-left text-sm text-gray-700 transition hover:bg-gray-50">編輯</button>
+							<button type="button" onClick={() => { setMenuOpen(false); toggleStatus.mutate(); }} className="w-full px-4 py-2 text-left text-sm text-gray-700 transition hover:bg-gray-50">{profile.is_active ? "停用" : "啟用"}</button>
+							<button type="button" onClick={() => { setMenuOpen(false); if (confirm("確定刪除這張需求卡？")) deleteProfile.mutate(); }} className="w-full px-4 py-2 text-left text-sm text-red-600 transition hover:bg-red-50">刪除</button>
+						</div>
+					)}
 				</div>
 			</div>
+
+			{/* Mobile-only full-width CTA */}
+			{profile.is_active && (
+				<div className="border-t border-gray-100 px-4 pb-4 pt-3 sm:hidden">
+					<button
+						type="button"
+						onClick={onBrowse}
+						className="w-full rounded-lg bg-primary-600 py-2.5 text-sm font-medium text-white transition hover:bg-primary-500"
+					>
+						找房源
+					</button>
+				</div>
+			)}
 		</div>
 	);
 }
@@ -592,111 +635,160 @@ function ListingCard({
 	const perPing = pricePerPing(listing);
 
 	return (
-		<div className="flex gap-4 rounded-xl border border-gray-200 bg-white p-5 shadow-sm transition hover:shadow-md">
-			{/* Photo — navigation buttons live here, separate from the info click target */}
-			<div className="relative w-44 flex-shrink-0">
-				<div className="relative aspect-[4/3] overflow-hidden rounded-lg bg-gray-200">
+		<div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition hover:shadow-md">
+			{/* sm+: side-by-side (original desktop layout); mobile: stacked */}
+			<div className="sm:flex sm:items-stretch sm:gap-3 sm:p-3">
+				{/* Photo */}
+				<div className="relative w-full overflow-hidden bg-gray-200 aspect-video sm:aspect-[4/3] sm:w-44 sm:flex-shrink-0 sm:rounded-lg">
 					{listing.photos.length > 0 && (
 						<Image
 							src={listing.photos[photoIdx]}
 							alt=""
 							fill
 							className="object-cover"
-							sizes="176px"
+							sizes="(min-width: 640px) 176px, 100vw"
 						/>
 					)}
+					{listing.photos.length > 1 && (
+						<>
+							<button
+								type="button"
+								onClick={() =>
+									setPhotoIdx(
+										(i) => (i - 1 + listing.photos.length) % listing.photos.length,
+									)
+								}
+								className="absolute left-1 top-1/2 -translate-y-1/2 rounded-full bg-black/40 p-0.5 text-white"
+							>
+								‹
+							</button>
+							<button
+								type="button"
+								onClick={() => setPhotoIdx((i) => (i + 1) % listing.photos.length)}
+								className="absolute right-1 top-1/2 -translate-y-1/2 rounded-full bg-black/40 p-0.5 text-white"
+							>
+								›
+							</button>
+							<div className="absolute bottom-1 left-0 right-0 flex justify-center gap-1">
+								{listing.photos.map((url, i) => (
+									<span
+										key={url}
+										className={`inline-block h-1 w-1 rounded-full ${i === photoIdx ? "bg-white" : "bg-white/50"}`}
+									/>
+								))}
+							</div>
+						</>
+					)}
 				</div>
-				{listing.photos.length > 1 && (
-					<>
-						<button
-							type="button"
-							onClick={() =>
-								setPhotoIdx(
-									(i) =>
-										(i - 1 + listing.photos.length) % listing.photos.length,
-								)
-							}
-							className="absolute left-1 top-1/2 -translate-y-1/2 rounded-full bg-black/40 p-0.5 text-white"
-						>
-							‹
-						</button>
-						<button
-							type="button"
-							onClick={() =>
-								setPhotoIdx((i) => (i + 1) % listing.photos.length)
-							}
-							className="absolute right-1 top-1/2 -translate-y-1/2 rounded-full bg-black/40 p-0.5 text-white"
-						>
-							›
-						</button>
-						<div className="absolute bottom-1 left-0 right-0 flex justify-center gap-1">
-							{listing.photos.map((url) => (
+
+				{/* Info */}
+				<button type="button" onClick={onClick} className="block w-full p-4 text-left sm:min-w-0 sm:flex-1 sm:p-0">
+					<div className="flex flex-wrap items-baseline gap-2">
+						<span className="text-xl font-semibold text-gray-950">
+							${total.toLocaleString()}
+						</span>
+						<span className="text-sm text-gray-500">
+							{ROOM_TYPE_LABELS[listing.room_type] ?? listing.room_type}
+						</span>
+						<span className="text-sm text-gray-500">{listing.area_ping} 坪</span>
+						{perPing != null && (
+							<span className="text-sm text-gray-500">
+								（每坪 ${perPing.toLocaleString()}）
+							</span>
+						)}
+						{layout && <span className="text-sm text-gray-500">{layout}</span>}
+					</div>
+					{listing.management_fee > 0 && (
+						<p className="text-xs text-gray-400">
+							房租 ${listing.rent.toLocaleString()} + 管理費 $
+							{listing.management_fee.toLocaleString()}
+						</p>
+					)}
+					<div className="mt-1 flex items-center gap-1 text-sm text-gray-500">
+						<MapPin size={14} strokeWidth={1.5} />
+						{LOCATION_LABELS[listing.location_id] ?? listing.location_id}
+					</div>
+					<p className="mt-0.5 text-sm text-gray-400">
+						可入住：
+						{new Date(listing.available_from).toLocaleDateString("zh-TW", {
+							year: "numeric",
+							month: "2-digit",
+							day: "2-digit",
+						})}
+					</p>
+					{tags.length > 0 && (
+						<div className="mt-2 flex flex-wrap gap-1">
+							{tags.map((tag) => (
 								<span
-									key={url}
-									className={`inline-block h-1 w-1 rounded-full ${listing.photos.indexOf(url) === photoIdx ? "bg-white" : "bg-white/50"}`}
-								/>
+									key={tag}
+									className="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-700"
+								>
+									{tag}
+								</span>
 							))}
 						</div>
-					</>
+					)}
+					{contactInfo && (
+						<div className="mt-3 rounded-lg border border-gray-200 bg-gray-50 p-3">
+							<p className="mb-1 text-xs text-gray-400">
+								以下為對方自填資料，平台不保證真實性，請自行確認。
+							</p>
+							<p className="text-sm font-medium text-gray-950">{contactInfo}</p>
+						</div>
+					)}
+				</button>
+
+				{/* Desktop CTA — shown inline in the flex row */}
+				{action && (
+					<div className="hidden sm:flex sm:flex-shrink-0 sm:items-center">
+						{action}
+					</div>
 				)}
 			</div>
 
-			{/* Info — button opens detail dialog; CTA sits on the right edge of the card */}
-			<button type="button" onClick={onClick} className="min-w-0 flex-1 text-left">
-				<div className="flex flex-wrap items-baseline gap-2">
-					<span className="text-xl font-semibold text-gray-950">
-						${total.toLocaleString()}
-					</span>
-					<span className="text-sm text-gray-500">
-						{ROOM_TYPE_LABELS[listing.room_type] ?? listing.room_type}
-					</span>
-					<span className="text-sm text-gray-500">
-						{listing.area_ping} 坪
-					</span>
-					{perPing != null && (
-						<span className="text-sm text-gray-500">
-							（每坪 ${perPing.toLocaleString()}）
-						</span>
-					)}
-					{layout && <span className="text-sm text-gray-500">{layout}</span>}
+			{/* Mobile CTA — full-width bar below the card content */}
+			{action && (
+				<div className="border-t border-gray-100 px-4 pb-4 pt-3 text-center sm:hidden [&>button]:w-full [&>button]:py-2.5 [&>button]:text-sm">
+					{action}
 				</div>
-				{listing.management_fee > 0 && (
-					<p className="text-xs text-gray-400">
-						房租 ${listing.rent.toLocaleString()} + 管理費 $
-						{listing.management_fee.toLocaleString()}
-					</p>
-				)}
-				<div className="mt-1 flex items-center gap-1 text-sm text-gray-500">
-					<MapPin size={14} strokeWidth={1.5} />
-					{LOCATION_LABELS[listing.location_id] ?? listing.location_id}
-				</div>
-				<p className="mt-0.5 text-sm text-gray-400">
-					可入住：
-					{new Date(listing.available_from).toLocaleDateString("zh-TW")}
-				</p>
-				{tags.length > 0 && (
-					<div className="mt-2 flex flex-wrap gap-1">
-						{tags.map((tag) => (
-							<span
-								key={tag}
-								className="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-700"
-							>
-								{tag}
-							</span>
-						))}
-					</div>
-				)}
-				{contactInfo && (
-					<div className="mt-3 rounded-lg border border-gray-200 bg-gray-50 p-3">
-						<p className="mb-1 text-xs text-gray-400">
-							以下為對方自填資料，平台不保證真實性，請自行確認。
-						</p>
-						<p className="text-sm font-medium text-gray-950">{contactInfo}</p>
-					</div>
-				)}
-			</button>
-			{action && <div className="flex flex-shrink-0 items-center">{action}</div>}
+			)}
 		</div>
+	);
+}
+
+function ListingMiniMap({
+	address,
+	locationLabel,
+}: {
+	address?: string;
+	locationLabel?: string;
+}) {
+	const query = (address && address.trim()) || locationLabel;
+	if (!query) return null;
+	const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY;
+	const encoded = encodeURIComponent(query);
+	const externalUrl = `https://www.google.com/maps/search/?api=1&query=${encoded}`;
+	const embedUrl = apiKey
+		? `https://www.google.com/maps/embed/v1/place?key=${apiKey}&q=${encoded}&language=zh-TW`
+		: `https://maps.google.com/maps?q=${encoded}&output=embed&hl=zh-TW`;
+	return (
+		<a
+			href={externalUrl}
+			target="_blank"
+			rel="noopener noreferrer"
+			className="mt-3 block overflow-hidden rounded-lg border border-gray-200"
+			title="在 Google 地圖開啟"
+		>
+			<div className="pointer-events-none relative h-40 w-full">
+				<iframe
+					src={embedUrl}
+					title="地圖"
+					loading="lazy"
+					referrerPolicy="no-referrer-when-downgrade"
+					className="block h-full w-full border-0"
+				/>
+			</div>
+		</a>
 	);
 }
 
@@ -759,6 +851,16 @@ function ListingDetailDialog({
 				className="relative z-10 flex w-screen flex-col overflow-hidden rounded-t-2xl bg-white sm:w-[min(80vw,1280px)] sm:min-h-[520px] sm:flex-row sm:rounded-2xl"
 				style={{ maxHeight: "90vh" }}
 			>
+				{/* Close button */}
+				<button
+					type="button"
+					onClick={onClose}
+					className="absolute right-3 top-3 z-20 rounded-full bg-black/50 p-1.5 text-white backdrop-blur-sm hover:bg-black/70"
+					aria-label="關閉"
+				>
+					<X size={16} strokeWidth={2} />
+				</button>
+
 				{/* ── Left: photo panel — stretches to dialog height; image fills via object-cover. ── */}
 				<div className="relative flex-shrink-0 bg-gray-100 sm:w-[62%] sm:self-stretch">
 					{listing.photos.length > 0 ? (
@@ -775,16 +877,6 @@ function ListingDetailDialog({
 							<span className="text-sm text-gray-500">暫無照片</span>
 						</div>
 					)}
-
-					{/* Close button */}
-					<button
-						type="button"
-						onClick={onClose}
-						className="absolute right-3 top-3 rounded-full bg-black/50 p-1.5 text-white backdrop-blur-sm"
-						aria-label="關閉"
-					>
-						✕
-					</button>
 
 					{/* Photo nav */}
 					{listing.photos.length > 1 && (
@@ -818,7 +910,7 @@ function ListingDetailDialog({
 				</div>
 
 				{/* ── Right: info panel: drives the dialog height; scrolls if content exceeds 90vh. ── */}
-				<div className="flex max-h-[90vh] min-w-0 flex-col sm:w-[38%]">
+				<div className="flex min-h-0 min-w-0 flex-1 flex-col sm:w-[38%] sm:flex-none sm:max-h-[90vh]">
 					<div className="min-h-0 overflow-y-auto p-6">
 						{listing.name && (
 							<p className="mb-1 text-base font-semibold text-gray-950">
@@ -869,6 +961,12 @@ function ListingDetailDialog({
 							可入住：
 							{new Date(listing.available_from).toLocaleDateString("zh-TW")}
 						</p>
+						<ListingMiniMap
+							address={listing.address}
+							locationLabel={
+								LOCATION_LABELS[listing.location_id] ?? listing.location_id
+							}
+						/>
 						{listing.description && (
 							<p className="mt-3 whitespace-pre-wrap text-sm text-gray-700">
 								{listing.description}
@@ -898,7 +996,11 @@ function ListingDetailDialog({
 						)}
 					</div>
 
-					{action && <div className="px-6 pb-6">{action}</div>}
+					{action && (
+						<div className="flex min-h-[72px] items-center justify-center px-6 pb-6 pt-2">
+							{action}
+						</div>
+					)}
 				</div>
 			</div>
 		</div>
@@ -1380,6 +1482,7 @@ function ProfileFormModal({
 		contact_info: "",
 	}));
 	const [error, setError] = useState("");
+	const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 	const [loading, setLoading] = useState(false);
 	const [formSaved, setFormSaved] = useState(false);
 	const [locPickerOpen, setLocPickerOpen] = useState(false);
@@ -1470,7 +1573,11 @@ function ProfileFormModal({
 			}
 			onSaved();
 		} catch (err: unknown) {
-			if (err && typeof err === "object" && "response" in err) {
+			const fe = extractFieldErrors(err);
+			if (Object.keys(fe).length > 0) {
+				setFieldErrors(fe);
+				setError("請修正欄位錯誤");
+			} else if (err && typeof err === "object" && "response" in err) {
 				const axiosErr = err as { response?: { data?: { error?: string } } };
 				setError(axiosErr.response?.data?.error ?? "發生錯誤");
 			} else {
@@ -1489,8 +1596,9 @@ function ProfileFormModal({
 				aria-label="關閉"
 				onClick={onClose}
 			/>
-			<div className="no-scrollbar relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-t-2xl bg-white p-6 sm:rounded-2xl">
-				<div className="mb-4 flex items-center justify-between">
+			<div className="relative flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-t-2xl bg-white sm:rounded-2xl">
+				{/* Header */}
+				<div className="flex flex-shrink-0 items-center justify-between border-b border-gray-100 px-6 py-4">
 					<h3 className="text-base font-semibold text-gray-950">
 						{editingProfile ? "編輯需求卡" : "新增需求卡"}
 					</h3>
@@ -1504,22 +1612,51 @@ function ProfileFormModal({
 					</button>
 				</div>
 
-				<form onSubmit={handleSubmit} noValidate className="space-y-4">
+				<form onSubmit={handleSubmit} noValidate className="flex min-h-0 flex-1 flex-col">
+				<div className="no-scrollbar flex-1 space-y-4 overflow-y-auto px-6 py-4">
 					<div>
 						<label
 							htmlFor="profile-name"
 							className="mb-1 block text-sm font-medium text-gray-700"
 						>
-							需求名稱（如：台北套房）
+							需求名稱（如：台北套房）<span className="ml-0.5 text-red-500">*</span>
 						</label>
 						<input
 							id="profile-name"
 							required
 							value={form.name}
-							onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-							className="input"
+							onChange={(e) => {
+								setForm((f) => ({ ...f, name: e.target.value }));
+								if (fieldErrors.name) setFieldErrors((fe) => ({ ...fe, name: "" }));
+							}}
+							className={`input ${fieldErrors.name ? "border-red-500" : ""}`}
 							placeholder="例：台北大安套房"
 						/>
+						{fieldErrors.name && <p className="mt-1 text-xs text-red-600">{fieldErrors.name}</p>}
+					</div>
+
+					{/* Budget quick-select chips */}
+					<div className="flex flex-wrap gap-1.5">
+						{([
+							[10000, 15000, "1–1.5 萬"],
+							[15000, 20000, "1.5–2 萬"],
+							[20000, 30000, "2–3 萬"],
+							[30000, 50000, "3–5 萬"],
+							[50000, 100000, "5 萬以上"],
+						] as [number, number, string][]).map(([mn, mx, label]) => (
+							<button
+								key={label}
+								type="button"
+								onClick={() => setForm((f) => ({ ...f, budget_min: mn, budget_max: mx }))}
+								className={`rounded-full px-3 py-1 text-xs font-medium transition ${
+									form.budget_min === mn && form.budget_max === mx
+										? "bg-primary-600 text-white"
+										: "border border-gray-200 text-gray-600 hover:border-gray-400"
+								}`}
+							>
+								{label}
+							</button>
+						))}
 					</div>
 
 					<div className="grid grid-cols-2 gap-3">
@@ -1528,7 +1665,7 @@ function ProfileFormModal({
 								htmlFor="budget-min"
 								className="mb-1 block text-sm font-medium text-gray-700"
 							>
-								最低預算（元）
+								最低預算（元）<span className="ml-0.5 text-red-500">*</span>
 							</label>
 							<input
 								id="budget-min"
@@ -1536,18 +1673,20 @@ function ProfileFormModal({
 								type="number"
 								min={0}
 								value={form.budget_min || ""}
-								onChange={(e) =>
-									setForm((f) => ({ ...f, budget_min: Number(e.target.value) }))
-								}
-								className="input"
+								onChange={(e) => {
+									setForm((f) => ({ ...f, budget_min: Number(e.target.value) }));
+									if (fieldErrors.budget_min) setFieldErrors((fe) => ({ ...fe, budget_min: "" }));
+								}}
+								className={`input ${fieldErrors.budget_min ? "border-red-500" : ""}`}
 							/>
+							{fieldErrors.budget_min && <p className="mt-1 text-xs text-red-600">{fieldErrors.budget_min}</p>}
 						</div>
 						<div>
 							<label
 								htmlFor="budget-max"
 								className="mb-1 block text-sm font-medium text-gray-700"
 							>
-								最高預算（元）
+								最高預算（元）<span className="ml-0.5 text-red-500">*</span>
 							</label>
 							<input
 								id="budget-max"
@@ -1555,17 +1694,19 @@ function ProfileFormModal({
 								type="number"
 								min={0}
 								value={form.budget_max || ""}
-								onChange={(e) =>
-									setForm((f) => ({ ...f, budget_max: Number(e.target.value) }))
-								}
-								className="input"
+								onChange={(e) => {
+									setForm((f) => ({ ...f, budget_max: Number(e.target.value) }));
+									if (fieldErrors.budget_max) setFieldErrors((fe) => ({ ...fe, budget_max: "" }));
+								}}
+								className={`input ${fieldErrors.budget_max ? "border-red-500" : ""}`}
 							/>
+							{fieldErrors.budget_max && <p className="mt-1 text-xs text-red-600">{fieldErrors.budget_max}</p>}
 						</div>
 					</div>
 
 					<div>
 						<p className="mb-1 text-sm font-medium text-gray-700">
-							可接受地區（多選）
+							可接受地區（多選）<span className="ml-0.5 text-red-500">*</span>
 						</p>
 						<button
 							type="button"
@@ -1605,7 +1746,7 @@ function ProfileFormModal({
 
 					<div>
 						<p className="mb-1 text-sm font-medium text-gray-700">
-							偏好房型（多選）
+							偏好房型（多選）<span className="ml-0.5 text-red-500">*</span>
 						</p>
 						<div className="flex gap-2">
 							{Object.entries(ROOM_TYPE_LABELS).map(([rt, label]) => (
@@ -1631,7 +1772,7 @@ function ProfileFormModal({
 								htmlFor="available-from"
 								className="mb-1 block text-sm font-medium text-gray-700"
 							>
-								最快入住日
+								最快入住日<span className="ml-0.5 text-red-500">*</span>
 							</label>
 							<input
 								id="available-from"
@@ -1650,7 +1791,7 @@ function ProfileFormModal({
 								htmlFor="min-lease"
 								className="mb-1 block text-sm font-medium text-gray-700"
 							>
-								最短租期（月）
+								最短租期（月）<span className="ml-0.5 text-red-500">*</span>
 							</label>
 							<input
 								id="min-lease"
@@ -1804,24 +1945,33 @@ function ProfileFormModal({
 							className="mb-1 block text-sm font-medium text-gray-700"
 						>
 							聯絡方式（媒合成功後才對房東顯示）
+							{!editingProfile && <span className="ml-0.5 text-red-500">*</span>}
 						</label>
 						<input
 							id="contact-info"
 							required={!editingProfile}
 							value={form.contact_info}
-							onChange={(e) =>
-								setForm((f) => ({ ...f, contact_info: e.target.value }))
-							}
-							className="input"
+							onChange={(e) => {
+								setForm((f) => ({ ...f, contact_info: e.target.value }));
+								if (fieldErrors.contact_info) setFieldErrors((fe) => ({ ...fe, contact_info: "" }));
+							}}
+							className={`input ${fieldErrors.contact_info ? "border-red-500" : ""}`}
 							placeholder="例：Line ID: xxx 或 0912-345-678"
 						/>
-						<p className="mt-1 text-xs text-gray-400">
-							媒合成功後才會顯示給對方，請填真實聯絡方式
-						</p>
+						{fieldErrors.contact_info ? (
+							<p className="mt-1 text-xs text-red-600">{fieldErrors.contact_info}</p>
+						) : (
+							<p className="mt-1 text-xs text-gray-400">
+								媒合成功後才會顯示給對方，請填真實聯絡方式
+							</p>
+						)}
 					</div>
 
 					{error && <p className="text-sm text-red-600">{error}</p>}
+				</div>
 
+				{/* Sticky bottom bar */}
+				<div className="flex-shrink-0 space-y-2 border-t border-gray-100 bg-white px-6 pb-[max(16px,env(safe-area-inset-bottom))] pt-3">
 					<button
 						type="submit"
 						disabled={loading || formSaved}
@@ -1844,6 +1994,7 @@ function ProfileFormModal({
 							關閉
 						</button>
 					)}
+				</div>
 				</form>
 			</div>
 		</div>

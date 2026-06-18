@@ -17,8 +17,7 @@ func (h *Handler) CreateReport(c *Context) {
 		ListingID  string `json:"listing_id"`
 		Reason     string `json:"reason" binding:"required"`
 	}
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error(), "code": "invalid_request"})
+	if !bindJSON(c, &req) {
 		return
 	}
 	if req.ReportedID == userID {

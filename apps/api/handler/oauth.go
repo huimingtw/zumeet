@@ -164,16 +164,15 @@ type OnboardingRequest struct {
 // Onboarding creates user + user_role + auth_identity in a single transaction.
 func (h *Handler) Onboarding(c *Context) {
 	var req OnboardingRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error(), "code": "BAD_REQUEST"})
+	if !bindJSON(c, &req) {
 		return
 	}
 	if !req.AcceptedToS {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "must accept terms of service", "code": "TOS_REQUIRED"})
+		respondFieldError(c, "accepted_tos", "請同意服務條款")
 		return
 	}
 	if req.Role != "tenant" && req.Role != "landlord" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid role", "code": "BAD_REQUEST"})
+		respondFieldError(c, "role", "身分不是有效選項")
 		return
 	}
 
@@ -269,5 +268,5 @@ func (h *Handler) frontendURL(path string) string {
 	if h.cfg.AppEnv == "production" {
 		return "https://app.zumeet.tw" + path
 	}
-	return "http://localhost:3000" + path
+	return h.cfg.FrontendURL + path
 }

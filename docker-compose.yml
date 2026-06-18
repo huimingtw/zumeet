@@ -58,12 +58,23 @@ services:
         NEXT_IMAGE_UNOPTIMIZED: "true"
     env_file:
       - ./apps/web/.env.local
-    environment:
-      NEXT_PUBLIC_API_URL: http://localhost:8080
     depends_on:
       - api
     ports:
       - "3000:3000"
+
+  # Single-origin dev reverse proxy: lets web + api share one ngrok tunnel so
+  # cookies, CORS, and OAuth callbacks all live on the same host. Not used in
+  # production (Cloud Run handles routing there).
+  proxy:
+    image: nginx:1.27-alpine
+    depends_on:
+      - api
+      - web
+    volumes:
+      - ./infra/nginx-dev.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - "8088:80"
 
 volumes:
   postgres_data:

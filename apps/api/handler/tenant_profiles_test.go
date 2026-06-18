@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 )
@@ -239,6 +240,89 @@ func TestTenantProfile_BudgetValidation(t *testing.T) {
 	}, cookie)
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("expected 400 for budget_min > budget_max, got %d", w.Code)
+	}
+}
+
+func TestTenantProfile_MissingContactInfo_FriendlyError(t *testing.T) {
+	truncate(t)
+	userID := seedUser(t, "tp-missing-contact@example.com", "tenant")
+	cookie := validAccessCookie(t, userID, "tp-missing-contact@example.com", []string{"tenant"})
+
+	w := postJSON(t, "/api/v1/tenant-profiles", map[string]any{
+		"name":                 "缺聯絡方式",
+		"budget_min":           10000,
+		"budget_max":           25000,
+		"locations":            []map[string]any{{"city": "台北市", "district": "大安區"}},
+		"preferred_room_types": []string{"suite"},
+		"available_from":       time.Now().UTC().Format(time.RFC3339),
+		"min_lease_months":     6,
+		// contact_info intentionally missing
+	}, cookie)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d: %s", w.Code, w.Body.String())
+	}
+	body := w.Body.String()
+	for _, leaked := range []string{"TenantProfileRequest", "Key:", "Field validation"} {
+		if strings.Contains(body, leaked) {
+			t.Errorf("response leaks internal validator string %q: %s", leaked, body)
+		}
+	}
+	var resp struct {
+		Error  string `json:"error"`
+		Code   string `json:"code"`
+		Fields []struct {
+			Field   string `json:"field"`
+			Message string `json:"message"`
+		} `json:"fields"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if resp.Code != "VALIDATION_FAILED" {
+		t.Errorf("expected code VALIDATION_FAILED, got %q", resp.Code)
+	}
+	found := false
+	for _, f := range resp.Fields {
+		if f.Field == "contact_info" {
+			found = true
+			if f.Message != "請填寫聯絡方式" {
+				t.Errorf("contact_info message: got %q, want 請填寫聯絡方式", f.Message)
+			}
+		}
+	}
+	if !found {
+		t.Errorf("expected fields[].field=contact_info; got %+v", resp.Fields)
+	}
+}
+
+func TestTenantProfile_BudgetInverted_FieldError(t *testing.T) {
+	truncate(t)
+	userID := seedUser(t, "tp-budget-inv@example.com", "tenant")
+	cookie := validAccessCookie(t, userID, "tp-budget-inv@example.com", []string{"tenant"})
+
+	w := postJSON(t, "/api/v1/tenant-profiles", map[string]any{
+		"name":                 "Inverted",
+		"budget_min":           30000,
+		"budget_max":           10000,
+		"locations":            []map[string]any{{"city": "台北市", "district": "大安區"}},
+		"preferred_room_types": []string{"suite"},
+		"available_from":       time.Now().UTC().Format(time.RFC3339),
+		"min_lease_months":     6,
+		"contact_info":         "line:x",
+	}, cookie)
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d", w.Code)
+	}
+	var resp struct {
+		Code   string `json:"code"`
+		Fields []struct {
+			Field string `json:"field"`
+		} `json:"fields"`
+	}
+	json.Unmarshal(w.Body.Bytes(), &resp)
+	if resp.Code != "VALIDATION_FAILED" || len(resp.Fields) == 0 || resp.Fields[0].Field != "budget_max" {
+		t.Errorf("expected budget_max field error, got %+v", resp)
 	}
 }
 

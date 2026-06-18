@@ -14,7 +14,7 @@ import {
   SearchX,
   SendHorizonal,
 } from "lucide-react";
-import { api } from "@/lib/api";
+import { api, extractFieldErrors } from "@/lib/api";
 import { getProfileTags } from "@/lib/listingTags";
 import type { Listing, MatchedTenantProfileCard, MutualMatch } from "@/types";
 import { LOCATION_CITY_DISTRICT, LOCATION_GROUPS, ROOM_TYPE_LABELS } from "@/types";
@@ -340,7 +340,7 @@ function ListingCard({
           : "bg-gray-100 text-gray-500";
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+    <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
@@ -594,7 +594,7 @@ function TenantProfileCard({
   const tags = getProfileTags(profile);
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+    <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
       <div className="flex items-center justify-between gap-4">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-baseline gap-2">
@@ -786,12 +786,15 @@ function ListingIncoming({
             {(data?.items ?? []).map((profile) => (
               <div
                 key={profile.id}
-                className="flex items-center justify-between rounded-lg border border-gray-100 px-3 py-2.5"
+                className="flex items-start justify-between gap-3 rounded-lg border border-gray-100 px-3 py-2.5"
               >
-                <div className="text-sm">
-                  <span className="font-medium text-gray-900">
+                <div className="min-w-0 flex-1 text-sm">
+                  <div className="font-medium text-gray-900">
                     {profileHeader(profile)}
-                  </span>
+                  </div>
+                  {profile.description && (
+                    <p className="mt-1 text-xs text-gray-600">{profile.description}</p>
+                  )}
                 </div>
                 {profile.interest_sent ? (
                   <span className="rounded-full bg-[#EDE9FE] px-2.5 py-0.5 text-xs font-medium text-[#5B21B6]">
@@ -822,7 +825,24 @@ type OutgoingItem = {
   profile_name: string;
   budget_min: number;
   budget_max: number;
+  tenant_occupation?: string;
+  tenant_age?: number;
+  tenant_has_pets?: boolean;
+  tenant_description?: string;
 };
+
+function tenantHeader(p: {
+  tenant_occupation?: string;
+  tenant_age?: number;
+  tenant_has_pets?: boolean;
+}) {
+  const parts = [
+    p.tenant_occupation,
+    p.tenant_age != null ? `${p.tenant_age} 歲` : null,
+    p.tenant_has_pets ? "養寵物" : null,
+  ].filter(Boolean) as string[];
+  return parts.length > 0 ? `[${parts.join("，")}]` : "租客";
+}
 
 function OutgoingTab() {
   const { data, isLoading } = useQuery<{ items: OutgoingItem[] }>({
@@ -847,12 +867,15 @@ function OutgoingTab() {
       {(data?.items ?? []).map((i) => (
         <div
           key={i.tenant_profile_id}
-          className="flex items-center justify-between rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm"
+          className="flex items-start justify-between gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm"
         >
-          <div className="text-sm">
-            <span className="font-medium text-gray-900">{i.profile_name}</span>
+          <div className="min-w-0 flex-1 text-sm">
+            <div className="font-medium text-gray-900">{tenantHeader(i)}</div>
+            {i.tenant_description && (
+              <p className="mt-1 text-xs text-gray-600">{i.tenant_description}</p>
+            )}
           </div>
-          <span className="rounded-full bg-[#EDE9FE] px-2.5 py-0.5 text-xs font-medium text-[#5B21B6]">
+          <span className="flex-shrink-0 rounded-full bg-[#EDE9FE] px-2.5 py-0.5 text-xs font-medium text-[#5B21B6]">
             已送出
           </span>
         </div>
@@ -871,6 +894,10 @@ type MatchItem = {
   contact_info: string;
   matched_at: string;
   profile_name?: string;
+  tenant_occupation?: string;
+  tenant_age?: number;
+  tenant_has_pets?: boolean;
+  tenant_description?: string;
 };
 
 function MatchedTab() {
@@ -898,15 +925,20 @@ function MatchedTab() {
         return (
           <div
             key={match.match_id}
-            className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm"
+            className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
           >
-            <div className="flex items-center gap-2 text-xs text-gray-400">
+            <div className="flex flex-wrap items-center gap-2 text-xs text-gray-400">
               <span className="rounded-full bg-[#D1FAE5] px-2 py-0.5 font-medium text-[#065F46]">
                 媒合成功
               </span>
               <span>{new Date(match.matched_at).toLocaleDateString("zh-TW")}</span>
-              {match.profile_name && <span>需求卡：{match.profile_name}</span>}
               {match.listing_name && <span>房源：{match.listing_name}</span>}
+            </div>
+            <div className="mt-3">
+              <div className="text-sm font-medium text-gray-950">{tenantHeader(match)}</div>
+              {match.tenant_description && (
+                <p className="mt-1 text-sm text-gray-600">{match.tenant_description}</p>
+              )}
             </div>
             <div className="mt-3 rounded-lg border border-gray-200 bg-gray-50 p-3">
               <p className="mb-1 text-xs text-gray-400">
@@ -1167,6 +1199,7 @@ function ListingFormModal({
     }));
   }, [existing]);
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [savedId, setSavedId] = useState<string | null>(null);
   const [formSaved, setFormSaved] = useState(false);
@@ -1228,7 +1261,11 @@ function ListingFormModal({
         setSavedId((res.data as { id: string }).id);
       }
     } catch (err: unknown) {
-      if (err && typeof err === "object" && "response" in err) {
+      const fe = extractFieldErrors(err);
+      if (Object.keys(fe).length > 0) {
+        setFieldErrors(fe);
+        setError("請修正欄位錯誤");
+      } else if (err && typeof err === "object" && "response" in err) {
         const axiosErr = err as { response?: { data?: { error?: string } } };
         setError(axiosErr.response?.data?.error ?? "發生錯誤");
       } else {
@@ -1505,16 +1542,24 @@ function ListingFormModal({
               className="mb-1 block text-sm font-medium text-gray-700"
             >
               聯絡方式（媒合成功後才對租客顯示）
+              {!editingId && <span className="ml-0.5 text-red-500">*</span>}
             </label>
             <input
               id="contact_info"
               required={!editingId}
               value={form.contact_info}
-              onChange={(e) => setForm((f) => ({ ...f, contact_info: e.target.value }))}
-              className="input"
+              onChange={(e) => {
+                setForm((f) => ({ ...f, contact_info: e.target.value }));
+                if (fieldErrors.contact_info) setFieldErrors((fe) => ({ ...fe, contact_info: "" }));
+              }}
+              className={`input ${fieldErrors.contact_info ? "border-red-500" : ""}`}
               placeholder="例：Line ID: xxx 或 0912-345-678"
             />
-            <p className="mt-1 text-xs text-gray-400">媒合成功後才會顯示給租客，請填真實聯絡方式</p>
+            {fieldErrors.contact_info ? (
+              <p className="mt-1 text-xs text-red-600">{fieldErrors.contact_info}</p>
+            ) : (
+              <p className="mt-1 text-xs text-gray-400">媒合成功後才會顯示給租客，請填真實聯絡方式</p>
+            )}
           </div>
 
           {!editingId && (
@@ -1678,7 +1723,7 @@ function Loading() {
 
 function SkeletonListingMgmtCard() {
   return (
-    <div className="flex animate-pulse items-center justify-between rounded-xl border border-gray-200 bg-white p-5">
+    <div className="flex animate-pulse items-center justify-between rounded-xl border border-gray-200 bg-white p-4">
       <div className="space-y-2">
         <div className="h-4 w-36 rounded bg-gray-200" />
         <div className="h-3 w-48 rounded bg-gray-200" />

@@ -38,6 +38,10 @@ type MutualMatchResponse struct {
 	HasParking                 bool      `json:"has_parking" db:"has_parking"`
 	AllowSmoking               bool      `json:"allow_smoking" db:"allow_smoking"`
 	Description                string    `json:"description,omitempty" db:"description"`
+	TenantOccupation           string    `json:"tenant_occupation,omitempty" db:"tenant_occupation"`
+	TenantAge                  *int      `json:"tenant_age,omitempty" db:"tenant_age"`
+	TenantHasPets              bool      `json:"tenant_has_pets" db:"tenant_has_pets"`
+	TenantDescription          string    `json:"tenant_description,omitempty" db:"tenant_description"`
 	Photos                     []string  `json:"photos" db:"-"`
 }
 
@@ -66,6 +70,11 @@ type IncomingInterestResponse struct {
 	HasParking                 bool      `json:"has_parking" db:"has_parking"`
 	AllowSmoking               bool      `json:"allow_smoking" db:"allow_smoking"`
 	Description                string    `json:"description,omitempty" db:"description"`
+	Address                    string    `json:"address,omitempty" db:"address"`
+	TenantOccupation           string    `json:"tenant_occupation,omitempty" db:"tenant_occupation"`
+	TenantAge                  *int      `json:"tenant_age,omitempty" db:"tenant_age"`
+	TenantHasPets              bool      `json:"tenant_has_pets" db:"tenant_has_pets"`
+	TenantDescription          string    `json:"tenant_description,omitempty" db:"tenant_description"`
 	Photos                     []string  `json:"photos" db:"-"`
 	InterestSent               bool      `json:"interest_sent" db:"interest_sent"`
 }
@@ -96,6 +105,11 @@ type OutgoingInterestResponse struct {
 	HasParking                 bool      `json:"has_parking" db:"has_parking"`
 	AllowSmoking               bool      `json:"allow_smoking" db:"allow_smoking"`
 	Description                string    `json:"description,omitempty" db:"description"`
+	Address                    string    `json:"address,omitempty" db:"address"`
+	TenantOccupation           string    `json:"tenant_occupation,omitempty" db:"tenant_occupation"`
+	TenantAge                  *int      `json:"tenant_age,omitempty" db:"tenant_age"`
+	TenantHasPets              bool      `json:"tenant_has_pets" db:"tenant_has_pets"`
+	TenantDescription          string    `json:"tenant_description,omitempty" db:"tenant_description"`
 	Photos                     []string  `json:"photos" db:"-"`
 }
 
@@ -123,7 +137,11 @@ func (h *Handler) GetProfileMatches(c *Context) {
 		       l.num_bedrooms, l.num_living_rooms, l.num_bathrooms, l.num_balconies,
 		       l.available_from, l.allow_pets, l.allow_subsidy, l.allow_tax_receipt,
 		       l.allow_household_registration, l.allow_cooking, l.has_parking, l.allow_smoking,
-		       COALESCE(l.description, '') AS description
+		       COALESCE(l.description, '') AS description,
+		       COALESCE(tp.occupation, '') AS tenant_occupation,
+		       tp.age AS tenant_age,
+		       tp.has_pets AS tenant_has_pets,
+		       COALESCE(tp.description, '') AS tenant_description
 		FROM matches m
 		JOIN listings l ON l.id = m.listing_id
 		JOIN tenant_profiles tp ON tp.id = m.tenant_profile_id
@@ -178,6 +196,11 @@ func (h *Handler) GetProfileIncomingInterests(c *Context) {
 		       l.available_from, l.allow_pets, l.allow_subsidy, l.allow_tax_receipt,
 		       l.allow_household_registration, l.allow_cooking, l.has_parking, l.allow_smoking,
 		       COALESCE(l.description, '') AS description,
+		       COALESCE(tp.occupation, '') AS tenant_occupation,
+		       tp.age AS tenant_age,
+		       tp.has_pets AS tenant_has_pets,
+		       COALESCE(tp.description, '') AS tenant_description,
+		       COALESCE(l.address, '') AS address,
 		       false AS interest_sent
 		FROM interests i
 		JOIN listings l ON l.id = i.listing_id
@@ -241,7 +264,12 @@ func (h *Handler) GetProfileOutgoingInterests(c *Context) {
 		       l.num_bedrooms, l.num_living_rooms, l.num_bathrooms, l.num_balconies,
 		       l.available_from, l.allow_pets, l.allow_subsidy, l.allow_tax_receipt,
 		       l.allow_household_registration, l.allow_cooking, l.has_parking, l.allow_smoking,
-		       COALESCE(l.description, '') AS description
+		       COALESCE(l.description, '') AS description,
+		       COALESCE(tp.occupation, '') AS tenant_occupation,
+		       tp.age AS tenant_age,
+		       tp.has_pets AS tenant_has_pets,
+		       COALESCE(tp.description, '') AS tenant_description,
+		       COALESCE(l.address, '') AS address
 		FROM interests i
 		JOIN listings l ON l.id = i.listing_id
 		JOIN tenant_profiles tp ON tp.id = i.tenant_profile_id
@@ -300,7 +328,11 @@ func (h *Handler) GetAllMutualMatches(c *Context) {
 		       l.num_bedrooms, l.num_living_rooms, l.num_bathrooms, l.num_balconies,
 		       l.available_from, l.allow_pets, l.allow_subsidy, l.allow_tax_receipt,
 		       l.allow_household_registration, l.allow_cooking, l.has_parking, l.allow_smoking,
-		       COALESCE(l.description, '') AS description
+		       COALESCE(l.description, '') AS description,
+		       COALESCE(tp.occupation, '') AS tenant_occupation,
+		       tp.age AS tenant_age,
+		       tp.has_pets AS tenant_has_pets,
+		       COALESCE(tp.description, '') AS tenant_description
 		FROM matches m
 		JOIN listings l ON l.id = m.listing_id
 		JOIN tenant_profiles tp ON tp.id = m.tenant_profile_id
@@ -346,6 +378,11 @@ func (h *Handler) GetAllIncomingInterests(c *Context) {
 		       l.available_from, l.allow_pets, l.allow_subsidy, l.allow_tax_receipt,
 		       l.allow_household_registration, l.allow_cooking, l.has_parking, l.allow_smoking,
 		       COALESCE(l.description, '') AS description,
+		       COALESCE(tp.occupation, '') AS tenant_occupation,
+		       tp.age AS tenant_age,
+		       tp.has_pets AS tenant_has_pets,
+		       COALESCE(tp.description, '') AS tenant_description,
+		       COALESCE(l.address, '') AS address,
 		       false AS interest_sent
 		FROM interests i
 		JOIN listings l ON l.id = i.listing_id
@@ -403,7 +440,12 @@ func (h *Handler) GetAllOutgoingInterests(c *Context) {
 		       l.num_bedrooms, l.num_living_rooms, l.num_bathrooms, l.num_balconies,
 		       l.available_from, l.allow_pets, l.allow_subsidy, l.allow_tax_receipt,
 		       l.allow_household_registration, l.allow_cooking, l.has_parking, l.allow_smoking,
-		       COALESCE(l.description, '') AS description
+		       COALESCE(l.description, '') AS description,
+		       COALESCE(tp.occupation, '') AS tenant_occupation,
+		       tp.age AS tenant_age,
+		       tp.has_pets AS tenant_has_pets,
+		       COALESCE(tp.description, '') AS tenant_description,
+		       COALESCE(l.address, '') AS address
 		FROM interests i
 		JOIN listings l ON l.id = i.listing_id
 		JOIN tenant_profiles tp ON tp.id = i.tenant_profile_id

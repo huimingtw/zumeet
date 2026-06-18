@@ -1,10 +1,11 @@
 import axios, { type InternalAxiosRequestConfig } from "axios";
+import type { ApiFieldError } from "@/types";
 
 interface RetryableConfig extends InternalAxiosRequestConfig {
   _retry?: boolean;
 }
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "";
 
 export const api = axios.create({
   baseURL: `${API_BASE}/api/v1`,
@@ -65,3 +66,14 @@ api.interceptors.response.use(
     return api(config);
   }
 );
+
+export function extractFieldErrors(err: unknown): Record<string, string> {
+  if (err && typeof err === "object" && "response" in err) {
+    const e = err as { response?: { data?: { fields?: ApiFieldError[] } } };
+    const fields = e.response?.data?.fields;
+    if (Array.isArray(fields)) {
+      return Object.fromEntries(fields.map((f) => [f.field, f.message]));
+    }
+  }
+  return {};
+}

@@ -34,6 +34,7 @@ type MatchedListingCard struct {
 	HasParking                 bool      `json:"has_parking" db:"has_parking"`
 	AllowSmoking               bool      `json:"allow_smoking" db:"allow_smoking"`
 	Description                string    `json:"description" db:"description"`
+	Address                    string    `json:"address,omitempty" db:"address"`
 	Photos                     []string  `json:"photos" db:"-"`
 	InterestSent               bool      `json:"interest_sent" db:"interest_sent"` // tenant already expressed interest
 }
@@ -104,6 +105,7 @@ func (h *Handler) BrowseListingsForProfile(c *Context) {
 			l.allow_pets, l.allow_subsidy, l.allow_tax_receipt,
 			l.allow_household_registration, l.allow_cooking, l.has_parking, l.allow_smoking,
 			COALESCE(l.description, '') AS description,
+			COALESCE(l.address, '') AS address,
 			EXISTS(
 				SELECT 1 FROM interests i
 				WHERE i.tenant_profile_id = $1

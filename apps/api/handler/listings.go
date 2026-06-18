@@ -133,16 +133,15 @@ func (h *Handler) CreateListing(c *Context) {
 	}
 
 	var req ListingRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error(), "code": "invalid_request"})
+	if !bindJSON(c, &req) {
 		return
 	}
 	if !req.ComplianceConfirmed {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "compliance_confirmed must be true", "code": "compliance_required"})
+		respondFieldError(c, "compliance_confirmed", "請勾選合規自我聲明")
 		return
 	}
 	if !validRoomType(req.RoomType) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid room_type", "code": "invalid_room_type"})
+		respondFieldError(c, "room_type", "房型不是有效選項")
 		return
 	}
 	if req.Rent > 999999 {
@@ -275,12 +274,11 @@ func (h *Handler) UpdateListing(c *Context) {
 	}
 
 	var req UpdateListingRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error(), "code": "invalid_request"})
+	if !bindJSON(c, &req) {
 		return
 	}
 	if !validRoomType(req.RoomType) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid room_type", "code": "invalid_room_type"})
+		respondFieldError(c, "room_type", "房型不是有效選項")
 		return
 	}
 	if req.Rent > 999999 {
@@ -392,8 +390,7 @@ func (h *Handler) UpdateListingStatus(c *Context) {
 	var body struct {
 		Status string `json:"status" binding:"required"`
 	}
-	if err := c.ShouldBindJSON(&body); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error(), "code": "invalid_request"})
+	if !bindJSON(c, &body) {
 		return
 	}
 
@@ -700,8 +697,7 @@ func (h *Handler) ReorderListingPhotos(c *Context) {
 	var req struct {
 		PhotoIDs []string `json:"photo_ids" binding:"required"`
 	}
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid body", "code": "invalid_body"})
+	if !bindJSON(c, &req) {
 		return
 	}
 
