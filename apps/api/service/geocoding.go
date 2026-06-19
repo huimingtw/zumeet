@@ -100,7 +100,8 @@ func NewCachedGeocodingService(inner GeocodingService, pool *pgxpool.Pool) *Cach
 func (s *CachedGeocodingService) Geocode(ctx context.Context, address string) (float64, float64, error) {
 	var lat, lng float64
 	err := s.pool.QueryRow(ctx,
-		`SELECT lat, lng FROM geocode_cache WHERE address = $1`, address,
+		`SELECT lat, lng FROM geocode_cache
+		 WHERE address = $1 AND created_at > NOW() - INTERVAL '30 days'`, address,
 	).Scan(&lat, &lng)
 	if err == nil {
 		return lat, lng, nil
@@ -110,7 +111,8 @@ func (s *CachedGeocodingService) Geocode(ctx context.Context, address string) (f
 		return 0, 0, err
 	}
 	_, _ = s.pool.Exec(ctx,
-		`INSERT INTO geocode_cache (address, lat, lng) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING`,
+		`INSERT INTO geocode_cache (address, lat, lng) VALUES ($1, $2, $3)
+		 ON CONFLICT (address) DO UPDATE SET lat = EXCLUDED.lat, lng = EXCLUDED.lng, created_at = NOW()`,
 		address, lat, lng,
 	)
 	return lat, lng, nil
