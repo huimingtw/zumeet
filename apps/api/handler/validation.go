@@ -21,59 +21,26 @@ const (
 	CodeInvalidFormat    = "INVALID_FORMAT"
 )
 
-// fieldLabels maps json tag → 中文 label. Keep in sync with request struct tags.
+// fieldLabels maps json tag → 中文 label for fields that actually fire validation.
+// Booleans and optional-only fields fall back to the raw field name.
 var fieldLabels = map[string]string{
-	// shared
-	"name":         "名稱",
-	"contact_info": "聯絡方式",
-	"city":         "縣市",
-	"district":     "區域",
-	"address":      "地址",
-	"description":  "說明",
-	"role":         "身分",
-
-	// tenant profile
-	"budget_min":                   "最低預算",
-	"budget_max":                   "最高預算",
-	"locations":                    "可接受地區",
-	"preferred_room_types":         "偏好房型",
-	"available_from":               "最快入住日",
-	"min_lease_months":             "最短租期（月）",
-	"min_area_ping":                "最小坪數",
-	"has_pets":                     "是否養寵物",
-	"pet_description":              "寵物說明",
-	"needs_subsidy":                "需要租屋補助",
-	"needs_tax_receipt":            "需要租賃稅單",
-	"needs_household_registration": "需要遷戶籍",
-	"needs_cooking":                "需要開伙",
-	"needs_parking":                "需要停車位",
-	"smoking":                      "是否抽菸",
-	"occupation":                   "職業",
-	"age":                          "年齡",
-	"is_active":                    "啟用狀態",
-
-	// listing
-	"rent":                         "房租",
-	"management_fee":               "管理費",
-	"room_type":                    "房型",
-	"area_ping":                    "坪數",
-	"num_bedrooms":                 "房數",
-	"num_living_rooms":             "廳數",
-	"num_bathrooms":                "衛數",
-	"num_balconies":                "陽台數",
-	"allow_pets":                   "可否養寵物",
-	"allow_subsidy":                "可否租屋補助",
-	"allow_tax_receipt":            "可否開租賃稅單",
-	"allow_household_registration": "可否遷戶籍",
-	"allow_cooking":                "可否開伙",
-	"has_parking":                  "停車位",
-	"allow_smoking":                "可否抽菸",
-	"compliance_confirmed":         "合規自我聲明",
-
-	// reports
-	"reported_id": "被檢舉對象",
-	"listing_id":  "房源",
-	"reason":      "原因",
+	"name":                 "名稱",
+	"contact_info":         "聯絡方式",
+	"city":                 "縣市",
+	"district":             "區域",
+	"role":                 "身分",
+	"budget_min":           "最低預算",
+	"budget_max":           "最高預算",
+	"locations":            "可接受地區",
+	"preferred_room_types": "偏好房型",
+	"available_from":       "最快入住日",
+	"min_lease_months":     "最短租期（月）",
+	"min_area_ping":        "最小坪數",
+	"rent":                 "房租",
+	"room_type":            "房型",
+	"area_ping":            "坪數",
+	"reported_id":          "被檢舉對象",
+	"reason":               "原因",
 }
 
 func labelFor(field string) string {

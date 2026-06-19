@@ -61,7 +61,12 @@ func Load() *AppConfig {
 		GoogleRedirectURL:  getEnv("GOOGLE_REDIRECT_URL", "http://localhost:8080/api/v1/auth/google/callback"),
 		GoogleTokenURL:     getEnv("GOOGLE_TOKEN_URL", "https://oauth2.googleapis.com/token"),
 
-		FrontendURL: getEnvOrEmpty("FRONTEND_URL", "http://localhost:3000"),
+		FrontendURL: func() string {
+			if v, ok := os.LookupEnv("FRONTEND_URL"); ok {
+				return v
+			}
+			return "http://localhost:3000"
+		}(),
 
 		StorageEndpoint:  getEnv("STORAGE_ENDPOINT", "localhost:9000"),
 		StoragePublicURL: getEnv("STORAGE_PUBLIC_URL", ""),
@@ -79,17 +84,6 @@ func Load() *AppConfig {
 
 func getEnv(key, defaultVal string) string {
 	if v := os.Getenv(key); v != "" {
-		return v
-	}
-	return defaultVal
-}
-
-// getEnvOrEmpty returns the env value if the key is set (even to an empty
-// string), and defaultVal only when the key is entirely unset. This lets
-// callers explicitly opt into "no value" via FOO="" without falling back
-// to a built-in default.
-func getEnvOrEmpty(key, defaultVal string) string {
-	if v, ok := os.LookupEnv(key); ok {
 		return v
 	}
 	return defaultVal

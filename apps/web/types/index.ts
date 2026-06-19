@@ -3,12 +3,6 @@ export interface ApiFieldError {
   message: string;
 }
 
-export interface ApiError {
-  error: string;
-  code: string;
-  fields?: ApiFieldError[];
-}
-
 export interface MeResponse {
   id: string;
   email: string;
@@ -99,6 +93,8 @@ export interface MatchedListingCard {
   interest_sent: boolean;
   address?: string;
   description?: string;
+  lat?: number | null;
+  lng?: number | null;
 }
 
 export interface MatchedTenantProfileCard {

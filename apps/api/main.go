@@ -90,7 +90,10 @@ func main() {
 
 	var geocoder service.GeocodingService
 	if cfg.GoogleMapsAPIKey != "" {
-		geocoder = service.NewGoogleGeocodingService(cfg.GoogleMapsAPIKey)
+		geocoder = service.NewCachedGeocodingService(
+			service.NewGoogleGeocodingService(cfg.GoogleMapsAPIKey),
+			pool,
+		)
 	} else {
 		geocoder = service.NoopGeocodingService{}
 	}

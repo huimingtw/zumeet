@@ -6,10 +6,10 @@ ARG NEXT_IMAGE_UNOPTIMIZED=false
 ENV NEXT_IMAGE_UNOPTIMIZED=$NEXT_IMAGE_UNOPTIMIZED
 
 COPY package.json package-lock.json* ./
-RUN npm ci
+RUN --mount=type=cache,target=/root/.npm npm ci
 
 COPY . .
-RUN npm run build
+RUN --mount=type=cache,target=/app/.next/cache npm run build
 
 FROM node:20-alpine
 

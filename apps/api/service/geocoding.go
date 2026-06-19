@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"net/url"
 	"time"
+
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // GeocodingService converts a human-readable address to (lat, lng).
@@ -83,4 +85,33 @@ type NoopGeocodingService struct{}
 
 func (NoopGeocodingService) Geocode(_ context.Context, _ string) (float64, float64, error) {
 	return 0, 0, errors.New("geocode: disabled")
+}
+
+// CachedGeocodingService wraps a GeocodingService with a DB-backed cache.
+type CachedGeocodingService struct {
+	inner GeocodingService
+	pool  *pgxpool.Pool
+}
+
+func NewCachedGeocodingService(inner GeocodingService, pool *pgxpool.Pool) *CachedGeocodingService {
+	return &CachedGeocodingService{inner: inner, pool: pool}
+}
+
+func (s *CachedGeocodingService) Geocode(ctx context.Context, address string) (float64, float64, error) {
+	var lat, lng float64
+	err := s.pool.QueryRow(ctx,
+		`SELECT lat, lng FROM geocode_cache WHERE address = $1`, address,
+	).Scan(&lat, &lng)
+	if err == nil {
+		return lat, lng, nil
+	}
+	lat, lng, err = s.inner.Geocode(ctx, address)
+	if err != nil {
+		return 0, 0, err
+	}
+	_, _ = s.pool.Exec(ctx,
+		`INSERT INTO geocode_cache (address, lat, lng) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING`,
+		address, lat, lng,
+	)
+	return lat, lng, nil
 }

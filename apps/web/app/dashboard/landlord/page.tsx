@@ -1500,11 +1500,13 @@ function ListingFormModal({
             <p className="text-sm font-medium text-gray-700">房源條件</p>
             {(
               [
-                ["allow_pets", "寵物"],
-                ["allow_subsidy", "租屋補助"],
-                ["allow_tax_receipt", "報稅"],
-                ["allow_household_registration", "入籍"],
-                ["allow_cooking", "開伙"],
+                ["allow_pets", "可帶寵物"],
+                ["allow_subsidy", "可申請租屋補助"],
+                ["allow_tax_receipt", "可開報稅收據"],
+                ["allow_household_registration", "可入籍"],
+                ["allow_cooking", "可開伙"],
+                ["has_parking", "有停車位"],
+                ["allow_smoking", "可抽菸"],
               ] as const
             ).map(([key, label]) => (
               <label

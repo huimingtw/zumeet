@@ -411,38 +411,19 @@ function ProfileCard({
 					</p>
 				</div>
 
-				{/* Desktop: compact "找房源" + kebab */}
-				<div className="ml-2 hidden flex-shrink-0 items-center gap-2 sm:flex">
-					{profile.is_active && (
-						<button
-							type="button"
-							onClick={onBrowse}
-							className="rounded-lg bg-primary-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-primary-500"
-						>
-							找房源
-						</button>
-					)}
-					<div ref={menuRef} className="relative">
-						<button
-							type="button"
-							onClick={() => setMenuOpen((v) => !v)}
-							className="rounded-lg p-1.5 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700"
-							aria-label="更多動作"
-						>
-							<MoreVertical size={18} strokeWidth={1.5} />
-						</button>
-						{menuOpen && (
-							<div className="absolute right-0 z-30 mt-1 w-32 overflow-hidden rounded-xl border border-gray-200 bg-white py-1 shadow-lg">
-								<button type="button" onClick={() => { setMenuOpen(false); onEdit(); }} className="w-full px-4 py-2 text-left text-sm text-gray-700 transition hover:bg-gray-50">編輯</button>
-								<button type="button" onClick={() => { setMenuOpen(false); toggleStatus.mutate(); }} className="w-full px-4 py-2 text-left text-sm text-gray-700 transition hover:bg-gray-50">{profile.is_active ? "停用" : "啟用"}</button>
-								<button type="button" onClick={() => { setMenuOpen(false); if (confirm("確定刪除這張需求卡？")) deleteProfile.mutate(); }} className="w-full px-4 py-2 text-left text-sm text-red-600 transition hover:bg-red-50">刪除</button>
-							</div>
-						)}
-					</div>
-				</div>
+				{/* 找房源 — desktop only */}
+				{profile.is_active && (
+					<button
+						type="button"
+						onClick={onBrowse}
+						className="ml-2 hidden rounded-lg bg-primary-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-primary-500 sm:block"
+					>
+						找房源
+					</button>
+				)}
 
-				{/* Mobile: kebab only (找房源 goes to bottom bar) */}
-				<div ref={menuRef} className="relative ml-2 flex-shrink-0 sm:hidden">
+				{/* Kebab — single wrapper, works on both breakpoints */}
+				<div ref={menuRef} className="relative ml-2 flex-shrink-0">
 					<button
 						type="button"
 						onClick={() => setMenuOpen((v) => !v)}
@@ -759,18 +740,22 @@ function ListingCard({
 function ListingMiniMap({
 	address,
 	locationLabel,
+	lat,
+	lng,
 }: {
 	address?: string;
 	locationLabel?: string;
+	lat?: number | null;
+	lng?: number | null;
 }) {
 	const query = (address && address.trim()) || locationLabel;
-	if (!query) return null;
-	const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY;
-	const encoded = encodeURIComponent(query);
-	const externalUrl = `https://www.google.com/maps/search/?api=1&query=${encoded}`;
-	const embedUrl = apiKey
-		? `https://www.google.com/maps/embed/v1/place?key=${apiKey}&q=${encoded}&language=zh-TW`
-		: `https://maps.google.com/maps?q=${encoded}&output=embed&hl=zh-TW`;
+	if (!query && !lat) return null;
+	const externalQuery = lat && lng ? `${lat},${lng}` : encodeURIComponent(query ?? '');
+	const externalUrl = `https://www.google.com/maps/search/?api=1&query=${externalQuery}`;
+	const embedUrl =
+		lat && lng
+			? `https://maps.google.com/maps?q=${lat},${lng}&output=embed&hl=zh-TW`
+			: `https://maps.google.com/maps?q=${encodeURIComponent(query ?? '')}&output=embed&hl=zh-TW`;
 	return (
 		<a
 			href={externalUrl}
@@ -966,6 +951,8 @@ function ListingDetailDialog({
 							locationLabel={
 								LOCATION_LABELS[listing.location_id] ?? listing.location_id
 							}
+							lat={listing.lat}
+							lng={listing.lng}
 						/>
 						{listing.description && (
 							<p className="mt-3 whitespace-pre-wrap text-sm text-gray-700">
