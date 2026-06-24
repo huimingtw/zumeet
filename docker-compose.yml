@@ -76,6 +76,19 @@ services:
     ports:
       - "8088:80"
 
+  # Public tunnel to the proxy so Google OAuth callback hits a stable HTTPS host.
+  # Needs NGROK_AUTHTOKEN in env (.env). Static domain keeps the OAuth redirect
+  # registration valid across restarts. ponytail: official image, no script.
+  ngrok:
+    image: ngrok/ngrok:latest
+    depends_on:
+      - proxy
+    environment:
+      NGROK_AUTHTOKEN: ${NGROK_AUTHTOKEN}
+    command: http --domain=curatical-columellate-marvis.ngrok-free.dev proxy:80
+    ports:
+      - "4040:4040"  # ngrok web inspector
+
 volumes:
   postgres_data:
   minio_data:

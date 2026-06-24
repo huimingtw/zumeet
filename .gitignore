@@ -4,6 +4,7 @@ AGENTS.md
 SPEC.md
 
 # Environment files (never commit actual secrets)
+.env
 .env.local
 .env.test
 .env*.local
