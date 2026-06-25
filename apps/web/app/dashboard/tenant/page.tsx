@@ -17,16 +17,21 @@ import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { type ReactNode, Suspense, useEffect, useRef, useState } from "react";
 import { LocationPicker } from "@/components/LocationPicker";
+import { RoleGuard } from "@/components/RoleGuard";
+import { SlotPicker } from "@/components/SlotPicker";
+import { ViewingList } from "@/components/ViewingList";
+import { CalendarClock } from "lucide-react";
 import { api, extractFieldErrors } from "@/lib/api";
 import { formatLayout, getListingTags, pricePerPing, totalMonthly } from "@/lib/listingTags";
-import type { MatchedListingCard, TenantProfile } from "@/types";
+import { formatSlot } from "@/lib/viewings";
+import type { MatchedListingCard, TenantProfile, Viewing } from "@/types";
 import {
 	LOCATION_CITY_DISTRICT,
 	LOCATION_LABELS,
 	ROOM_TYPE_LABELS,
 } from "@/types";
 
-type MainTab = "requirements" | "listings" | "matches";
+type MainTab = "requirements" | "listings" | "matches" | "viewings";
 type MatchesSubTab = "incoming" | "outgoing" | "matched";
 
 // ---- Dashboard shell ----
@@ -75,9 +80,16 @@ function TenantDashboardInner() {
 						icon={<Heart size={20} strokeWidth={1.5} />}
 						label="媒合狀態"
 					/>
+					<TabButton
+						active={tab === "viewings"}
+						onClick={() => setTab("viewings")}
+						icon={<CalendarClock size={20} strokeWidth={1.5} />}
+						label="帶看行程"
+					/>
 				</nav>
 
 				{tab === "requirements" && <ProfilesTab onSelectProfile={goToBrowse} />}
+				{tab === "viewings" && <ViewingList role="tenant" />}
 				{tab === "listings" && (
 					<BrowseTab
 						selectedProfileId={searchParams.get("profile")}
@@ -114,6 +126,12 @@ function TenantDashboardInner() {
 						icon={<Heart size={20} strokeWidth={1.5} />}
 						label="媒合狀態"
 					/>
+					<BottomTabItem
+						active={tab === "viewings"}
+						onClick={() => setTab("viewings")}
+						icon={<CalendarClock size={20} strokeWidth={1.5} />}
+						label="帶看"
+					/>
 				</div>
 			</nav>
 		</div>
@@ -122,59 +140,33 @@ function TenantDashboardInner() {
 
 export default function TenantDashboard() {
 	return (
-		<Suspense fallback={<div className="min-h-screen bg-gray-100" />}>
-			<TenantDashboardInner />
-		</Suspense>
+		<RoleGuard role="tenant">
+			<Suspense fallback={<div className="min-h-screen bg-gray-100" />}>
+				<TenantDashboardInner />
+			</Suspense>
+		</RoleGuard>
 	);
 }
 
 // ---- Shared nav components ----
 
 function DashboardHeader() {
-	const router = useRouter();
-	const { data: me } = useQuery<{ roles: string[] }>({
-		queryKey: ["me"],
-		queryFn: () => api.get("/profile/me").then((r) => r.data),
-	});
-	const addLandlordRole = useMutation({
-		mutationFn: () => api.post("/account/roles", { role: "landlord" }),
-		onSuccess: () => router.push("/dashboard/landlord"),
-	});
-
 	async function logout() {
 		await api.post("/auth/logout");
 		window.location.href = "/";
-	}
-
-	function switchToLandlord() {
-		if (me?.roles.includes("landlord")) {
-			router.push("/dashboard/landlord");
-		} else {
-			addLandlordRole.mutate();
-		}
 	}
 
 	return (
 		<header className="border-b border-gray-200 bg-white px-4 py-3">
 			<div className="mx-auto flex max-w-4xl items-center justify-between">
 				<span className="text-lg font-bold text-gray-950">Zumeet</span>
-				<div className="flex items-center gap-3">
-					<button
-						type="button"
-						onClick={switchToLandlord}
-						disabled={addLandlordRole.isPending}
-						className="text-sm text-gray-500 hover:text-gray-800 disabled:opacity-50"
-					>
-						切換為房東
-					</button>
-					<button
-						type="button"
-						onClick={logout}
-						className="text-sm text-gray-500 hover:text-gray-800"
-					>
-						登出
-					</button>
-				</div>
+				<button
+					type="button"
+					onClick={logout}
+					className="text-sm text-gray-500 hover:text-gray-800"
+				>
+					登出
+				</button>
 			</div>
 		</header>
 	);
@@ -493,8 +485,10 @@ function BrowseTab({
 	const expressInterest = useMutation({
 		mutationFn: (listingId: string) =>
 			api.post(`/tenant-profiles/${currentId}/listings/${listingId}/interest`),
-		onSuccess: () =>
-			qc.invalidateQueries({ queryKey: ["listings-browse", currentId] }),
+		onSuccess: () => {
+			qc.invalidateQueries({ queryKey: ["listings-browse", currentId] });
+			qc.invalidateQueries({ queryKey: ["matched"] });
+		},
 	});
 
 	const [detailListing, setDetailListing] = useState<MatchedListingCard | null>(
@@ -559,8 +553,9 @@ function BrowseTab({
 							) : (
 								<button
 									type="button"
+									disabled={expressInterest.isPending}
 									onClick={() => expressInterest.mutate(listing.id)}
-									className="rounded-lg bg-primary-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-primary-500"
+									className="rounded-lg bg-primary-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-primary-500 disabled:opacity-50"
 								>
 									有興趣
 								</button>
@@ -594,6 +589,7 @@ function BrowseTab({
 					}
 				/>
 			)}
+
 		</div>
 	);
 }
@@ -1366,14 +1362,35 @@ function OutgoingTab() {
 // ---- Matched ----
 
 function MatchedTab() {
+	const qc = useQueryClient();
 	const { data, isLoading } = useQuery<{ items: MatchItem[] }>({
 		queryKey: ["matched"],
 		queryFn: () => api.get("/matches/mutual?limit=50").then((r) => r.data),
 	});
+	// Cross-reference existing viewings so each matched listing shows 預約/已預約 state.
+	const { data: viewingsData } = useQuery<{ items: Viewing[] }>({
+		queryKey: ["viewings", "tenant"],
+		queryFn: () => api.get("/viewings?role=tenant").then((r) => r.data),
+	});
+	const viewingByListing = new Map<string, Viewing>();
+	for (const v of viewingsData?.items ?? []) {
+		if (v.status === "confirmed") viewingByListing.set(v.listing_id, v);
+	}
+
 	const [detail, setDetail] = useState<{
 		card: MatchedListingCard;
 		contactInfo: string;
 	} | null>(null);
+	const [bookFor, setBookFor] = useState<MatchItem | null>(null);
+
+	const book = useMutation({
+		mutationFn: (p: { matchId: string; startsAt: string }) =>
+			api.post("/viewings", { match_id: p.matchId, starts_at: p.startsAt }),
+		onSuccess: () => {
+			qc.invalidateQueries({ queryKey: ["viewings"] });
+			qc.invalidateQueries({ queryKey: ["viewing-slots"] });
+		},
+	});
 
 	if (isLoading) return <Loading />;
 
@@ -1408,12 +1425,31 @@ function MatchedTab() {
 						has_parking: m.has_parking,
 						allow_smoking: m.allow_smoking,
 					});
+					const viewing = viewingByListing.get(m.listing_id);
 					return (
 						<ListingCard
 							key={m.match_id}
 							listing={card}
 							onClick={() => setDetail({ card, contactInfo: m.contact_info })}
 							contactInfo={m.contact_info}
+							action={
+								viewing ? (
+									<span className="rounded-full bg-[#D1FAE5] px-2.5 py-0.5 text-xs font-medium text-[#059669]">
+										已預約 {formatSlot(viewing.starts_at, viewing.ends_at)}
+									</span>
+								) : (
+									<button
+										type="button"
+										onClick={(e) => {
+											e.stopPropagation();
+											setBookFor(m);
+										}}
+										className="rounded-lg bg-primary-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-primary-500"
+									>
+										預約看房
+									</button>
+								)
+							}
 						/>
 					);
 				})}
@@ -1425,7 +1461,69 @@ function MatchedTab() {
 					contactInfo={detail.contactInfo}
 				/>
 			)}
+			{bookFor && (
+				<BookViewingModal
+					match={bookFor}
+					pending={book.isPending}
+					onClose={() => setBookFor(null)}
+					onSubmit={(startsAt) =>
+						book.mutate(
+							{ matchId: bookFor.match_id, startsAt },
+							{ onSuccess: () => setBookFor(null) },
+						)
+					}
+				/>
+			)}
 		</>
+	);
+}
+
+// BookViewingModal lets a matched tenant pick an open 帶看 slot and book it.
+function BookViewingModal({
+	match,
+	pending,
+	onClose,
+	onSubmit,
+}: {
+	match: MatchItem;
+	pending: boolean;
+	onClose: () => void;
+	onSubmit: (startsAt: string) => void;
+}) {
+	const [slot, setSlot] = useState("");
+	return (
+		<div
+			className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center"
+			onClick={onClose}
+		>
+			<div
+				className="w-full max-w-sm rounded-t-2xl bg-white p-5 sm:rounded-2xl"
+				onClick={(e) => e.stopPropagation()}
+			>
+				<p className="mb-1 text-sm font-semibold text-gray-900">預約看房</p>
+				<p className="mb-3 text-xs text-gray-500">
+					{match.listing_name || "此房源"}｜選擇房東開放的帶看時段。
+				</p>
+				<SlotPicker listingId={match.listing_id} value={slot} onChange={setSlot} />
+				<div className="mt-4 flex gap-2">
+					<button
+						type="button"
+						onClick={onClose}
+						className="flex-1 rounded-lg border border-gray-200 py-2.5 text-sm text-gray-600 hover:bg-gray-50"
+					>
+						取消
+					</button>
+					<button
+						type="button"
+						disabled={!slot || pending}
+						onClick={() => onSubmit(slot)}
+						className="flex-1 rounded-lg bg-primary-600 py-2.5 text-sm font-medium text-white hover:bg-primary-500 disabled:opacity-50"
+					>
+						確認預約
+					</button>
+				</div>
+			</div>
+		</div>
 	);
 }
 

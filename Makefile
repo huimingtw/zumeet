@@ -1,4 +1,4 @@
-.PHONY: up down logs build test e2e api-test api-build api-run db-reset lint fmt
+.PHONY: up down logs build test e2e api-test api-build api-run db-reset lint fmt token
 
 # ── Local dev ─────────────────────────────────────────────────────────────────
 
@@ -63,6 +63,15 @@ db-reset:
 
 db-seed:
 	docker compose exec db psql -U zumeet -d zumeet -f /docker-entrypoint-initdb.d/02_seed.sql
+
+# ── Auth (dev) ────────────────────────────────────────────────────────────────
+
+# make token EMAIL=foo@bar.com  → offline-signs a 15-min access JWT (no server needed).
+# Reads JWT_SECRET from the running api container; db reached via host-mapped 5432.
+token:
+	@test -n "$(EMAIL)" || { echo "usage: make token EMAIL=user@example.com"; exit 1; }
+	@cd apps/api && JWT_SECRET=$$(docker compose -f ../../docker-compose.yml exec -T api printenv JWT_SECRET) \
+		go run ./cmd/signtoken "$(EMAIL)"
 
 # ── Storage (MinIO) ───────────────────────────────────────────────────────────
 

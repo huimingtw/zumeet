@@ -43,7 +43,7 @@ services:
     environment:
       DATABASE_URL: postgres://zumeet:secret@db:5432/zumeet
       STORAGE_ENDPOINT: storage:9000
-      STORAGE_PUBLIC_URL: http://localhost:9000
+      STORAGE_PUBLIC_URL: /storage  # same-origin path, proxied to MinIO (nginx + Next rewrite)
     depends_on:
       db:
         condition: service_healthy

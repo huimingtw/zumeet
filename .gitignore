@@ -13,6 +13,7 @@ SPEC.md
 
 # Go
 apps/api/api
+apps/api/signtoken
 apps/api/*.exe
 
 # Node / Next.js

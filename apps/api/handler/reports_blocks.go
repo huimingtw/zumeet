@@ -135,6 +135,8 @@ func (h *Handler) DeleteAccount(c *Context) {
 		{"interests", "tenant_profile_id"},
 		{"matches", "tenant_id"},
 		{"matches", "landlord_id"},
+		{"viewings", "tenant_id"},
+		{"viewings", "landlord_id"},
 		{"blocks", "blocker_id"},
 		{"blocks", "blocked_id"},
 		{"refresh_tokens", "user_id"},

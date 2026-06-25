@@ -455,6 +455,14 @@ func (h *Handler) UpdateListingStatus(c *Context) {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update matches", "code": "internal"})
 			return
 		}
+		// cascade: cancel any still-confirmed viewings for this listing
+		if _, err = tx.Exec(c.Request.Context(),
+			`UPDATE viewings SET status='cancelled_landlord', updated_at=NOW()
+			 WHERE listing_id=$1 AND status='confirmed' AND deleted_at IS NULL`, listingID,
+		); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update viewings", "code": "internal"})
+			return
+		}
 		if err = tx.Commit(c.Request.Context()); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
 			return

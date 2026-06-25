@@ -37,6 +37,43 @@ export interface TenantProfile {
   updated_at: string;
 }
 
+// 帶看 (viewing) types — see apps/api/handler/viewings.go
+export type ViewingStatus = "confirmed" | "completed" | "cancelled" | "cancelled_landlord";
+
+export interface ViewingAvailability {
+  enabled: boolean;
+  slot_minutes: number;
+  slot_capacity: number; // groups per slot (團體帶看); min 1
+  weekly: Record<string, [string, string][]>; // "0".."6" (0=Sunday)
+  booking_range_days: number;
+  exceptions: string[];
+}
+
+export interface ViewingSlot {
+  start: string;
+  end: string;
+  booked_count: number;
+  capacity: number;
+}
+
+export interface Viewing {
+  id: string;
+  tenant_profile_id: string;
+  listing_id: string;
+  profile_name: string;
+  listing_name: string;
+  starts_at: string;
+  ends_at: string;
+  status: ViewingStatus;
+  attendance: "" | "attended" | "absent";
+  landlord_notes: string;
+  contact_info: string;
+  address: string;
+  location_id: string;
+  rent: number;
+  room_type: string;
+}
+
 export interface Listing {
   id: string;
   landlord_id: string;

@@ -35,6 +35,14 @@ DO $$ BEGIN
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 DO $$ BEGIN
+  CREATE TYPE viewing_status AS ENUM ('confirmed', 'completed', 'cancelled', 'cancelled_landlord');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+DO $$ BEGIN
+  CREATE TYPE viewing_attendance AS ENUM ('attended', 'absent');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+DO $$ BEGIN
   CREATE TYPE admin_level AS ENUM ('moderator', 'super_admin');
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
@@ -236,6 +244,26 @@ CREATE TABLE IF NOT EXISTS matches (
   UNIQUE (tenant_profile_id, listing_id)
 );
 
+-- A viewing (帶看) is booked by the tenant after a tenant_profile ↔ listing match is
+-- formed, by picking an open slot. It introduces no new contact-disclosure path:
+-- contact/address are still revealed only via the underlying active match.
+CREATE TABLE IF NOT EXISTS viewings (
+  id                TEXT PRIMARY KEY,
+  tenant_id         TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  tenant_profile_id TEXT NOT NULL REFERENCES tenant_profiles(id) ON DELETE CASCADE,
+  landlord_id       TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  listing_id        TEXT NOT NULL REFERENCES listings(id) ON DELETE CASCADE,
+  match_id          TEXT REFERENCES matches(id) ON DELETE CASCADE,
+  starts_at         TIMESTAMPTZ NOT NULL,
+  ends_at           TIMESTAMPTZ NOT NULL,
+  status            viewing_status NOT NULL DEFAULT 'confirmed',
+  attendance        viewing_attendance,
+  landlord_notes    TEXT,
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  deleted_at        TIMESTAMPTZ
+);
+
 CREATE TABLE IF NOT EXISTS reports (
   id              TEXT PRIMARY KEY,
   reporter_id     TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -305,6 +333,18 @@ CREATE INDEX IF NOT EXISTS idx_tenant_profiles_deleted_at
 CREATE INDEX IF NOT EXISTS idx_matches_deleted_at
   ON matches (deleted_at) WHERE deleted_at IS NOT NULL;
 
+CREATE INDEX IF NOT EXISTS idx_viewings_tenant_id   ON viewings (tenant_id);
+CREATE INDEX IF NOT EXISTS idx_viewings_landlord_id ON viewings (landlord_id);
+CREATE INDEX IF NOT EXISTS idx_viewings_listing_id  ON viewings (listing_id);
+-- A slot may be booked by up to slot_capacity groups (團體帶看), so the count of active
+-- viewings per (listing_id, starts_at) is what matters — this index serves that count.
+DROP INDEX IF EXISTS idx_viewings_listing_slot_active;
+CREATE INDEX IF NOT EXISTS idx_viewings_listing_slot
+  ON viewings (listing_id, starts_at) WHERE deleted_at IS NULL AND status IN ('confirmed', 'completed');
+-- One active viewing per match: a matched tenant cannot double-book the same listing.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_viewings_match_active
+  ON viewings (match_id) WHERE deleted_at IS NULL AND status IN ('confirmed', 'completed');
+
 -- Active listing_photos: position must be unique per listing (soft-deleted positions can be reused)
 CREATE UNIQUE INDEX IF NOT EXISTS idx_listing_photos_position_active
   ON listing_photos (listing_id, position) WHERE deleted_at IS NULL;
@@ -319,6 +359,11 @@ ALTER TABLE listings ADD COLUMN IF NOT EXISTS num_bedrooms SMALLINT;
 ALTER TABLE listings ADD COLUMN IF NOT EXISTS num_living_rooms SMALLINT;
 ALTER TABLE listings ADD COLUMN IF NOT EXISTS num_bathrooms SMALLINT;
 ALTER TABLE listings ADD COLUMN IF NOT EXISTS num_balconies SMALLINT;
+
+-- 帶看 (viewing) feature columns (safe to run on existing DBs)
+ALTER TABLE listings  ADD COLUMN IF NOT EXISTS viewing_availability JSONB NOT NULL DEFAULT '{}'::jsonb;
+-- Viewings are now booked post-match by the tenant, not pre-proposed at interest time.
+ALTER TABLE interests DROP COLUMN IF EXISTS proposed_slot_start;
 
 CREATE TABLE IF NOT EXISTS geocode_cache (
   address    TEXT PRIMARY KEY,

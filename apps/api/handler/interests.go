@@ -149,7 +149,7 @@ func (h *Handler) expressInterest(c *Context, userID, profileID, listingID, acto
 		return nil, &httpError{http.StatusForbidden, "blocked", "blocked"}
 	}
 
-	// UPSERT the interest for the acting side.
+	// UPSERT the interest for the acting side. 帶看 slots are booked post-match, not here.
 	interestID := ulid.Make().String()
 	if _, err = tx.Exec(ctx, `
 		INSERT INTO interests (id, tenant_profile_id, listing_id, actor_role, status)
@@ -198,6 +198,8 @@ func (h *Handler) expressInterest(c *Context, userID, profileID, listingID, acto
 	); err != nil {
 		return nil, err
 	}
+
+	// 帶看 is booked by the tenant after the match, from the matched page — not here.
 
 	// Fetch the other side's contact info.
 	var contactInfo string

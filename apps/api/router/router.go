@@ -105,6 +105,18 @@ func New(h *handler.Handler, cfg *config.AppConfig, logger *zap.Logger) *gin.Eng
 			ls.PATCH("/:listingId/photos/order", t.Public(h.ReorderListingPhotos))
 			ls.DELETE("/:listingId/photos/:photoId", t.Public(h.DeleteListingPhoto))
 			ls.GET("/:listingId/tenant-profiles", t.Public(h.BrowseTenantProfilesForListing))
+			ls.GET("/:listingId/viewing-availability", t.Public(h.GetViewingAvailability))
+			ls.PUT("/:listingId/viewing-availability", t.Public(h.UpdateViewingAvailability))
+			ls.GET("/:listingId/viewing-slots", t.Public(h.GetViewingSlots))
+		}
+
+		vw := protected.Group("/viewings")
+		{
+			vw.GET("", t.Public(h.ListViewings))
+			vw.POST("", t.Public(h.BookViewing))
+			vw.POST("/:viewingId/attendance", t.Public(h.SetViewingAttendance))
+			vw.POST("/:viewingId/cancel", t.Public(h.CancelViewing))
+			vw.POST("/:viewingId/reschedule", t.Public(h.RescheduleViewing))
 		}
 
 		tp.GET("/:profileId/listings", t.Public(h.BrowseListingsForProfile))
@@ -128,7 +140,6 @@ func New(h *handler.Handler, cfg *config.AppConfig, logger *zap.Logger) *gin.Eng
 		protected.POST("/blocks/:userId", t.Public(h.BlockUser))
 		protected.DELETE("/blocks/:userId", t.Public(h.UnblockUser))
 		protected.DELETE("/account", t.Public(h.DeleteAccount))
-		protected.POST("/account/roles", t.Public(h.AddRole))
 	}
 
 	return r
