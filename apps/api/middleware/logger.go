@@ -52,9 +52,11 @@ func Logger(logger *zap.Logger) gin.HandlerFunc {
 		if value, ok := c.Get("hcaller"); ok {
 			handlerCaller, _ = value.(string)
 		}
+		userID, _ := UserIDFromContext(c)
 
 		fields := []zap.Field{
 			zap.String("request_id", reqID.(string)),
+			zap.String("user_id", userID),
 			zap.String("method", c.Request.Method),
 			zap.String("path", c.Request.URL.Path),
 			zap.String("route", c.FullPath()),
