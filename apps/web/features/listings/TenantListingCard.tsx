@@ -277,7 +277,7 @@ function ListingMiniMap({
   // Backend already rounds pre-match coords to 0.005° grid (~550m); no client-side snap needed.
   const mapLat = hasCoords ? (lat as number) : null;
   const mapLng = hasCoords ? (lng as number) : null;
-  const zoom = precise ? 16 : 14;
+  const zoom = precise ? 16 : 15;
 
   const externalQuery = hasCoords
     ? `${mapLat},${mapLng}`
@@ -306,7 +306,7 @@ function ListingMiniMap({
           className="block h-full w-full border-0"
         />
         {hasCoords && !precise && (
-          <div className="border-primary-500/60 bg-primary-500/20 absolute top-1/2 left-1/2 h-28 w-28 -translate-x-1/2 -translate-y-1/2 rounded-full border-2" />
+          <div className="border-primary-500/60 bg-primary-500/20 absolute top-1/2 left-1/2 h-18 w-18 -translate-x-1/2 -translate-y-1/2 rounded-full border-2" />
         )}
       </div>
       {hasCoords && !precise && (
