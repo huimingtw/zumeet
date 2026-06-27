@@ -5,11 +5,7 @@ import {
   LandlordOutgoingTab,
   LandlordMatchedTab,
 } from "./LandlordMatches";
-import {
-  TenantIncomingTab,
-  TenantOutgoingTab,
-  TenantMatchedTab,
-} from "./TenantMatches";
+import { TenantIncomingTab, TenantOutgoingTab, TenantMatchedTab } from "./TenantMatches";
 
 type MatchesSubTab = "incoming" | "outgoing" | "matched";
 
@@ -41,7 +37,9 @@ export function MatchesView({
             type="button"
             onClick={() => onSubTabChange(t)}
             className={`flex-1 rounded-lg py-2 text-sm font-medium transition ${
-              subTab === t ? "bg-primary-600 text-white" : "text-gray-500 hover:bg-gray-100"
+              subTab === t
+                ? "bg-primary-600 text-white"
+                : "text-gray-500 hover:bg-gray-100"
             }`}
           >
             {label}

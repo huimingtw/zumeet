@@ -37,7 +37,9 @@ export function LandlordViewingsView() {
             type="button"
             onClick={() => setSubTab(t)}
             className={`flex-1 rounded-lg py-2 text-sm font-medium transition ${
-              subTab === t ? "bg-primary-600 text-white" : "text-gray-500 hover:bg-gray-100"
+              subTab === t
+                ? "bg-primary-600 text-white"
+                : "text-gray-500 hover:bg-gray-100"
             }`}
           >
             {label}
@@ -67,6 +69,7 @@ function AvailabilityEditor() {
 
   useEffect(() => {
     if (!avail) return;
+    /* eslint-disable react-hooks/set-state-in-effect */
     setEnabled(avail.enabled);
     setSlotMinutes(avail.slot_minutes || 30);
     setSlotCapacity(avail.slot_capacity || 1);
@@ -79,6 +82,7 @@ function AvailabilityEditor() {
         w[idx] = { on: true, start: windows[0][0], end: windows[0][1] };
     }
     setWeek(w);
+    /* eslint-enable react-hooks/set-state-in-effect */
   }, [avail]);
 
   const save = useMutation({
@@ -118,7 +122,8 @@ function AvailabilityEditor() {
           options={listings.map((l) => ({
             value: l.id,
             label:
-              l.name || `$${l.rent.toLocaleString()} ${ROOM_TYPE_LABELS[l.room_type] ?? l.room_type}`,
+              l.name ||
+              `$${l.rent.toLocaleString()} ${ROOM_TYPE_LABELS[l.room_type] ?? l.room_type}`,
           }))}
           onChange={setListingId}
         />
@@ -140,7 +145,9 @@ function AvailabilityEditor() {
             <>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <p className="mb-1 text-sm font-medium text-gray-700">帶看長度（分鐘）</p>
+                  <p className="mb-1 text-sm font-medium text-gray-700">
+                    帶看長度（分鐘）
+                  </p>
                   <Dropdown
                     value={String(slotMinutes)}
                     placeholder="帶看長度"
@@ -165,7 +172,9 @@ function AvailabilityEditor() {
                   />
                 </div>
                 <div>
-                  <p className="mb-1 text-sm font-medium text-gray-700">每時段可預約組數</p>
+                  <p className="mb-1 text-sm font-medium text-gray-700">
+                    每時段可預約組數
+                  </p>
                   <input
                     type="number"
                     min={1}
@@ -217,7 +226,9 @@ function AvailabilityEditor() {
               </div>
 
               <div>
-                <p className="mb-2 text-sm font-medium text-gray-700">例外日期（不可預約）</p>
+                <p className="mb-2 text-sm font-medium text-gray-700">
+                  例外日期（不可預約）
+                </p>
                 <div className="mb-2 flex flex-wrap gap-2">
                   {exceptions.length === 0 && (
                     <span className="text-xs text-gray-400">尚未設定例外日期</span>

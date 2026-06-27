@@ -74,8 +74,8 @@ export function LandlordIncomingTab() {
   const [expandedSet, setExpandedSet] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    if (listings.length > 0) setExpandedSet(new Set(listings.map((l) => l.id)));
-  }, [listings]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (listings.length > 0) setExpandedSet(new Set(listings.map((l) => l.id))); // eslint-disable-line react-hooks/set-state-in-effect
+  }, [listings]);
 
   if (isLoading) return <Loading />;
 
@@ -176,7 +176,9 @@ function ListingIncoming({
                 className="flex items-start justify-between gap-3 rounded-lg border border-gray-100 px-3 py-2.5"
               >
                 <div className="min-w-0 flex-1 text-sm">
-                  <div className="font-medium text-gray-900">{profileHeader(profile)}</div>
+                  <div className="font-medium text-gray-900">
+                    {profileHeader(profile)}
+                  </div>
                   {profile.description && (
                     <ExpandableText
                       text={profile.description}
@@ -307,7 +309,9 @@ export function LandlordMatchedTab() {
               {match.listing_name && <span>房源：{match.listing_name}</span>}
             </div>
             <div className="mt-3">
-              <div className="text-sm font-medium text-gray-950">{tenantHeader(match)}</div>
+              <div className="text-sm font-medium text-gray-950">
+                {tenantHeader(match)}
+              </div>
               {match.tenant_description && (
                 <ExpandableText
                   text={match.tenant_description}

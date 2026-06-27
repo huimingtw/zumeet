@@ -11,7 +11,11 @@ import { MyProfileCard } from "@/features/profiles/MyProfileCard";
 import { ProfileFormModal } from "@/features/profiles/ProfileFormModal";
 import type { TenantProfile } from "@/types";
 
-export function ProfilesTab({ onSelectProfile }: { onSelectProfile: (id: string) => void }) {
+export function ProfilesTab({
+  onSelectProfile,
+}: {
+  onSelectProfile: (id: string) => void;
+}) {
   const qc = useQueryClient();
   const { data: profiles = [], isLoading } = useTenantProfiles();
   const [editingProfile, setEditingProfile] = useState<TenantProfile | null>(null);

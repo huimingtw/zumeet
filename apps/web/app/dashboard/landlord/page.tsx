@@ -73,7 +73,11 @@ function LandlordDashboardInner() {
           />
         )}
         {tab === "matches" && (
-          <MatchesView role="landlord" subTab={matchesSubTab} onSubTabChange={setMatchesSubTab} />
+          <MatchesView
+            role="landlord"
+            subTab={matchesSubTab}
+            onSubTabChange={setMatchesSubTab}
+          />
         )}
         {tab === "viewings" && <LandlordViewingsView />}
       </div>

@@ -9,7 +9,10 @@ import { SkeletonListingCard } from "@/components/ui/Skeletons";
 import { api } from "@/lib/api";
 import type { MatchedListingCard } from "@/types";
 import { qk } from "@/features/queryKeys";
-import { useTenantProfiles, useListingsBrowse } from "@/features/profiles/useTenantProfiles";
+import {
+  useTenantProfiles,
+  useListingsBrowse,
+} from "@/features/profiles/useTenantProfiles";
 import { ListingCard, ListingDetailDialog } from "@/features/listings/TenantListingCard";
 
 export function TenantBrowseTab({
@@ -25,7 +28,9 @@ export function TenantBrowseTab({
 
   const activeProfiles = profiles.filter((p) => p.is_active);
   const currentId =
-    activeProfiles.find((p) => p.id === selectedProfileId)?.id ?? activeProfiles[0]?.id ?? null;
+    activeProfiles.find((p) => p.id === selectedProfileId)?.id ??
+    activeProfiles[0]?.id ??
+    null;
 
   const qc = useQueryClient();
   const { data, isLoading } = useListingsBrowse(currentId ?? "");
@@ -88,7 +93,9 @@ export function TenantBrowseTab({
             type="button"
             onClick={() => setFilter(key)}
             className={`rounded-full px-3 py-1 text-xs font-medium transition ${
-              filter === key ? "bg-gray-900 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+              filter === key
+                ? "bg-gray-900 text-white"
+                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
             }`}
           >
             {label}
@@ -145,7 +152,9 @@ export function TenantBrowseTab({
           onClose={() => setDetailListing(null)}
           action={
             detailListing.interest_sent ? (
-              <p className="text-center text-sm text-gray-400">已送出興趣，等待房東回應</p>
+              <p className="text-center text-sm text-gray-400">
+                已送出興趣，等待房東回應
+              </p>
             ) : (
               <button
                 type="button"

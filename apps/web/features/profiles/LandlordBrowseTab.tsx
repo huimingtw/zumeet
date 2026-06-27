@@ -24,7 +24,9 @@ export function LandlordBrowseTab({
 
   const activeListings = listings.filter((l) => l.status === "active");
   const currentId =
-    activeListings.find((l) => l.id === selectedListingId)?.id ?? activeListings[0]?.id ?? null;
+    activeListings.find((l) => l.id === selectedListingId)?.id ??
+    activeListings[0]?.id ??
+    null;
 
   const qc = useQueryClient();
   const { data, isLoading } = useProfilesBrowse(currentId ?? "");
@@ -57,7 +59,8 @@ export function LandlordBrowseTab({
             options={activeListings.map((l) => ({
               value: l.id,
               label:
-                l.name || `$${l.rent.toLocaleString()} ${ROOM_TYPE_LABELS[l.room_type] ?? l.room_type}`,
+                l.name ||
+                `$${l.rent.toLocaleString()} ${ROOM_TYPE_LABELS[l.room_type] ?? l.room_type}`,
             }))}
             onChange={onSelectListing}
           />

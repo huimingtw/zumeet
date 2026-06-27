@@ -45,6 +45,7 @@ export function ProfileFormModal({
     control,
     handleSubmit,
     watch,
+    getValues,
     setValue,
     setError,
     formState: { errors, isSubmitting },
@@ -59,7 +60,9 @@ export function ProfileFormModal({
         ? new Date(editingProfile.available_from).toISOString().split("T")[0]
         : new Date().toISOString().split("T")[0],
       min_lease_months: editingProfile?.min_lease_months ?? 12,
-      min_area_ping: editingProfile?.min_area_ping ? String(editingProfile.min_area_ping) : "",
+      min_area_ping: editingProfile?.min_area_ping
+        ? String(editingProfile.min_area_ping)
+        : "",
       has_pets: editingProfile?.has_pets ?? false,
       pet_description: editingProfile?.pet_description ?? "",
       needs_subsidy: editingProfile?.needs_subsidy ?? false,
@@ -79,7 +82,6 @@ export function ProfileFormModal({
   const [globalError, setGlobalError] = useState("");
   const [formSaved, setFormSaved] = useState(false);
 
-  const locations = watch("locations");
   const preferredRoomTypes = watch("preferred_room_types");
   const hasPets = watch("has_pets");
   const budgetMin = watch("budget_min");
@@ -146,15 +148,27 @@ export function ProfileFormModal({
           <h3 className="text-base font-semibold text-gray-950">
             {editingProfile ? "編輯需求卡" : "新增需求卡"}
           </h3>
-          <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-700" aria-label="關閉">
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-700"
+            aria-label="關閉"
+          >
             ✕
           </button>
         </div>
 
-        <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex min-h-0 flex-1 flex-col">
+        <form
+          onSubmit={handleSubmit(onSubmit)}
+          noValidate
+          className="flex min-h-0 flex-1 flex-col"
+        >
           <div className="no-scrollbar flex-1 space-y-4 overflow-y-auto px-6 py-4">
             <div>
-              <label htmlFor="profile-name" className="mb-1 block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="profile-name"
+                className="mb-1 block text-sm font-medium text-gray-700"
+              >
                 需求名稱（如：台北套房）<span className="ml-0.5 text-red-500">*</span>
               </label>
               <input
@@ -163,7 +177,9 @@ export function ProfileFormModal({
                 className={`input ${errors.name ? "border-red-500" : ""}`}
                 placeholder="例：台北大安套房"
               />
-              {errors.name && <p className="mt-1 text-xs text-red-600">{errors.name.message}</p>}
+              {errors.name && (
+                <p className="mt-1 text-xs text-red-600">{errors.name.message}</p>
+              )}
             </div>
 
             {/* Budget quick-select chips */}
@@ -180,7 +196,10 @@ export function ProfileFormModal({
                 <button
                   key={label}
                   type="button"
-                  onClick={() => { setValue("budget_min", mn); setValue("budget_max", mx); }}
+                  onClick={() => {
+                    setValue("budget_min", mn);
+                    setValue("budget_max", mx);
+                  }}
                   className={`rounded-full px-3 py-1 text-xs font-medium transition ${
                     budgetMin === mn && budgetMax === mx
                       ? "bg-primary-600 text-white"
@@ -194,7 +213,10 @@ export function ProfileFormModal({
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label htmlFor="budget-min" className="mb-1 block text-sm font-medium text-gray-700">
+                <label
+                  htmlFor="budget-min"
+                  className="mb-1 block text-sm font-medium text-gray-700"
+                >
                   最低預算（元）<span className="ml-0.5 text-red-500">*</span>
                 </label>
                 <input
@@ -213,7 +235,10 @@ export function ProfileFormModal({
                 )}
               </div>
               <div>
-                <label htmlFor="budget-max" className="mb-1 block text-sm font-medium text-gray-700">
+                <label
+                  htmlFor="budget-max"
+                  className="mb-1 block text-sm font-medium text-gray-700"
+                >
                   最高預算（元）<span className="ml-0.5 text-red-500">*</span>
                 </label>
                 <input
@@ -225,7 +250,8 @@ export function ProfileFormModal({
                     min: { value: 1, message: "請填寫最高預算" },
                     valueAsNumber: true,
                     validate: (v) =>
-                      Number(v) >= Number(watch("budget_min")) || "最低預算不能高於最高預算",
+                      Number(v) >= Number(getValues("budget_min")) ||
+                      "最低預算不能高於最高預算",
                   })}
                   className={`input ${errors.budget_max ? "border-red-500" : ""}`}
                 />
@@ -250,7 +276,9 @@ export function ProfileFormModal({
                       onClick={() => setLocPickerOpen(true)}
                       className="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-600 hover:border-gray-400 hover:text-gray-800"
                     >
-                      {field.value.length > 0 ? `已選 ${field.value.length} 個地區` : "選擇地區 ›"}
+                      {field.value.length > 0
+                        ? `已選 ${field.value.length} 個地區`
+                        : "選擇地區 ›"}
                     </button>
                     {field.value.length > 0 && (
                       <div className="mt-2 flex flex-wrap gap-1.5">
@@ -308,7 +336,9 @@ export function ProfileFormModal({
                 ))}
               </div>
               {errors.preferred_room_types && (
-                <p className="mt-1 text-xs text-red-600">{errors.preferred_room_types.message}</p>
+                <p className="mt-1 text-xs text-red-600">
+                  {errors.preferred_room_types.message}
+                </p>
               )}
               {/* hidden input to trigger validation */}
               <input
@@ -321,7 +351,10 @@ export function ProfileFormModal({
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label htmlFor="available-from" className="mb-1 block text-sm font-medium text-gray-700">
+                <label
+                  htmlFor="available-from"
+                  className="mb-1 block text-sm font-medium text-gray-700"
+                >
                   最快入住日<span className="ml-0.5 text-red-500">*</span>
                 </label>
                 <input
@@ -332,11 +365,16 @@ export function ProfileFormModal({
                   className={`input ${errors.available_from ? "border-red-500" : ""}`}
                 />
                 {errors.available_from && (
-                  <p className="mt-1 text-xs text-red-600">{errors.available_from.message}</p>
+                  <p className="mt-1 text-xs text-red-600">
+                    {errors.available_from.message}
+                  </p>
                 )}
               </div>
               <div>
-                <label htmlFor="min-lease" className="mb-1 block text-sm font-medium text-gray-700">
+                <label
+                  htmlFor="min-lease"
+                  className="mb-1 block text-sm font-medium text-gray-700"
+                >
                   最短租期（月）<span className="ml-0.5 text-red-500">*</span>
                 </label>
                 <input
@@ -351,13 +389,18 @@ export function ProfileFormModal({
                   className={`input ${errors.min_lease_months ? "border-red-500" : ""}`}
                 />
                 {errors.min_lease_months && (
-                  <p className="mt-1 text-xs text-red-600">{errors.min_lease_months.message}</p>
+                  <p className="mt-1 text-xs text-red-600">
+                    {errors.min_lease_months.message}
+                  </p>
                 )}
               </div>
             </div>
 
             <div>
-              <label htmlFor="min-area" className="mb-1 block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="min-area"
+                className="mb-1 block text-sm font-medium text-gray-700"
+              >
                 最小坪數（可不填）
               </label>
               <input
@@ -371,7 +414,9 @@ export function ProfileFormModal({
                 placeholder="不限"
               />
               {errors.min_area_ping && (
-                <p className="mt-1 text-xs text-red-600">{errors.min_area_ping.message}</p>
+                <p className="mt-1 text-xs text-red-600">
+                  {errors.min_area_ping.message}
+                </p>
               )}
             </div>
 
@@ -388,7 +433,10 @@ export function ProfileFormModal({
                   ["smoking", "會抽菸"],
                 ] as const
               ).map(([key, label]) => (
-                <label key={key} className="flex cursor-pointer items-center gap-2 text-sm text-gray-700">
+                <label
+                  key={key}
+                  className="flex cursor-pointer items-center gap-2 text-sm text-gray-700"
+                >
                   <input
                     type="checkbox"
                     {...register(key)}
@@ -401,7 +449,10 @@ export function ProfileFormModal({
 
             {hasPets && (
               <div>
-                <label htmlFor="pet-desc" className="mb-1 block text-sm font-medium text-gray-700">
+                <label
+                  htmlFor="pet-desc"
+                  className="mb-1 block text-sm font-medium text-gray-700"
+                >
                   寵物描述（選填）
                 </label>
                 <input
@@ -415,7 +466,10 @@ export function ProfileFormModal({
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label htmlFor="occupation" className="mb-1 block text-sm font-medium text-gray-700">
+                <label
+                  htmlFor="occupation"
+                  className="mb-1 block text-sm font-medium text-gray-700"
+                >
                   職業（選填）
                 </label>
                 <input
@@ -426,7 +480,10 @@ export function ProfileFormModal({
                 />
               </div>
               <div>
-                <label htmlFor="age" className="mb-1 block text-sm font-medium text-gray-700">
+                <label
+                  htmlFor="age"
+                  className="mb-1 block text-sm font-medium text-gray-700"
+                >
                   年齡（選填）
                 </label>
                 <input
@@ -442,7 +499,10 @@ export function ProfileFormModal({
             </div>
 
             <div>
-              <label htmlFor="description" className="mb-1 block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="description"
+                className="mb-1 block text-sm font-medium text-gray-700"
+              >
                 自我介紹（選填）
               </label>
               <textarea
@@ -455,7 +515,10 @@ export function ProfileFormModal({
             </div>
 
             <div>
-              <label htmlFor="contact-info" className="mb-1 block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="contact-info"
+                className="mb-1 block text-sm font-medium text-gray-700"
+              >
                 聯絡方式（媒合成功後才對房東顯示）
                 <span className="ml-0.5 text-red-500">*</span>
               </label>
@@ -478,7 +541,12 @@ export function ProfileFormModal({
           </div>
 
           <div className="flex-shrink-0 space-y-2 border-t border-gray-100 bg-white px-6 pt-3 pb-[max(16px,env(safe-area-inset-bottom))]">
-            <Button type="submit" size="lg" fullWidth disabled={isSubmitting || formSaved}>
+            <Button
+              type="submit"
+              size="lg"
+              fullWidth
+              disabled={isSubmitting || formSaved}
+            >
               {isSubmitting
                 ? "儲存中…"
                 : editingProfile
@@ -488,7 +556,13 @@ export function ProfileFormModal({
                   : "建立需求卡"}
             </Button>
             {editingProfile && (
-              <Button type="button" size="lg" fullWidth variant="secondary" onClick={onClose}>
+              <Button
+                type="button"
+                size="lg"
+                fullWidth
+                variant="secondary"
+                onClick={onClose}
+              >
                 關閉
               </Button>
             )}

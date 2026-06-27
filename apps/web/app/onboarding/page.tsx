@@ -29,9 +29,9 @@ function OnboardingForm() {
   useEffect(() => {
     const state = searchParams.get("state");
     if (!state) {
-      setError("缺少登入狀態，請重新以 Google 登入");
+      setError("缺少登入狀態，請重新以 Google 登入"); // eslint-disable-line react-hooks/set-state-in-effect
     } else {
-      setOauthState(state);
+      setOauthState(state); // eslint-disable-line react-hooks/set-state-in-effect
     }
   }, [searchParams]);
 

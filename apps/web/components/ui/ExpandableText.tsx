@@ -14,7 +14,9 @@ export function ExpandableText({
   const long = text.length > 50;
   return (
     <div>
-      <p className={`${open || !long ? "whitespace-pre-wrap" : "line-clamp-2"} ${className}`}>
+      <p
+        className={`${open || !long ? "whitespace-pre-wrap" : "line-clamp-2"} ${className}`}
+      >
         {text}
       </p>
       {long && (

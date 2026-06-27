@@ -19,7 +19,10 @@ export function useListingsBrowse(profileId: string) {
   });
 }
 
-export function useIncoming<T = unknown>(profileId: string, opts?: { enabled?: boolean }) {
+export function useIncoming<T = unknown>(
+  profileId: string,
+  opts?: { enabled?: boolean }
+) {
   return useQuery<{ items: T[] }>({
     queryKey: qk.incoming(profileId),
     queryFn: () =>

@@ -22,9 +22,10 @@ function PhotoSection({
 }) {
   const qc = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);
-  const [uploadProgress, setUploadProgress] = useState<{ done: number; total: number } | null>(
-    null
-  );
+  const [uploadProgress, setUploadProgress] = useState<{
+    done: number;
+    total: number;
+  } | null>(null);
   const [uploadError, setUploadError] = useState("");
 
   const { data: listing } = useListingDetail(listingId);
@@ -52,7 +53,8 @@ function PhotoSection({
         } catch (err: unknown) {
           const msg =
             err && typeof err === "object" && "response" in err
-              ? (err as { response?: { data?: { error?: string } } }).response?.data?.error
+              ? (err as { response?: { data?: { error?: string } } }).response?.data
+                  ?.error
               : undefined;
           setUploadError(msg ?? "上傳失敗");
           break;
@@ -69,7 +71,8 @@ function PhotoSection({
   }
 
   const deletePhoto = useMutation({
-    mutationFn: (photoId: string) => api.delete(`/listings/${listingId}/photos/${photoId}`),
+    mutationFn: (photoId: string) =>
+      api.delete(`/listings/${listingId}/photos/${photoId}`),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: qk.listingDetail(listingId) });
       onChanged();
@@ -89,16 +92,20 @@ function PhotoSection({
   const [localOrder, setLocalOrder] = useState<string[] | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
   const photos: PhotoRecord[] = localOrder
-    ? (localOrder.map((id) => serverPhotos.find((p) => p.id === id)).filter(Boolean) as PhotoRecord[])
+    ? (localOrder
+        .map((id) => serverPhotos.find((p) => p.id === id))
+        .filter(Boolean) as PhotoRecord[])
     : serverPhotos;
 
   useEffect(() => {
     if (!localOrder) return;
     const serverIds = serverPhotos.map((p) => p.id).join(",");
-    if (serverIds === localOrder.join(",")) setLocalOrder(null);
+    if (serverIds === localOrder.join(",")) setLocalOrder(null); // eslint-disable-line react-hooks/set-state-in-effect
   }, [serverPhotos, localOrder]);
 
-  function onDragStart(id: string) { setDragId(id); }
+  function onDragStart(id: string) {
+    setDragId(id);
+  }
   function onDragOver(e: React.DragEvent, overId: string) {
     e.preventDefault();
     if (!dragId || dragId === overId) return;
@@ -135,7 +142,13 @@ function PhotoSection({
               dragId === p.id ? "opacity-50" : ""
             } active:cursor-grabbing`}
           >
-            <Image src={p.public_url} alt="" fill className="object-cover" sizes="120px" />
+            <Image
+              src={p.public_url}
+              alt=""
+              fill
+              className="object-cover"
+              sizes="120px"
+            />
             <button
               type="button"
               onClick={() => deletePhoto.mutate(p.id)}
@@ -216,7 +229,7 @@ export function ListingFormModal({
     watch,
     reset,
     setError,
-    formState: { errors, isSubmitting, isSubmitSuccessful },
+    formState: { errors, isSubmitting },
   } = useForm<FormValues>({
     defaultValues: {
       city: "",
@@ -299,7 +312,9 @@ export function ListingFormModal({
       num_living_rooms: isWholeFloor ? Number(data.num_living_rooms) : null,
       num_bathrooms: isWholeFloor ? Number(data.num_bathrooms) : null,
       num_balconies: isWholeFloor ? Number(data.num_balconies) : null,
-      available_from: data.available_from ? `${data.available_from}T00:00:00Z` : data.available_from,
+      available_from: data.available_from
+        ? `${data.available_from}T00:00:00Z`
+        : data.available_from,
     };
     try {
       if (editingId) {
@@ -360,7 +375,10 @@ export function ListingFormModal({
         ) : (
           <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
             <div>
-              <label htmlFor="listing-name" className="mb-1 block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="listing-name"
+                className="mb-1 block text-sm font-medium text-gray-700"
+              >
                 房源名稱（選填）
               </label>
               <input
@@ -384,12 +402,19 @@ export function ListingFormModal({
                     <Dropdown
                       value={field.value}
                       placeholder="請選擇縣市"
-                      options={LOCATION_GROUPS.map((g) => ({ value: g.cityLabel, label: g.cityLabel }))}
-                      onChange={(v) => { field.onChange(v); }}
+                      options={LOCATION_GROUPS.map((g) => ({
+                        value: g.cityLabel,
+                        label: g.cityLabel,
+                      }))}
+                      onChange={(v) => {
+                        field.onChange(v);
+                      }}
                     />
                   )}
                 />
-                {errors.city && <p className="mt-1 text-xs text-red-600">{errors.city.message}</p>}
+                {errors.city && (
+                  <p className="mt-1 text-xs text-red-600">{errors.city.message}</p>
+                )}
               </div>
               <div>
                 <p className="mb-1 text-sm font-medium text-gray-700">
@@ -418,7 +443,10 @@ export function ListingFormModal({
             </div>
 
             <div>
-              <label htmlFor="address" className="mb-1 block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="address"
+                className="mb-1 block text-sm font-medium text-gray-700"
+              >
                 詳細地址
               </label>
               <input
@@ -434,7 +462,10 @@ export function ListingFormModal({
 
             <div className="grid grid-cols-3 gap-3">
               <div>
-                <label htmlFor="rent" className="mb-1 block text-sm font-medium text-gray-700">
+                <label
+                  htmlFor="rent"
+                  className="mb-1 block text-sm font-medium text-gray-700"
+                >
                   租金（元/月）<span className="ml-0.5 text-red-500">*</span>
                 </label>
                 <input
@@ -449,10 +480,15 @@ export function ListingFormModal({
                   })}
                   className={`input ${errors.rent ? "border-red-500" : ""}`}
                 />
-                {errors.rent && <p className="mt-1 text-xs text-red-600">{errors.rent.message}</p>}
+                {errors.rent && (
+                  <p className="mt-1 text-xs text-red-600">{errors.rent.message}</p>
+                )}
               </div>
               <div>
-                <label htmlFor="management_fee" className="mb-1 block text-sm font-medium text-gray-700">
+                <label
+                  htmlFor="management_fee"
+                  className="mb-1 block text-sm font-medium text-gray-700"
+                >
                   管理費（元/月）
                 </label>
                 <input
@@ -467,11 +503,16 @@ export function ListingFormModal({
                   className={`input ${errors.management_fee ? "border-red-500" : ""}`}
                 />
                 {errors.management_fee && (
-                  <p className="mt-1 text-xs text-red-600">{errors.management_fee.message}</p>
+                  <p className="mt-1 text-xs text-red-600">
+                    {errors.management_fee.message}
+                  </p>
                 )}
               </div>
               <div>
-                <label htmlFor="area_ping" className="mb-1 block text-sm font-medium text-gray-700">
+                <label
+                  htmlFor="area_ping"
+                  className="mb-1 block text-sm font-medium text-gray-700"
+                >
                   坪數<span className="ml-0.5 text-red-500">*</span>
                 </label>
                 <input
@@ -554,7 +595,10 @@ export function ListingFormModal({
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label htmlFor="available_from" className="mb-1 block text-sm font-medium text-gray-700">
+                <label
+                  htmlFor="available_from"
+                  className="mb-1 block text-sm font-medium text-gray-700"
+                >
                   可入住日<span className="ml-0.5 text-red-500">*</span>
                 </label>
                 <input
@@ -565,11 +609,16 @@ export function ListingFormModal({
                   className={`input ${errors.available_from ? "border-red-500" : ""}`}
                 />
                 {errors.available_from && (
-                  <p className="mt-1 text-xs text-red-600">{errors.available_from.message}</p>
+                  <p className="mt-1 text-xs text-red-600">
+                    {errors.available_from.message}
+                  </p>
                 )}
               </div>
               <div>
-                <label htmlFor="min_lease_months" className="mb-1 block text-sm font-medium text-gray-700">
+                <label
+                  htmlFor="min_lease_months"
+                  className="mb-1 block text-sm font-medium text-gray-700"
+                >
                   最短租期（月）<span className="ml-0.5 text-red-500">*</span>
                 </label>
                 <input
@@ -584,7 +633,9 @@ export function ListingFormModal({
                   className={`input ${errors.min_lease_months ? "border-red-500" : ""}`}
                 />
                 {errors.min_lease_months && (
-                  <p className="mt-1 text-xs text-red-600">{errors.min_lease_months.message}</p>
+                  <p className="mt-1 text-xs text-red-600">
+                    {errors.min_lease_months.message}
+                  </p>
                 )}
               </div>
             </div>
@@ -600,7 +651,10 @@ export function ListingFormModal({
                   ["allow_cooking", "可開伙"],
                 ] as const
               ).map(([key, label]) => (
-                <label key={key} className="flex cursor-pointer items-center gap-2 text-sm text-gray-700">
+                <label
+                  key={key}
+                  className="flex cursor-pointer items-center gap-2 text-sm text-gray-700"
+                >
                   <input
                     type="checkbox"
                     {...register(key)}
@@ -612,7 +666,10 @@ export function ListingFormModal({
             </div>
 
             <div>
-              <label htmlFor="description" className="mb-1 block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="description"
+                className="mb-1 block text-sm font-medium text-gray-700"
+              >
                 房源說明（選填）
               </label>
               <textarea
@@ -625,7 +682,10 @@ export function ListingFormModal({
             </div>
 
             <div>
-              <label htmlFor="contact_info" className="mb-1 block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="contact_info"
+                className="mb-1 block text-sm font-medium text-gray-700"
+              >
                 聯絡方式（媒合成功後才對租客顯示）
                 <span className="ml-0.5 text-red-500">*</span>
               </label>
@@ -638,7 +698,9 @@ export function ListingFormModal({
               {errors.contact_info ? (
                 <p className="mt-1 text-xs text-red-600">{errors.contact_info.message}</p>
               ) : (
-                <p className="mt-1 text-xs text-gray-400">媒合成功後才會顯示給租客，請填真實聯絡方式</p>
+                <p className="mt-1 text-xs text-gray-400">
+                  媒合成功後才會顯示給租客，請填真實聯絡方式
+                </p>
               )}
             </div>
 
@@ -652,14 +714,17 @@ export function ListingFormModal({
                   <input
                     type="checkbox"
                     {...register("compliance_confirmed", {
-                      validate: (v) => editingId ? true : v || "請勾選合規確認才能建立房源",
+                      validate: (v) =>
+                        editingId ? true : v || "請勾選合規確認才能建立房源",
                     })}
                     className="mt-0.5 h-4 w-4 rounded border-amber-300 accent-amber-800"
                   />
                   <span>我確認此房源符合上述合規條件</span>
                 </label>
                 {errors.compliance_confirmed && (
-                  <p className="mt-1 text-xs text-red-600">{errors.compliance_confirmed.message}</p>
+                  <p className="mt-1 text-xs text-red-600">
+                    {errors.compliance_confirmed.message}
+                  </p>
                 )}
               </div>
             )}
@@ -673,11 +738,28 @@ export function ListingFormModal({
 
             {globalError && <p className="text-sm text-red-600">{globalError}</p>}
 
-            <Button type="submit" size="lg" fullWidth disabled={isSubmitting || formSaved}>
-              {isSubmitting ? "儲存中…" : editingId ? (formSaved ? "已儲存 ✓" : "儲存") : "建立房源"}
+            <Button
+              type="submit"
+              size="lg"
+              fullWidth
+              disabled={isSubmitting || formSaved}
+            >
+              {isSubmitting
+                ? "儲存中…"
+                : editingId
+                  ? formSaved
+                    ? "已儲存 ✓"
+                    : "儲存"
+                  : "建立房源"}
             </Button>
             {editingId && (
-              <Button type="button" size="lg" fullWidth variant="secondary" onClick={onSaved}>
+              <Button
+                type="button"
+                size="lg"
+                fullWidth
+                variant="secondary"
+                onClick={onSaved}
+              >
                 關閉
               </Button>
             )}

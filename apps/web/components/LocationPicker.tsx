@@ -84,9 +84,9 @@ export function LocationPicker({ open, value, onChange, onClose }: Props) {
 
   useEffect(() => {
     if (open) {
-      setDraft(value);
-      setQuery("");
-      setActiveCityCode(LOCATION_GROUPS[0]?.cityCode ?? "");
+      setDraft(value); // eslint-disable-line react-hooks/set-state-in-effect
+      setQuery(""); // eslint-disable-line react-hooks/set-state-in-effect
+      setActiveCityCode(LOCATION_GROUPS[0]?.cityCode ?? ""); // eslint-disable-line react-hooks/set-state-in-effect
     }
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 

@@ -10,14 +10,19 @@ import { useListings } from "@/features/listings/useListings";
 import { ListingMgmtCard } from "@/features/listings/ListingMgmtCard";
 import { ListingFormModal } from "@/features/listings/ListingFormModal";
 
-export function ListingsTab({ onSelectListing }: { onSelectListing: (id: string) => void }) {
+export function ListingsTab({
+  onSelectListing,
+}: {
+  onSelectListing: (id: string) => void;
+}) {
   const qc = useQueryClient();
   const { data: listings = [], isLoading } = useListings();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [filter, setFilter] = useState<"all" | "active" | "rented">("all");
 
-  const filtered = filter === "all" ? listings : listings.filter((l) => l.status === filter);
+  const filtered =
+    filter === "all" ? listings : listings.filter((l) => l.status === filter);
 
   if (isLoading) {
     return (
@@ -86,7 +91,9 @@ export function ListingsTab({ onSelectListing }: { onSelectListing: (id: string)
             type="button"
             onClick={() => setFilter(key)}
             className={`rounded-full px-3 py-1 text-xs font-medium transition ${
-              filter === key ? "bg-gray-900 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+              filter === key
+                ? "bg-gray-900 text-white"
+                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
             }`}
           >
             {label}

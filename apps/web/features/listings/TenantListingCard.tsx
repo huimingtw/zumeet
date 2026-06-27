@@ -388,7 +388,11 @@ export function ListingDetailDialog({
           {listing.photos.length > 0 ? (
             <div className="relative h-64 w-full sm:absolute sm:inset-0 sm:h-auto">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={listing.photos[photoIdx]} alt="" className="block h-full w-full object-cover" />
+              <img
+                src={listing.photos[photoIdx]}
+                alt=""
+                className="block h-full w-full object-cover"
+              />
             </div>
           ) : (
             <div className="flex h-48 w-full items-center justify-center sm:absolute sm:inset-0 sm:h-auto">

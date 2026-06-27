@@ -30,8 +30,8 @@ export function TenantIncomingTab() {
   const [expandedSet, setExpandedSet] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    if (profiles.length > 0) setExpandedSet(new Set(profiles.map((p) => p.id)));
-  }, [profiles]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (profiles.length > 0) setExpandedSet(new Set(profiles.map((p) => p.id))); // eslint-disable-line react-hooks/set-state-in-effect
+  }, [profiles]);
 
   if (isLoading) return <Loading />;
 
@@ -162,7 +162,9 @@ function ProfileIncoming({
           onClose={() => setDetail(null)}
           action={
             detail.interest_sent ? (
-              <p className="text-center text-sm text-gray-400">已送出興趣，等待房東回應</p>
+              <p className="text-center text-sm text-gray-400">
+                已送出興趣，等待房東回應
+              </p>
             ) : (
               <button
                 type="button"

@@ -19,10 +19,15 @@ export function TenantProfileCard({
       <div className="flex items-center justify-between gap-4">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-baseline gap-2">
-            <span className="text-sm font-semibold text-gray-950">{profileHeader(profile)}</span>
+            <span className="text-sm font-semibold text-gray-950">
+              {profileHeader(profile)}
+            </span>
           </div>
           {profile.description && (
-            <ExpandableText text={profile.description} className="mt-1.5 text-sm text-gray-600" />
+            <ExpandableText
+              text={profile.description}
+              className="mt-1.5 text-sm text-gray-600"
+            />
           )}
           {tags.length > 0 && (
             <div className="mt-2 flex flex-wrap gap-1">

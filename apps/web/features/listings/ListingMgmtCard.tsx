@@ -56,19 +56,26 @@ export function ListingMgmtCard({
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             {listing.name && (
-              <span className="text-base font-semibold text-gray-950">{listing.name}</span>
+              <span className="text-base font-semibold text-gray-950">
+                {listing.name}
+              </span>
             )}
             <span
               className={
-                listing.name ? "text-sm text-gray-500" : "text-base font-semibold text-gray-950"
+                listing.name
+                  ? "text-sm text-gray-500"
+                  : "text-base font-semibold text-gray-950"
               }
             >
               ${listing.rent.toLocaleString()}
             </span>
             <span className="text-sm text-gray-500">
-              {ROOM_TYPE_LABELS[listing.room_type] ?? listing.room_type} {listing.area_ping}坪
+              {ROOM_TYPE_LABELS[listing.room_type] ?? listing.room_type}{" "}
+              {listing.area_ping}坪
             </span>
-            <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusBadgeClass}`}>
+            <span
+              className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusBadgeClass}`}
+            >
               {STATUS_LABELS[listing.status] ?? listing.status}
             </span>
           </div>
@@ -120,8 +127,12 @@ export function ListingMgmtCard({
           <OverflowMenu>
             {listing.status === "active" && (
               <>
-                <MenuItem onClick={() => changeStatus.mutate("paused")}>暫停曝光</MenuItem>
-                <MenuItem onClick={() => changeStatus.mutate("rented")}>標記已出租</MenuItem>
+                <MenuItem onClick={() => changeStatus.mutate("paused")}>
+                  暫停曝光
+                </MenuItem>
+                <MenuItem onClick={() => changeStatus.mutate("rented")}>
+                  標記已出租
+                </MenuItem>
               </>
             )}
             <MenuItem

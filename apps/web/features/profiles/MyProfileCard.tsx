@@ -38,7 +38,9 @@ export function MyProfileCard({
 
   const toggleStatus = useMutation({
     mutationFn: () =>
-      api.patch(`/tenant-profiles/${profile.id}/status`, { is_active: !profile.is_active }),
+      api.patch(`/tenant-profiles/${profile.id}/status`, {
+        is_active: !profile.is_active,
+      }),
     onSuccess: () => qc.invalidateQueries({ queryKey: qk.tenantProfiles() }),
   });
 
@@ -55,14 +57,17 @@ export function MyProfileCard({
             <h3 className="text-sm font-semibold text-gray-950">{profile.name}</h3>
             <span
               className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                profile.is_active ? "bg-[#D1FAE5] text-[#059669]" : "bg-gray-100 text-gray-500"
+                profile.is_active
+                  ? "bg-[#D1FAE5] text-[#059669]"
+                  : "bg-gray-100 text-gray-500"
               }`}
             >
               {profile.is_active ? "啟用中" : "已停用"}
             </span>
           </div>
           <p className="mt-1 text-sm text-gray-500">
-            預算 ${profile.budget_min.toLocaleString()}–${profile.budget_max.toLocaleString()} ／{" "}
+            預算 ${profile.budget_min.toLocaleString()}–$
+            {profile.budget_max.toLocaleString()} ／{" "}
             {profile.preferred_room_types.map((t) => ROOM_TYPE_LABELS[t] ?? t).join("、")}
           </p>
         </div>
@@ -90,14 +95,20 @@ export function MyProfileCard({
             <div className="absolute right-0 z-30 mt-1 w-32 overflow-hidden rounded-xl border border-gray-200 bg-white py-1 shadow-lg">
               <button
                 type="button"
-                onClick={() => { setMenuOpen(false); onEdit(); }}
+                onClick={() => {
+                  setMenuOpen(false);
+                  onEdit();
+                }}
                 className="w-full px-4 py-2 text-left text-sm text-gray-700 transition hover:bg-gray-50"
               >
                 編輯
               </button>
               <button
                 type="button"
-                onClick={() => { setMenuOpen(false); toggleStatus.mutate(); }}
+                onClick={() => {
+                  setMenuOpen(false);
+                  toggleStatus.mutate();
+                }}
                 className="w-full px-4 py-2 text-left text-sm text-gray-700 transition hover:bg-gray-50"
               >
                 {profile.is_active ? "停用" : "啟用"}
@@ -107,7 +118,11 @@ export function MyProfileCard({
                 onClick={async () => {
                   setMenuOpen(false);
                   if (
-                    await confirm({ message: "確定刪除這張需求卡？", confirmText: "刪除", danger: true })
+                    await confirm({
+                      message: "確定刪除這張需求卡？",
+                      confirmText: "刪除",
+                      danger: true,
+                    })
                   )
                     deleteProfile.mutate();
                 }}

@@ -62,7 +62,9 @@ function TenantDashboardInner() {
         </nav>
 
         {tab === "requirements" && (
-          <ProfilesTab onSelectProfile={(id) => router.push(`?tab=listings&profile=${id}`)} />
+          <ProfilesTab
+            onSelectProfile={(id) => router.push(`?tab=listings&profile=${id}`)}
+          />
         )}
         {tab === "viewings" && <ViewingList role="tenant" />}
         {tab === "listings" && (
@@ -73,7 +75,11 @@ function TenantDashboardInner() {
           />
         )}
         {tab === "matches" && (
-          <MatchesView role="tenant" subTab={matchesSubTab} onSubTabChange={setMatchesSubTab} />
+          <MatchesView
+            role="tenant"
+            subTab={matchesSubTab}
+            onSubTabChange={setMatchesSubTab}
+          />
         )}
       </div>
 

@@ -11,7 +11,8 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   fullWidth?: boolean;
 }
 
-const BASE = "inline-flex items-center justify-center rounded-lg font-medium transition disabled:opacity-40";
+const BASE =
+  "inline-flex items-center justify-center rounded-lg font-medium transition disabled:opacity-40";
 
 const VARIANTS: Record<Variant, string> = {
   primary: "bg-primary-600 hover:bg-primary-500 text-white",
