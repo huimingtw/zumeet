@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
-import { type ReactNode, Suspense, useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { DashboardHeader } from "@/components/layout/DashboardHeader";
 import { useConfirm } from "@/components/ConfirmDialog";
 import { LocationPicker } from "@/components/LocationPicker";
