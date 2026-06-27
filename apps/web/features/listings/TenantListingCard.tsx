@@ -274,29 +274,20 @@ function ListingMiniMap({
   if (!query && !lat) return null;
 
   const hasCoords = lat != null && lng != null;
-  // SECURITY(map): grid-snapping hides the pin position visually, but the raw
-  // lat/lng are still present in the API response (inspectable in devtools) for
-  // pre-match listings. To fully protect location, the backend should omit or
-  // round coords server-side before the match is created.
-  const GRID = 0.005;
-  const mapLat = hasCoords
-    ? precise
-      ? (lat as number)
-      : Math.round((lat as number) / GRID) * GRID
-    : null;
-  const mapLng = hasCoords
-    ? precise
-      ? (lng as number)
-      : Math.round((lng as number) / GRID) * GRID
-    : null;
+  // Backend already rounds pre-match coords to 0.005° grid (~550m); no client-side snap needed.
+  const mapLat = hasCoords ? (lat as number) : null;
+  const mapLng = hasCoords ? (lng as number) : null;
   const zoom = precise ? 16 : 14;
 
   const externalQuery = hasCoords
     ? `${mapLat},${mapLng}`
     : encodeURIComponent(query ?? "");
   const externalUrl = `https://www.google.com/maps/search/?api=1&query=${externalQuery}`;
+  // ponytail: ?ll= centers the map without a pin; ?q= would show a pin (wrong for approximate mode)
   const embedUrl = hasCoords
-    ? `https://maps.google.com/maps?q=${mapLat},${mapLng}&z=${zoom}&output=embed&hl=zh-TW`
+    ? precise
+      ? `https://maps.google.com/maps?q=${mapLat},${mapLng}&z=${zoom}&output=embed&hl=zh-TW`
+      : `https://maps.google.com/maps?ll=${mapLat},${mapLng}&z=${zoom}&output=embed&hl=zh-TW`
     : `https://maps.google.com/maps?q=${encodeURIComponent(query ?? "")}&z=${zoom}&output=embed&hl=zh-TW`;
   return (
     <a
