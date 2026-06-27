@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import type { ViewingSlot } from "@/types";
 import { dateKey, formatSlot } from "@/lib/viewings";
+import { qk } from "@/features/queryKeys";
 
 // SlotPicker shows a listing's open 帶看 slots grouped by date and lets the user pick one.
 // value/onChange carry the selected slot start (ISO string), or "" for none.
@@ -18,7 +19,7 @@ export function SlotPicker({
   onChange: (startISO: string) => void;
 }) {
   const { data, isLoading } = useQuery<{ enabled: boolean; slots: ViewingSlot[] }>({
-    queryKey: ["viewing-slots", listingId],
+    queryKey: qk.viewingSlots(listingId),
     queryFn: () => api.get(`/listings/${listingId}/viewing-slots`).then((r) => r.data),
   });
 

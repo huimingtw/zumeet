@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 import { api } from "@/lib/api";
+import { qk } from "@/features/queryKeys";
 
 // RoleGuard renders its children only if the current user has `role`.
 // Otherwise it shows a 403 — a tenant cannot open the landlord dashboard and vice versa.
@@ -16,7 +17,7 @@ export function RoleGuard({
   children: ReactNode;
 }) {
   const { data, isLoading, isError } = useQuery<{ roles: string[] }>({
-    queryKey: ["me"],
+    queryKey: qk.me(),
     queryFn: () => api.get("/profile/me").then((r) => r.data),
   });
 

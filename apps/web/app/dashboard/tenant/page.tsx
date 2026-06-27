@@ -42,6 +42,7 @@ import {
 import { formatSlot } from "@/lib/viewings";
 import type { MatchedListingCard, TenantProfile, Viewing } from "@/types";
 import { LOCATION_CITY_DISTRICT, LOCATION_LABELS, ROOM_TYPE_LABELS } from "@/types";
+import { qk } from "@/features/queryKeys";
 
 type MainTab = "requirements" | "listings" | "matches" | "viewings";
 type MatchesSubTab = "incoming" | "outgoing" | "matched";
@@ -163,7 +164,7 @@ export default function TenantDashboard() {
 function ProfilesTab({ onSelectProfile }: { onSelectProfile: (id: string) => void }) {
   const qc = useQueryClient();
   const { data: profiles = [], isLoading } = useQuery<TenantProfile[]>({
-    queryKey: ["tenant-profiles"],
+    queryKey: qk.tenantProfiles(),
     queryFn: () => api.get("/tenant-profiles").then((r) => r.data),
   });
   const [editingProfile, setEditingProfile] = useState<TenantProfile | null>(null);
@@ -199,7 +200,7 @@ function ProfilesTab({ onSelectProfile }: { onSelectProfile: (id: string) => voi
             editingProfile={null}
             onClose={() => setShowForm(false)}
             onSaved={() => {
-              qc.invalidateQueries({ queryKey: ["tenant-profiles"] });
+              qc.invalidateQueries({ queryKey: qk.tenantProfiles() });
               setShowForm(false);
             }}
           />
@@ -235,7 +236,7 @@ function ProfilesTab({ onSelectProfile }: { onSelectProfile: (id: string) => voi
               setShowForm(true);
             }}
             onBrowse={() => onSelectProfile(p.id)}
-            onDeleted={() => qc.invalidateQueries({ queryKey: ["tenant-profiles"] })}
+            onDeleted={() => qc.invalidateQueries({ queryKey: qk.tenantProfiles() })}
           />
         ))}
       </div>
@@ -247,7 +248,7 @@ function ProfilesTab({ onSelectProfile }: { onSelectProfile: (id: string) => voi
             setEditingProfile(null);
           }}
           onSaved={() => {
-            qc.invalidateQueries({ queryKey: ["tenant-profiles"] });
+            qc.invalidateQueries({ queryKey: qk.tenantProfiles() });
             setShowForm(false);
             setEditingProfile(null);
           }}
@@ -289,7 +290,7 @@ function ProfileCard({
       api.patch(`/tenant-profiles/${profile.id}/status`, {
         is_active: !profile.is_active,
       }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["tenant-profiles"] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: qk.tenantProfiles() }),
   });
 
   const deleteProfile = useMutation({
@@ -414,7 +415,7 @@ function BrowseTab({
   onGoToProfiles: () => void;
 }) {
   const { data: profiles = [] } = useQuery<TenantProfile[]>({
-    queryKey: ["tenant-profiles"],
+    queryKey: qk.tenantProfiles(),
     queryFn: () => api.get("/tenant-profiles").then((r) => r.data),
   });
 
@@ -426,7 +427,7 @@ function BrowseTab({
 
   const qc = useQueryClient();
   const { data, isLoading } = useQuery<{ items: MatchedListingCard[] }>({
-    queryKey: ["listings-browse", currentId],
+    queryKey: qk.listingsBrowse(currentId),
     queryFn: () =>
       api.get(`/tenant-profiles/${currentId}/listings?limit=20`).then((r) => r.data),
     enabled: !!currentId,
@@ -436,8 +437,8 @@ function BrowseTab({
     mutationFn: (listingId: string) =>
       api.post(`/tenant-profiles/${currentId}/listings/${listingId}/interest`),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["listings-browse", currentId] });
-      qc.invalidateQueries({ queryKey: ["matched"] });
+      qc.invalidateQueries({ queryKey: qk.listingsBrowse(currentId) });
+      qc.invalidateQueries({ queryKey: qk.matched() });
     },
   });
 
@@ -1138,7 +1139,7 @@ function toListingCard(
 
 function IncomingTab() {
   const { data: profiles = [], isLoading } = useQuery<TenantProfile[]>({
-    queryKey: ["tenant-profiles"],
+    queryKey: qk.tenantProfiles(),
     queryFn: () => api.get("/tenant-profiles").then((r) => r.data),
   });
   const qc = useQueryClient();
@@ -1177,7 +1178,7 @@ function IncomingTab() {
           profile={profile}
           expanded={expandedSet.has(profile.id)}
           onToggle={() => toggle(profile.id)}
-          onMatched={() => qc.invalidateQueries({ queryKey: ["matched"] })}
+          onMatched={() => qc.invalidateQueries({ queryKey: qk.matched() })}
         />
       ))}
     </div>
@@ -1197,7 +1198,7 @@ function ProfileIncoming({
 }) {
   const qc = useQueryClient();
   const { data, isLoading } = useQuery<{ items: IncomingListingItem[] }>({
-    queryKey: ["incoming", profile.id],
+    queryKey: qk.incoming(profile.id),
     queryFn: () =>
       api
         .get(`/tenant-profiles/${profile.id}/interests/incoming?limit=50`)
@@ -1211,7 +1212,7 @@ function ProfileIncoming({
       api.post(`/tenant-profiles/${profile.id}/listings/${listingId}/interest`),
     onSuccess: (res) => {
       if (res.data.status === "matched") onMatched();
-      qc.invalidateQueries({ queryKey: ["incoming", profile.id] });
+      qc.invalidateQueries({ queryKey: qk.incoming(profile.id) });
     },
   });
 
@@ -1309,7 +1310,7 @@ function ProfileIncoming({
 function OutgoingTab() {
   const qc = useQueryClient();
   const { data, isLoading } = useQuery<{ items: OutgoingItem[] }>({
-    queryKey: ["outgoing"],
+    queryKey: qk.outgoing(),
     queryFn: () => api.get("/matches/outgoing?limit=50").then((r) => r.data),
   });
   const [detail, setDetail] = useState<OutgoingItem | null>(null);
@@ -1321,7 +1322,7 @@ function OutgoingTab() {
         `/tenant-profiles/${i.tenant_profile_id}/listings/${i.listing_id}/interest`
       ),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["outgoing"] });
+      qc.invalidateQueries({ queryKey: qk.outgoing() });
       setDetail(null);
     },
   });
@@ -1407,12 +1408,12 @@ function OutgoingTab() {
 function MatchedTab() {
   const qc = useQueryClient();
   const { data, isLoading } = useQuery<{ items: MatchItem[] }>({
-    queryKey: ["matched"],
+    queryKey: qk.matched(),
     queryFn: () => api.get("/matches/mutual?limit=50").then((r) => r.data),
   });
   // Cross-reference existing viewings so each matched listing shows 預約/已預約 state.
   const { data: viewingsData } = useQuery<{ items: Viewing[] }>({
-    queryKey: ["viewings", "tenant"],
+    queryKey: qk.viewings("tenant"),
     queryFn: () => api.get("/viewings?role=tenant").then((r) => r.data),
   });
   const viewingByListing = new Map<string, Viewing>();
@@ -1430,8 +1431,8 @@ function MatchedTab() {
     mutationFn: (p: { matchId: string; startsAt: string }) =>
       api.post("/viewings", { match_id: p.matchId, starts_at: p.startsAt }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["viewings"] });
-      qc.invalidateQueries({ queryKey: ["viewing-slots"] });
+      qc.invalidateQueries({ queryKey: qk.viewings() });
+      qc.invalidateQueries({ queryKey: qk.viewingSlots() });
     },
   });
 

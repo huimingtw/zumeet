@@ -35,6 +35,7 @@ import type {
 import { LOCATION_CITY_DISTRICT, LOCATION_GROUPS, ROOM_TYPE_LABELS } from "@/types";
 import { WEEKDAY_LABELS } from "@/lib/viewings";
 import { ViewingList } from "@/components/ViewingList";
+import { qk } from "@/features/queryKeys";
 
 type MainTab = "listings" | "browse" | "matches" | "viewings";
 type MatchesSubTab = "incoming" | "outgoing" | "matched";
@@ -177,7 +178,7 @@ function ExpandableText({ text, className = "" }: { text: string; className?: st
 function ListingsTab({ onSelectListing }: { onSelectListing: (id: string) => void }) {
   const qc = useQueryClient();
   const { data: listings = [], isLoading } = useQuery<Listing[]>({
-    queryKey: ["listings"],
+    queryKey: qk.listings(),
     queryFn: () => api.get("/listings").then((r) => r.data),
   });
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -217,7 +218,7 @@ function ListingsTab({ onSelectListing }: { onSelectListing: (id: string) => voi
             editingId={null}
             onClose={() => setShowForm(false)}
             onSaved={() => {
-              qc.invalidateQueries({ queryKey: ["listings"] });
+              qc.invalidateQueries({ queryKey: qk.listings() });
               setShowForm(false);
             }}
           />
@@ -276,7 +277,7 @@ function ListingsTab({ onSelectListing }: { onSelectListing: (id: string) => voi
               setShowForm(true);
             }}
             onBrowse={() => onSelectListing(l.id)}
-            onChanged={() => qc.invalidateQueries({ queryKey: ["listings"] })}
+            onChanged={() => qc.invalidateQueries({ queryKey: qk.listings() })}
           />
         ))}
       </div>
@@ -288,7 +289,7 @@ function ListingsTab({ onSelectListing }: { onSelectListing: (id: string) => voi
             setEditingId(null);
           }}
           onSaved={() => {
-            qc.invalidateQueries({ queryKey: ["listings"] });
+            qc.invalidateQueries({ queryKey: qk.listings() });
             setShowForm(false);
             setEditingId(null);
           }}
@@ -316,7 +317,7 @@ function ListingCard({
       api.patch(`/listings/${listing.id}/status`, { status }),
     onSuccess: () => {
       onChanged();
-      qc.invalidateQueries({ queryKey: ["listings"] });
+      qc.invalidateQueries({ queryKey: qk.listings() });
     },
   });
   const deleteListing = useMutation({
@@ -505,7 +506,7 @@ function BrowseTab({
   onGoToListings: () => void;
 }) {
   const { data: listings = [] } = useQuery<Listing[]>({
-    queryKey: ["listings"],
+    queryKey: qk.listings(),
     queryFn: () => api.get("/listings").then((r) => r.data),
   });
 
@@ -517,7 +518,7 @@ function BrowseTab({
 
   const qc = useQueryClient();
   const { data, isLoading } = useQuery<{ items: MatchedTenantProfileCard[] }>({
-    queryKey: ["profiles-browse", currentId],
+    queryKey: qk.profilesBrowse(currentId),
     queryFn: () =>
       api.get(`/listings/${currentId}/tenant-profiles?limit=20`).then((r) => r.data),
     enabled: !!currentId,
@@ -526,7 +527,7 @@ function BrowseTab({
   const expressInterest = useMutation({
     mutationFn: (profileId: string) =>
       api.post(`/listings/${currentId}/tenant-profiles/${profileId}/interest`),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["profiles-browse", currentId] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: qk.profilesBrowse(currentId) }),
   });
 
   if (activeListings.length === 0) {
@@ -698,7 +699,7 @@ function MatchesView({
 
 function IncomingTab() {
   const { data: listings = [], isLoading } = useQuery<Listing[]>({
-    queryKey: ["listings"],
+    queryKey: qk.listings(),
     queryFn: () => api.get("/listings").then((r) => r.data),
   });
   const qc = useQueryClient();
@@ -737,7 +738,7 @@ function IncomingTab() {
           listing={listing}
           expanded={expandedSet.has(listing.id)}
           onToggle={() => toggle(listing.id)}
-          onMatched={() => qc.invalidateQueries({ queryKey: ["matched"] })}
+          onMatched={() => qc.invalidateQueries({ queryKey: qk.matched() })}
         />
       ))}
     </div>
@@ -757,7 +758,7 @@ function ListingIncoming({
 }) {
   const qc = useQueryClient();
   const { data, isLoading } = useQuery<{ items: MatchedTenantProfileCard[] }>({
-    queryKey: ["incoming-listing", listing.id],
+    queryKey: qk.incomingListing(listing.id),
     queryFn: () =>
       api.get(`/listings/${listing.id}/tenant-profiles?limit=50`).then((r) => r.data),
     enabled: expanded,
@@ -770,8 +771,8 @@ function ListingIncoming({
       if (res.data.status === "matched") onMatched();
       // Always refresh both lists so a freshly-matched pair leaves 待確認 and
       // shows only under 已媒合 (no duplicate row across the two tabs).
-      qc.invalidateQueries({ queryKey: ["incoming-listing", listing.id] });
-      qc.invalidateQueries({ queryKey: ["matched"] });
+      qc.invalidateQueries({ queryKey: qk.incomingListing(listing.id) });
+      qc.invalidateQueries({ queryKey: qk.matched() });
     },
   });
 
@@ -877,7 +878,7 @@ function OutgoingTab() {
   const qc = useQueryClient();
   const [confirmEl, confirm] = useConfirm();
   const { data, isLoading } = useQuery<{ items: OutgoingItem[] }>({
-    queryKey: ["outgoing"],
+    queryKey: qk.outgoing(),
     queryFn: () => api.get("/matches/outgoing?limit=50").then((r) => r.data),
   });
 
@@ -886,7 +887,7 @@ function OutgoingTab() {
       api.delete(
         `/listings/${i.listing_id}/tenant-profiles/${i.tenant_profile_id}/interest`
       ),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["outgoing"] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: qk.outgoing() }),
   });
 
   if (isLoading) return <Loading />;
@@ -959,7 +960,7 @@ type MatchItem = {
 
 function MatchedTab() {
   const { data, isLoading } = useQuery<{ items: MutualMatch[] }>({
-    queryKey: ["matched"],
+    queryKey: qk.matched(),
     queryFn: () => api.get("/matches/mutual?limit=50").then((r) => r.data),
   });
 
@@ -1033,7 +1034,7 @@ function PhotoSection({
   const [uploadError, setUploadError] = useState("");
 
   const { data: listing } = useQuery({
-    queryKey: ["listing-detail", listingId],
+    queryKey: qk.listingDetail(listingId),
     queryFn: () =>
       api
         .get(`/listings/${listingId}`)
@@ -1072,7 +1073,7 @@ function PhotoSection({
       }
     } finally {
       if (succeeded > 0) {
-        qc.invalidateQueries({ queryKey: ["listing-detail", listingId] });
+        qc.invalidateQueries({ queryKey: qk.listingDetail(listingId) });
         onChanged();
       }
       setUploadProgress(null);
@@ -1084,7 +1085,7 @@ function PhotoSection({
     mutationFn: (photoId: string) =>
       api.delete(`/listings/${listingId}/photos/${photoId}`),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["listing-detail", listingId] });
+      qc.invalidateQueries({ queryKey: qk.listingDetail(listingId) });
       onChanged();
     },
   });
@@ -1093,7 +1094,7 @@ function PhotoSection({
     mutationFn: (photoIds: string[]) =>
       api.patch(`/listings/${listingId}/photos/order`, { photo_ids: photoIds }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["listing-detail", listingId] });
+      qc.invalidateQueries({ queryKey: qk.listingDetail(listingId) });
       onChanged();
     },
   });
@@ -1206,7 +1207,7 @@ function ListingFormModal({
   onSaved: () => void;
 }) {
   const { data: existing } = useQuery<Listing>({
-    queryKey: ["listing-edit", editingId],
+    queryKey: qk.listingEdit(editingId!),
     queryFn: () => api.get(`/listings/${editingId}`).then((r) => r.data),
     enabled: !!editingId,
   });
@@ -1814,13 +1815,13 @@ const EMPTY_WEEK: DayForm[] = Array.from({ length: 7 }, () => ({
 function AvailabilityEditor() {
   const qc = useQueryClient();
   const { data: listings = [] } = useQuery<Listing[]>({
-    queryKey: ["listings"],
+    queryKey: qk.listings(),
     queryFn: () => api.get("/listings").then((r) => r.data),
   });
   const [listingId, setListingId] = useState("");
 
   const { data: avail } = useQuery<ViewingAvailability>({
-    queryKey: ["viewing-availability", listingId],
+    queryKey: qk.viewingAvailability(listingId),
     queryFn: () =>
       api.get(`/listings/${listingId}/viewing-availability`).then((r) => r.data),
     enabled: !!listingId,
@@ -1871,7 +1872,7 @@ function AvailabilityEditor() {
     onSuccess: () => {
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
-      qc.invalidateQueries({ queryKey: ["viewing-slots", listingId] });
+      qc.invalidateQueries({ queryKey: qk.viewingSlots(listingId) });
     },
   });
 

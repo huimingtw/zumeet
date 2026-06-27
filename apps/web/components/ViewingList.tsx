@@ -6,17 +6,18 @@ import { api } from "@/lib/api";
 import type { Viewing } from "@/types";
 import { dateKey, formatSlot, VIEWING_STATUS_BADGE } from "@/lib/viewings";
 import { SlotPicker } from "@/components/SlotPicker";
+import { qk } from "@/features/queryKeys";
 
 // ViewingList renders 帶看 grouped by date for either side.
 // Landlord: marks attendance + cancel. Tenant: sees revealed contact/address + reschedule/cancel.
 export function ViewingList({ role }: { role: "tenant" | "landlord" }) {
   const qc = useQueryClient();
   const { data, isLoading } = useQuery<{ items: Viewing[] }>({
-    queryKey: ["viewings", role],
+    queryKey: qk.viewings(role),
     queryFn: () => api.get(`/viewings?role=${role}`).then((r) => r.data),
   });
 
-  const invalidate = () => qc.invalidateQueries({ queryKey: ["viewings", role] });
+  const invalidate = () => qc.invalidateQueries({ queryKey: qk.viewings(role) });
 
   const attendance = useMutation({
     mutationFn: (p: { id: string; attendance: "attended" | "absent" }) =>
@@ -32,7 +33,7 @@ export function ViewingList({ role }: { role: "tenant" | "landlord" }) {
       api.post(`/viewings/${p.id}/reschedule`, { starts_at: p.starts_at }),
     onSuccess: () => {
       invalidate();
-      qc.invalidateQueries({ queryKey: ["viewing-slots"] });
+      qc.invalidateQueries({ queryKey: qk.viewingSlots() });
     },
   });
   const rebook = useMutation({
@@ -40,7 +41,7 @@ export function ViewingList({ role }: { role: "tenant" | "landlord" }) {
       api.post(`/viewings`, { match_id: p.match_id, starts_at: p.starts_at }),
     onSuccess: () => {
       invalidate();
-      qc.invalidateQueries({ queryKey: ["viewing-slots"] });
+      qc.invalidateQueries({ queryKey: qk.viewingSlots() });
     },
   });
 
