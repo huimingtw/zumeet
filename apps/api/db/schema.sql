@@ -65,6 +65,8 @@ EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 CREATE TABLE IF NOT EXISTS users (
   id                            TEXT PRIMARY KEY,
   email                         TEXT UNIQUE NOT NULL,
+  name                          TEXT,
+  avatar_url                    TEXT,
   is_verified                   BOOLEAN NOT NULL DEFAULT FALSE,
   verification_token            TEXT,
   verification_token_expires_at TIMESTAMPTZ,
@@ -352,6 +354,10 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_listing_photos_position_active
 -- Idempotent migrations for new columns (safe to run on existing DBs)
 ALTER TABLE listings ADD COLUMN IF NOT EXISTS name TEXT;
 ALTER TABLE tenant_profiles ADD COLUMN IF NOT EXISTS age INTEGER;
+
+-- Google profile fields captured at login (safe to run on existing DBs)
+ALTER TABLE users ADD COLUMN IF NOT EXISTS name TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT;
 
 ALTER TABLE listings ADD COLUMN IF NOT EXISTS address TEXT NOT NULL DEFAULT '';
 ALTER TABLE listings ADD COLUMN IF NOT EXISTS management_fee INTEGER NOT NULL DEFAULT 0;

@@ -23,6 +23,7 @@ type oauthStateClaims struct {
 	ProviderUID string    `json:"uid"`
 	Email       string    `json:"email"`
 	Name        string    `json:"name"`
+	AvatarURL   string    `json:"avatar"`
 	ExpiresAt   time.Time `json:"exp"`
 }
 
@@ -132,6 +133,14 @@ func (h *Handler) GoogleOAuthCallback(c *Context) {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "INTERNAL_ERROR"})
 			return
 		}
+		// Backfill name/avatar from Google for accounts that predate these columns.
+		_, _ = h.db.Exec(c.Request.Context(),
+			`UPDATE users
+			 SET name = COALESCE(name, NULLIF($2, '')),
+			     avatar_url = COALESCE(avatar_url, NULLIF($3, ''))
+			 WHERE id = $1`,
+			existingUserID, oauthUser.Name, oauthUser.AvatarURL,
+		)
 		if err := h.loginUser(c, existingUserID); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "INTERNAL_ERROR"})
 			return
@@ -145,6 +154,7 @@ func (h *Handler) GoogleOAuthCallback(c *Context) {
 		ProviderUID: oauthUser.ProviderUID,
 		Email:       oauthUser.Email,
 		Name:        oauthUser.Name,
+		AvatarURL:   oauthUser.AvatarURL,
 		ExpiresAt:   time.Now().Add(oauthStateMaxAge),
 	})
 	if err != nil {
@@ -209,8 +219,9 @@ func (h *Handler) Onboarding(c *Context) {
 
 	userID := ulid.Make().String()
 	if _, err = tx.Exec(c.Request.Context(),
-		`INSERT INTO users (id, email, is_verified) VALUES ($1, $2, true)`,
-		userID, claims.Email,
+		`INSERT INTO users (id, email, name, avatar_url, is_verified)
+		 VALUES ($1, $2, NULLIF($3, ''), NULLIF($4, ''), true)`,
+		userID, claims.Email, claims.Name, claims.AvatarURL,
 	); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "INTERNAL_ERROR"})
 		return

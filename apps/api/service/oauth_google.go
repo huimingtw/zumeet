@@ -114,9 +114,10 @@ func (g *GoogleOAuthService) fetchUserInfo(ctx context.Context, accessToken stri
 	defer resp.Body.Close()
 
 	var info struct {
-		Sub   string `json:"sub"`   // Google's stable user ID
-		Email string `json:"email"`
-		Name  string `json:"name"`
+		Sub     string `json:"sub"`   // Google's stable user ID
+		Email   string `json:"email"`
+		Name    string `json:"name"`
+		Picture string `json:"picture"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&info); err != nil {
 		return nil, fmt.Errorf("parse userinfo: %w", err)
@@ -126,5 +127,6 @@ func (g *GoogleOAuthService) fetchUserInfo(ctx context.Context, accessToken stri
 		ProviderUID: info.Sub,
 		Email:       info.Email,
 		Name:        info.Name,
+		AvatarURL:   info.Picture,
 	}, nil
 }

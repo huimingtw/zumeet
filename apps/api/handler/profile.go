@@ -11,6 +11,8 @@ import (
 type MeResponse struct {
 	ID        string    `json:"id"`
 	Email     string    `json:"email"`
+	Name      string    `json:"name"`
+	AvatarURL string    `json:"avatar_url"`
 	Roles     []string  `json:"roles"`
 	CreatedAt time.Time `json:"created_at"`
 }
@@ -22,9 +24,10 @@ func (h *Handler) GetMe(c *Context) {
 	var me MeResponse
 	me.ID = userID
 	if err := h.db.QueryRow(c.Request.Context(),
-		`SELECT email, created_at FROM users WHERE id=$1 AND deleted_at IS NULL`,
+		`SELECT email, COALESCE(name, ''), COALESCE(avatar_url, ''), created_at
+		 FROM users WHERE id=$1 AND deleted_at IS NULL`,
 		userID,
-	).Scan(&me.Email, &me.CreatedAt); err != nil {
+	).Scan(&me.Email, &me.Name, &me.AvatarURL, &me.CreatedAt); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
 		return
 	}
