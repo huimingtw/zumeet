@@ -15,9 +15,46 @@ function displayName(me: Me): string {
   return me.name || me.email.split("@")[0] || me.email;
 }
 
-// Prefer the Google avatar; fall back to a free pravatar seeded by email.
-function avatarUrl(me: Me): string {
-  return me.avatar_url || `https://i.pravatar.cc/64?u=${encodeURIComponent(me.email)}`;
+// Deterministic background color from the name, so the initial avatar is stable per user.
+const AVATAR_COLORS = [
+  "#0052CC",
+  "#00875A",
+  "#5243AA",
+  "#DE350B",
+  "#FF8B00",
+  "#00A3BF",
+  "#6554C0",
+];
+function avatarColor(name: string): string {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+}
+
+// Google avatar if present, otherwise a Jira-style initial avatar.
+function Avatar({ me }: { me: Me }) {
+  const name = displayName(me);
+  if (me.avatar_url) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={me.avatar_url}
+        alt=""
+        width={32}
+        height={32}
+        className="h-8 w-8 shrink-0 rounded-full bg-gray-100 object-cover"
+      />
+    );
+  }
+  return (
+    <span
+      aria-hidden="true"
+      style={{ backgroundColor: avatarColor(name) }}
+      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-semibold text-white"
+    >
+      {name.charAt(0).toUpperCase()}
+    </span>
+  );
 }
 
 export function DashboardHeader() {
@@ -40,14 +77,7 @@ export function DashboardHeader() {
         <div className="flex min-w-0 items-center gap-3">
           {me && (
             <div className="flex min-w-0 items-center gap-2">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={avatarUrl(me)}
-                alt=""
-                width={32}
-                height={32}
-                className="h-8 w-8 shrink-0 rounded-full bg-gray-100 object-cover"
-              />
+              <Avatar me={me} />
               <span className="hidden truncate text-sm text-gray-700 sm:inline">
                 {name}
               </span>
