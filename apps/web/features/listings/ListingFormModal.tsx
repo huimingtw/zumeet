@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
+import { useForm, Controller } from "react-hook-form";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, extractFieldErrors } from "@/lib/api";
 import { qk } from "@/features/queryKeys";
@@ -96,9 +97,7 @@ function PhotoSection({
     if (serverIds === localOrder.join(",")) setLocalOrder(null);
   }, [serverPhotos, localOrder]);
 
-  function onDragStart(id: string) {
-    setDragId(id);
-  }
+  function onDragStart(id: string) { setDragId(id); }
   function onDragOver(e: React.DragEvent, overId: string) {
     e.preventDefault();
     if (!dragId || dragId === overId) return;
@@ -114,8 +113,7 @@ function PhotoSection({
     const order = localOrder;
     setDragId(null);
     if (!order) return;
-    const original = serverPhotos.map((p) => p.id);
-    if (order.join(",") === original.join(",")) return;
+    if (order.join(",") === serverPhotos.map((p) => p.id).join(",")) return;
     reorderPhotos.mutate(order);
   }
 
@@ -172,6 +170,33 @@ function PhotoSection({
   );
 }
 
+type FormValues = {
+  city: string;
+  district: string;
+  address: string;
+  name: string;
+  rent: number;
+  management_fee: number;
+  room_type: string;
+  area_ping: number;
+  num_bedrooms: number;
+  num_living_rooms: number;
+  num_bathrooms: number;
+  num_balconies: number;
+  available_from: string;
+  min_lease_months: number;
+  allow_pets: boolean;
+  allow_subsidy: boolean;
+  allow_tax_receipt: boolean;
+  allow_household_registration: boolean;
+  allow_cooking: boolean;
+  has_parking: boolean;
+  allow_smoking: boolean;
+  description: string;
+  contact_info: string;
+  compliance_confirmed: boolean;
+};
+
 export function ListingFormModal({
   editingId,
   onClose,
@@ -183,37 +208,55 @@ export function ListingFormModal({
 }) {
   const { data: existing } = useListingEdit(editingId ?? "");
 
-  const [form, setForm] = useState({
-    city: "",
-    district: "",
-    address: "",
-    name: "",
-    rent: 0,
-    management_fee: 0,
-    room_type: "",
-    area_ping: 0,
-    num_bedrooms: 0,
-    num_living_rooms: 0,
-    num_bathrooms: 0,
-    num_balconies: 0,
-    available_from: new Date().toISOString().split("T")[0],
-    min_lease_months: 12,
-    allow_pets: false,
-    allow_subsidy: false,
-    allow_tax_receipt: false,
-    allow_household_registration: false,
-    allow_cooking: false,
-    has_parking: false,
-    allow_smoking: false,
-    description: "",
-    contact_info: "",
-    compliance_confirmed: false,
+  const {
+    register,
+    control,
+    handleSubmit,
+    watch,
+    reset,
+    setError,
+    formState: { errors, isSubmitting, isSubmitSuccessful },
+  } = useForm<FormValues>({
+    defaultValues: {
+      city: "",
+      district: "",
+      address: "",
+      name: "",
+      rent: 0,
+      management_fee: 0,
+      room_type: "",
+      area_ping: 0,
+      num_bedrooms: 0,
+      num_living_rooms: 0,
+      num_bathrooms: 0,
+      num_balconies: 0,
+      available_from: new Date().toISOString().split("T")[0],
+      min_lease_months: 12,
+      allow_pets: false,
+      allow_subsidy: false,
+      allow_tax_receipt: false,
+      allow_household_registration: false,
+      allow_cooking: false,
+      has_parking: false,
+      allow_smoking: false,
+      description: "",
+      contact_info: "",
+      compliance_confirmed: false,
+    },
   });
 
+  const [savedId, setSavedId] = useState<string | null>(null);
+  const [formSaved, setFormSaved] = useState(false);
+  const [globalError, setGlobalError] = useState("");
+
+  const city = watch("city");
+  const roomType = watch("room_type");
+  const activeId = editingId ?? savedId;
+
+  // Hydrate form when editing an existing listing
   useEffect(() => {
     if (!existing) return;
-    setForm((f) => ({
-      ...f,
+    reset({
       city: LOCATION_CITY_DISTRICT[existing.location_id]?.city ?? "",
       district: LOCATION_CITY_DISTRICT[existing.location_id]?.district ?? "",
       address: existing.address ?? "",
@@ -239,53 +282,23 @@ export function ListingFormModal({
       allow_smoking: existing.allow_smoking,
       description: existing.description ?? "",
       contact_info: existing.contact_info ?? "",
-    }));
-  }, [existing]);
+    });
+  }, [existing, reset]);
 
-  const [error, setError] = useState("");
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const [loading, setLoading] = useState(false);
-  const [savedId, setSavedId] = useState<string | null>(null);
-  const [formSaved, setFormSaved] = useState(false);
-
-  const activeId = editingId ?? savedId;
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!form.city) { setError("請選擇縣市"); return; }
-    if (!form.district) { setError("請選擇地區"); return; }
-    if (!form.rent || form.rent <= 0) { setError("請填寫租金"); return; }
-    if (form.rent > 999999) { setError("租金不得超過 999,999 元"); return; }
-    if (!form.area_ping || form.area_ping <= 0) { setError("請填寫坪數"); return; }
-    if (form.area_ping >= 1000) { setError("坪數不得超過 999.99"); return; }
-    if (form.management_fee < 0 || form.management_fee > 999999) {
-      setError("管理費需介於 0 ~ 999,999 元"); return;
-    }
-    if (!form.room_type) { setError("請選擇房型"); return; }
-    if (form.room_type === "whole_floor") {
-      if (form.num_bedrooms <= 0 || form.num_living_rooms <= 0 || form.num_bathrooms <= 0 || form.num_balconies < 0) {
-        setError("整層房型請填寫房廳衛陽台數量"); return;
-      }
-    }
-    if (!form.available_from) { setError("請填寫可入住日"); return; }
-    if (!form.min_lease_months || form.min_lease_months <= 0) { setError("請填寫最短租期"); return; }
-    if (!form.contact_info.trim()) { setError("請填寫聯絡方式"); return; }
-    if (!editingId && !form.compliance_confirmed) { setError("請勾選合規確認才能建立房源"); return; }
-
-    setLoading(true);
-    setError("");
-    const isWholeFloor = form.room_type === "whole_floor";
+  async function onSubmit(data: FormValues) {
+    setGlobalError("");
+    const isWholeFloor = data.room_type === "whole_floor";
     const payload = {
-      ...form,
-      rent: Number(form.rent),
-      management_fee: Number(form.management_fee || 0),
-      area_ping: Number(form.area_ping),
-      min_lease_months: Number(form.min_lease_months),
-      num_bedrooms: isWholeFloor ? Number(form.num_bedrooms) : null,
-      num_living_rooms: isWholeFloor ? Number(form.num_living_rooms) : null,
-      num_bathrooms: isWholeFloor ? Number(form.num_bathrooms) : null,
-      num_balconies: isWholeFloor ? Number(form.num_balconies) : null,
-      available_from: form.available_from ? `${form.available_from}T00:00:00Z` : form.available_from,
+      ...data,
+      rent: Number(data.rent),
+      management_fee: Number(data.management_fee || 0),
+      area_ping: Number(data.area_ping),
+      min_lease_months: Number(data.min_lease_months),
+      num_bedrooms: isWholeFloor ? Number(data.num_bedrooms) : null,
+      num_living_rooms: isWholeFloor ? Number(data.num_living_rooms) : null,
+      num_bathrooms: isWholeFloor ? Number(data.num_bathrooms) : null,
+      num_balconies: isWholeFloor ? Number(data.num_balconies) : null,
+      available_from: data.available_from ? `${data.available_from}T00:00:00Z` : data.available_from,
     };
     try {
       if (editingId) {
@@ -299,16 +312,16 @@ export function ListingFormModal({
     } catch (err: unknown) {
       const fe = extractFieldErrors(err);
       if (Object.keys(fe).length > 0) {
-        setFieldErrors(fe);
-        setError("請修正欄位錯誤");
+        for (const [field, msg] of Object.entries(fe)) {
+          setError(field as keyof FormValues, { message: msg });
+        }
+        setGlobalError("請修正欄位錯誤");
       } else if (err && typeof err === "object" && "response" in err) {
         const axiosErr = err as { response?: { data?: { error?: string } } };
-        setError(axiosErr.response?.data?.error ?? "發生錯誤");
+        setGlobalError(axiosErr.response?.data?.error ?? "發生錯誤");
       } else {
-        setError("發生錯誤");
+        setGlobalError("發生錯誤");
       }
-    } finally {
-      setLoading(false);
     }
   }
 
@@ -348,15 +361,14 @@ export function ListingFormModal({
             </button>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} noValidate className="space-y-4">
+          <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
             <div>
               <label htmlFor="listing-name" className="mb-1 block text-sm font-medium text-gray-700">
                 房源名稱（選填）
               </label>
               <input
                 id="listing-name"
-                value={form.name}
-                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                {...register("name")}
                 className="input"
                 placeholder="例：台北大安捷運套房"
               />
@@ -367,26 +379,44 @@ export function ListingFormModal({
                 <p className="mb-1 text-sm font-medium text-gray-700">
                   縣市<span className="ml-0.5 text-red-500">*</span>
                 </p>
-                <Dropdown
-                  value={form.city}
-                  placeholder="請選擇縣市"
-                  options={LOCATION_GROUPS.map((g) => ({ value: g.cityLabel, label: g.cityLabel }))}
-                  onChange={(v) => setForm((f) => ({ ...f, city: v, district: "" }))}
+                <Controller
+                  name="city"
+                  control={control}
+                  rules={{ required: "請選擇縣市" }}
+                  render={({ field }) => (
+                    <Dropdown
+                      value={field.value}
+                      placeholder="請選擇縣市"
+                      options={LOCATION_GROUPS.map((g) => ({ value: g.cityLabel, label: g.cityLabel }))}
+                      onChange={(v) => { field.onChange(v); }}
+                    />
+                  )}
                 />
+                {errors.city && <p className="mt-1 text-xs text-red-600">{errors.city.message}</p>}
               </div>
               <div>
                 <p className="mb-1 text-sm font-medium text-gray-700">
                   地區<span className="ml-0.5 text-red-500">*</span>
                 </p>
-                <Dropdown
-                  value={form.district}
-                  placeholder="請選擇地區"
-                  disabled={!form.city}
-                  options={(
-                    LOCATION_GROUPS.find((g) => g.cityLabel === form.city)?.districts ?? []
-                  ).map((d) => ({ value: d.districtLabel, label: d.districtLabel }))}
-                  onChange={(v) => setForm((f) => ({ ...f, district: v }))}
+                <Controller
+                  name="district"
+                  control={control}
+                  rules={{ required: "請選擇地區" }}
+                  render={({ field }) => (
+                    <Dropdown
+                      value={field.value}
+                      placeholder="請選擇地區"
+                      disabled={!city}
+                      options={(
+                        LOCATION_GROUPS.find((g) => g.cityLabel === city)?.districts ?? []
+                      ).map((d) => ({ value: d.districtLabel, label: d.districtLabel }))}
+                      onChange={field.onChange}
+                    />
+                  )}
                 />
+                {errors.district && (
+                  <p className="mt-1 text-xs text-red-600">{errors.district.message}</p>
+                )}
               </div>
             </div>
 
@@ -396,8 +426,7 @@ export function ListingFormModal({
               </label>
               <input
                 id="address"
-                value={form.address}
-                onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
+                {...register("address")}
                 className="input"
                 placeholder="例：台北市大安區忠孝東路四段 100 號 5 樓"
               />
@@ -413,31 +442,36 @@ export function ListingFormModal({
                 </label>
                 <input
                   id="rent"
-                  required
                   type="number"
                   min={1}
-                  value={form.rent || ""}
-                  onChange={(e) => setForm((f) => ({ ...f, rent: Number(e.target.value) }))}
-                  className="input"
+                  {...register("rent", {
+                    required: "請填寫租金",
+                    min: { value: 1, message: "請填寫租金" },
+                    max: { value: 999999, message: "租金不得超過 999,999 元" },
+                    valueAsNumber: true,
+                  })}
+                  className={`input ${errors.rent ? "border-red-500" : ""}`}
                 />
+                {errors.rent && <p className="mt-1 text-xs text-red-600">{errors.rent.message}</p>}
               </div>
               <div>
-                <label
-                  htmlFor="management_fee"
-                  className="mb-1 block text-sm font-medium text-gray-700"
-                >
+                <label htmlFor="management_fee" className="mb-1 block text-sm font-medium text-gray-700">
                   管理費（元/月）
                 </label>
                 <input
                   id="management_fee"
                   type="number"
                   min={0}
-                  value={form.management_fee || ""}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, management_fee: Number(e.target.value) }))
-                  }
-                  className="input"
+                  {...register("management_fee", {
+                    min: { value: 0, message: "管理費需介於 0 ~ 999,999 元" },
+                    max: { value: 999999, message: "管理費需介於 0 ~ 999,999 元" },
+                    valueAsNumber: true,
+                  })}
+                  className={`input ${errors.management_fee ? "border-red-500" : ""}`}
                 />
+                {errors.management_fee && (
+                  <p className="mt-1 text-xs text-red-600">{errors.management_fee.message}</p>
+                )}
               </div>
               <div>
                 <label htmlFor="area_ping" className="mb-1 block text-sm font-medium text-gray-700">
@@ -445,14 +479,20 @@ export function ListingFormModal({
                 </label>
                 <input
                   id="area_ping"
-                  required
                   type="number"
                   min={1}
                   step="0.1"
-                  value={form.area_ping || ""}
-                  onChange={(e) => setForm((f) => ({ ...f, area_ping: Number(e.target.value) }))}
-                  className="input"
+                  {...register("area_ping", {
+                    required: "請填寫坪數",
+                    min: { value: 0.1, message: "請填寫坪數" },
+                    max: { value: 999.99, message: "坪數不得超過 999.99" },
+                    valueAsNumber: true,
+                  })}
+                  className={`input ${errors.area_ping ? "border-red-500" : ""}`}
                 />
+                {errors.area_ping && (
+                  <p className="mt-1 text-xs text-red-600">{errors.area_ping.message}</p>
+                )}
               </div>
             </div>
 
@@ -460,25 +500,35 @@ export function ListingFormModal({
               <p className="mb-1 text-sm font-medium text-gray-700">
                 房型<span className="ml-0.5 text-red-500">*</span>
               </p>
-              <div className="flex gap-2">
-                {Object.entries(ROOM_TYPE_LABELS).map(([rt, label]) => (
-                  <button
-                    key={rt}
-                    type="button"
-                    onClick={() => setForm((f) => ({ ...f, room_type: rt }))}
-                    className={`rounded-full px-3 py-1 text-sm font-medium transition ${
-                      form.room_type === rt
-                        ? "bg-primary-600 text-white"
-                        : "border border-gray-200 text-gray-600 hover:border-gray-400"
-                    }`}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
+              <Controller
+                name="room_type"
+                control={control}
+                rules={{ required: "請選擇房型" }}
+                render={({ field }) => (
+                  <div className="flex gap-2">
+                    {Object.entries(ROOM_TYPE_LABELS).map(([rt, label]) => (
+                      <button
+                        key={rt}
+                        type="button"
+                        onClick={() => field.onChange(rt)}
+                        className={`rounded-full px-3 py-1 text-sm font-medium transition ${
+                          field.value === rt
+                            ? "bg-primary-600 text-white"
+                            : "border border-gray-200 text-gray-600 hover:border-gray-400"
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              />
+              {errors.room_type && (
+                <p className="mt-1 text-xs text-red-600">{errors.room_type.message}</p>
+              )}
             </div>
 
-            {form.room_type === "whole_floor" && (
+            {roomType === "whole_floor" && (
               <div>
                 <p className="mb-1 text-sm font-medium text-gray-700">格局</p>
                 <div className="grid grid-cols-4 gap-2">
@@ -494,10 +544,7 @@ export function ListingFormModal({
                       <input
                         type="number"
                         min={0}
-                        value={form[key] || ""}
-                        onChange={(e) =>
-                          setForm((f) => ({ ...f, [key]: Number(e.target.value) }))
-                        }
+                        {...register(key, { valueAsNumber: true })}
                         className="input"
                         placeholder={label}
                       />
@@ -510,40 +557,38 @@ export function ListingFormModal({
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label
-                  htmlFor="available_from"
-                  className="mb-1 block text-sm font-medium text-gray-700"
-                >
+                <label htmlFor="available_from" className="mb-1 block text-sm font-medium text-gray-700">
                   可入住日<span className="ml-0.5 text-red-500">*</span>
                 </label>
                 <input
                   id="available_from"
-                  required
                   type="date"
                   min={new Date().toISOString().split("T")[0]}
-                  value={form.available_from}
-                  onChange={(e) => setForm((f) => ({ ...f, available_from: e.target.value }))}
-                  className="input"
+                  {...register("available_from", { required: "請填寫可入住日" })}
+                  className={`input ${errors.available_from ? "border-red-500" : ""}`}
                 />
+                {errors.available_from && (
+                  <p className="mt-1 text-xs text-red-600">{errors.available_from.message}</p>
+                )}
               </div>
               <div>
-                <label
-                  htmlFor="min_lease_months"
-                  className="mb-1 block text-sm font-medium text-gray-700"
-                >
+                <label htmlFor="min_lease_months" className="mb-1 block text-sm font-medium text-gray-700">
                   最短租期（月）<span className="ml-0.5 text-red-500">*</span>
                 </label>
                 <input
                   id="min_lease_months"
-                  required
                   type="number"
                   min={1}
-                  value={form.min_lease_months || ""}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, min_lease_months: Number(e.target.value) }))
-                  }
-                  className="input"
+                  {...register("min_lease_months", {
+                    required: "請填寫最短租期",
+                    min: { value: 1, message: "請填寫最短租期" },
+                    valueAsNumber: true,
+                  })}
+                  className={`input ${errors.min_lease_months ? "border-red-500" : ""}`}
                 />
+                {errors.min_lease_months && (
+                  <p className="mt-1 text-xs text-red-600">{errors.min_lease_months.message}</p>
+                )}
               </div>
             </div>
 
@@ -558,14 +603,10 @@ export function ListingFormModal({
                   ["allow_cooking", "可開伙"],
                 ] as const
               ).map(([key, label]) => (
-                <label
-                  key={key}
-                  className="flex cursor-pointer items-center gap-2 text-sm text-gray-700"
-                >
+                <label key={key} className="flex cursor-pointer items-center gap-2 text-sm text-gray-700">
                   <input
                     type="checkbox"
-                    checked={form[key]}
-                    onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.checked }))}
+                    {...register(key)}
                     className="accent-primary-600 h-4 w-4 rounded border-gray-300"
                   />
                   {label}
@@ -580,39 +621,27 @@ export function ListingFormModal({
               <textarea
                 id="description"
                 rows={4}
-                value={form.description}
-                onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+                {...register("description")}
                 className="input resize-none"
                 placeholder="描述房源特色、生活環境、附近交通或其他租客需要知道的資訊"
               />
             </div>
 
             <div>
-              <label
-                htmlFor="contact_info"
-                className="mb-1 block text-sm font-medium text-gray-700"
-              >
+              <label htmlFor="contact_info" className="mb-1 block text-sm font-medium text-gray-700">
                 聯絡方式（媒合成功後才對租客顯示）
                 <span className="ml-0.5 text-red-500">*</span>
               </label>
               <input
                 id="contact_info"
-                required
-                value={form.contact_info}
-                onChange={(e) => {
-                  setForm((f) => ({ ...f, contact_info: e.target.value }));
-                  if (fieldErrors.contact_info)
-                    setFieldErrors((fe) => ({ ...fe, contact_info: "" }));
-                }}
-                className={`input ${fieldErrors.contact_info ? "border-red-500" : ""}`}
+                {...register("contact_info", { required: "請填寫聯絡方式" })}
+                className={`input ${errors.contact_info ? "border-red-500" : ""}`}
                 placeholder="例：Line ID: xxx 或 0912-345-678"
               />
-              {fieldErrors.contact_info ? (
-                <p className="mt-1 text-xs text-red-600">{fieldErrors.contact_info}</p>
+              {errors.contact_info ? (
+                <p className="mt-1 text-xs text-red-600">{errors.contact_info.message}</p>
               ) : (
-                <p className="mt-1 text-xs text-gray-400">
-                  媒合成功後才會顯示給租客，請填真實聯絡方式
-                </p>
+                <p className="mt-1 text-xs text-gray-400">媒合成功後才會顯示給租客，請填真實聯絡方式</p>
               )}
             </div>
 
@@ -625,14 +654,16 @@ export function ListingFormModal({
                 <label className="flex cursor-pointer items-start gap-2 text-sm text-amber-800">
                   <input
                     type="checkbox"
-                    checked={form.compliance_confirmed}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, compliance_confirmed: e.target.checked }))
-                    }
+                    {...register("compliance_confirmed", {
+                      validate: (v) => editingId ? true : v || "請勾選合規確認才能建立房源",
+                    })}
                     className="mt-0.5 h-4 w-4 rounded border-amber-300 accent-amber-800"
                   />
                   <span>我確認此房源符合上述合規條件</span>
                 </label>
+                {errors.compliance_confirmed && (
+                  <p className="mt-1 text-xs text-red-600">{errors.compliance_confirmed.message}</p>
+                )}
               </div>
             )}
 
@@ -643,14 +674,14 @@ export function ListingFormModal({
               </>
             )}
 
-            {error && <p className="text-sm text-red-600">{error}</p>}
+            {globalError && <p className="text-sm text-red-600">{globalError}</p>}
 
             <button
               type="submit"
-              disabled={loading || formSaved}
+              disabled={isSubmitting || formSaved}
               className="bg-primary-600 hover:bg-primary-500 w-full rounded-lg py-3 text-sm font-medium text-white transition disabled:opacity-40"
             >
-              {loading ? "儲存中…" : editingId ? (formSaved ? "已儲存 ✓" : "儲存") : "建立房源"}
+              {isSubmitting ? "儲存中…" : editingId ? (formSaved ? "已儲存 ✓" : "儲存") : "建立房源"}
             </button>
             {editingId && (
               <button
