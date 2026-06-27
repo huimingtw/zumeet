@@ -74,7 +74,9 @@ func main() {
 		fmt.Fprintln(os.Stderr, "listen:", err)
 		os.Exit(1)
 	}
-	loginURL := fmt.Sprintf("http://%s/", ln.Addr().String())
+	// Use "localhost", not the listener's 127.0.0.1: the cookie is host-only and must
+	// land under the same host as the web app (localhost:3000), or :3000 won't see it.
+	loginURL := fmt.Sprintf("http://localhost:%d/", ln.Addr().(*net.TCPAddr).Port)
 
 	done := make(chan struct{})
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {

@@ -4,13 +4,20 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import Image from "next/image";
-import { useForm, Controller } from "react-hook-form";
+import {
+  useForm,
+  Controller,
+  type Control,
+  type FieldErrors,
+  type UseFormRegister,
+} from "react-hook-form";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, extractFieldErrors } from "@/lib/api";
 import { qk } from "@/features/queryKeys";
 import { useListingDetail, useListingEdit } from "@/features/listings/useListings";
 import { LOCATION_CITY_DISTRICT, LOCATION_GROUPS, ROOM_TYPE_LABELS } from "@/types";
 import { Dropdown } from "@/components/ui/Dropdown";
+import { CheckboxGroup } from "@/components/ui/CheckboxGroup";
 
 type PhotoRecord = { id: string; public_url: string; position: number };
 
@@ -212,6 +219,173 @@ type FormValues = {
   compliance_confirmed: boolean;
 };
 
+function LocationSelector({
+  control,
+  errors,
+  city,
+}: {
+  control: Control<FormValues>;
+  errors: FieldErrors<FormValues>;
+  city: string;
+}) {
+  return (
+    <div className="grid grid-cols-2 gap-3">
+      <div>
+        <p className="mb-1 text-sm font-medium text-gray-700">
+          縣市<span className="ml-0.5 text-red-500">*</span>
+        </p>
+        <Controller
+          name="city"
+          control={control}
+          rules={{ required: "請選擇縣市" }}
+          render={({ field }) => (
+            <Dropdown
+              value={field.value}
+              placeholder="請選擇縣市"
+              options={LOCATION_GROUPS.map((g) => ({
+                value: g.cityLabel,
+                label: g.cityLabel,
+              }))}
+              onChange={field.onChange}
+            />
+          )}
+        />
+        {errors.city && (
+          <p className="mt-1 text-xs text-red-600">{errors.city.message}</p>
+        )}
+      </div>
+      <div>
+        <p className="mb-1 text-sm font-medium text-gray-700">
+          地區<span className="ml-0.5 text-red-500">*</span>
+        </p>
+        <Controller
+          name="district"
+          control={control}
+          rules={{ required: "請選擇地區" }}
+          render={({ field }) => (
+            <Dropdown
+              value={field.value}
+              placeholder="請選擇地區"
+              disabled={!city}
+              options={(
+                LOCATION_GROUPS.find((g) => g.cityLabel === city)?.districts ?? []
+              ).map((d) => ({ value: d.districtLabel, label: d.districtLabel }))}
+              onChange={field.onChange}
+            />
+          )}
+        />
+        {errors.district && (
+          <p className="mt-1 text-xs text-red-600">{errors.district.message}</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function RoomTypeSelector({
+  control,
+  errors,
+}: {
+  control: Control<FormValues>;
+  errors: FieldErrors<FormValues>;
+}) {
+  return (
+    <div>
+      <p className="mb-1 text-sm font-medium text-gray-700">
+        房型<span className="ml-0.5 text-red-500">*</span>
+      </p>
+      <Controller
+        name="room_type"
+        control={control}
+        rules={{ required: "請選擇房型" }}
+        render={({ field }) => (
+          <div className="flex gap-2">
+            {Object.entries(ROOM_TYPE_LABELS).map(([rt, label]) => (
+              <button
+                key={rt}
+                type="button"
+                onClick={() => field.onChange(rt)}
+                className={`rounded-full px-3 py-1 text-sm font-medium transition ${
+                  field.value === rt
+                    ? "bg-primary-600 text-white"
+                    : "border border-gray-200 text-gray-600 hover:border-gray-400"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
+      />
+      {errors.room_type && (
+        <p className="mt-1 text-xs text-red-600">{errors.room_type.message}</p>
+      )}
+    </div>
+  );
+}
+
+function LayoutGrid({ register }: { register: UseFormRegister<FormValues> }) {
+  return (
+    <div>
+      <p className="mb-1 text-sm font-medium text-gray-700">格局</p>
+      <div className="grid grid-cols-4 gap-2">
+        {(
+          [
+            ["num_bedrooms", "房"],
+            ["num_living_rooms", "廳"],
+            ["num_bathrooms", "衛"],
+            ["num_balconies", "陽台"],
+          ] as const
+        ).map(([key, label]) => (
+          <div key={key}>
+            <input
+              type="number"
+              min={0}
+              {...register(key, { valueAsNumber: true })}
+              className="input"
+              placeholder={label}
+            />
+            <p className="mt-1 text-center text-xs text-gray-400">{label}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ComplianceBox({
+  register,
+  errors,
+  editingId,
+}: {
+  register: UseFormRegister<FormValues>;
+  errors: FieldErrors<FormValues>;
+  editingId: string | null;
+}) {
+  if (editingId) return null;
+  return (
+    <div className="border-warning-200 bg-warning-50 rounded-lg border p-4">
+      <p className="text-warning-800 mb-2 text-sm font-medium">合規確認</p>
+      <p className="text-warning-700 mb-3 text-xs">
+        建立房源前，請確認此房源不是頂樓加蓋、違建或依法不得出租之空間，且刊登內容不包含性別或其他敏感屬性限制。
+      </p>
+      <label className="text-warning-800 flex cursor-pointer items-start gap-2 text-sm">
+        <input
+          type="checkbox"
+          {...register("compliance_confirmed", {
+            validate: (v) => (editingId ? true : v || "請勾選合規確認才能建立房源"),
+          })}
+          className="border-warning-200 accent-warning-800 mt-0.5 h-4 w-4 rounded"
+        />
+        <span>我確認此房源符合上述合規條件</span>
+      </label>
+      {errors.compliance_confirmed && (
+        <p className="mt-1 text-xs text-red-600">{errors.compliance_confirmed.message}</p>
+      )}
+    </div>
+  );
+}
+
 export function ListingFormModal({
   editingId,
   onClose,
@@ -388,58 +562,7 @@ export function ListingFormModal({
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <p className="mb-1 text-sm font-medium text-gray-700">
-                縣市<span className="ml-0.5 text-red-500">*</span>
-              </p>
-              <Controller
-                name="city"
-                control={control}
-                rules={{ required: "請選擇縣市" }}
-                render={({ field }) => (
-                  <Dropdown
-                    value={field.value}
-                    placeholder="請選擇縣市"
-                    options={LOCATION_GROUPS.map((g) => ({
-                      value: g.cityLabel,
-                      label: g.cityLabel,
-                    }))}
-                    onChange={(v) => {
-                      field.onChange(v);
-                    }}
-                  />
-                )}
-              />
-              {errors.city && (
-                <p className="mt-1 text-xs text-red-600">{errors.city.message}</p>
-              )}
-            </div>
-            <div>
-              <p className="mb-1 text-sm font-medium text-gray-700">
-                地區<span className="ml-0.5 text-red-500">*</span>
-              </p>
-              <Controller
-                name="district"
-                control={control}
-                rules={{ required: "請選擇地區" }}
-                render={({ field }) => (
-                  <Dropdown
-                    value={field.value}
-                    placeholder="請選擇地區"
-                    disabled={!city}
-                    options={(
-                      LOCATION_GROUPS.find((g) => g.cityLabel === city)?.districts ?? []
-                    ).map((d) => ({ value: d.districtLabel, label: d.districtLabel }))}
-                    onChange={field.onChange}
-                  />
-                )}
-              />
-              {errors.district && (
-                <p className="mt-1 text-xs text-red-600">{errors.district.message}</p>
-              )}
-            </div>
-          </div>
+          <LocationSelector control={control} errors={errors} city={city} />
 
           <div>
             <label
@@ -533,64 +656,9 @@ export function ListingFormModal({
             </div>
           </div>
 
-          <div>
-            <p className="mb-1 text-sm font-medium text-gray-700">
-              房型<span className="ml-0.5 text-red-500">*</span>
-            </p>
-            <Controller
-              name="room_type"
-              control={control}
-              rules={{ required: "請選擇房型" }}
-              render={({ field }) => (
-                <div className="flex gap-2">
-                  {Object.entries(ROOM_TYPE_LABELS).map(([rt, label]) => (
-                    <button
-                      key={rt}
-                      type="button"
-                      onClick={() => field.onChange(rt)}
-                      className={`rounded-full px-3 py-1 text-sm font-medium transition ${
-                        field.value === rt
-                          ? "bg-primary-600 text-white"
-                          : "border border-gray-200 text-gray-600 hover:border-gray-400"
-                      }`}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              )}
-            />
-            {errors.room_type && (
-              <p className="mt-1 text-xs text-red-600">{errors.room_type.message}</p>
-            )}
-          </div>
+          <RoomTypeSelector control={control} errors={errors} />
 
-          {roomType === "whole_floor" && (
-            <div>
-              <p className="mb-1 text-sm font-medium text-gray-700">格局</p>
-              <div className="grid grid-cols-4 gap-2">
-                {(
-                  [
-                    ["num_bedrooms", "房"],
-                    ["num_living_rooms", "廳"],
-                    ["num_bathrooms", "衛"],
-                    ["num_balconies", "陽台"],
-                  ] as const
-                ).map(([key, label]) => (
-                  <div key={key}>
-                    <input
-                      type="number"
-                      min={0}
-                      {...register(key, { valueAsNumber: true })}
-                      className="input"
-                      placeholder={label}
-                    />
-                    <p className="mt-1 text-center text-xs text-gray-400">{label}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+          {roomType === "whole_floor" && <LayoutGrid register={register} />}
 
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -639,30 +707,17 @@ export function ListingFormModal({
             </div>
           </div>
 
-          <div className="space-y-2">
-            <p className="text-sm font-medium text-gray-700">房源條件</p>
-            {(
-              [
-                ["allow_pets", "可養寵物"],
-                ["allow_subsidy", "可申請租屋補助"],
-                ["allow_tax_receipt", "可報稅"],
-                ["allow_household_registration", "可遷入戶籍"],
-                ["allow_cooking", "可開伙"],
-              ] as const
-            ).map(([key, label]) => (
-              <label
-                key={key}
-                className="flex cursor-pointer items-center gap-2 text-sm text-gray-700"
-              >
-                <input
-                  type="checkbox"
-                  {...register(key)}
-                  className="accent-primary-600 h-4 w-4 rounded border-gray-300"
-                />
-                {label}
-              </label>
-            ))}
-          </div>
+          <CheckboxGroup
+            label="房源條件"
+            register={register}
+            items={[
+              ["allow_pets", "可養寵物"],
+              ["allow_subsidy", "可申請租屋補助"],
+              ["allow_tax_receipt", "可報稅"],
+              ["allow_household_registration", "可遷入戶籍"],
+              ["allow_cooking", "可開伙"],
+            ]}
+          />
 
           <div>
             <label
@@ -703,30 +758,7 @@ export function ListingFormModal({
             )}
           </div>
 
-          {!editingId && (
-            <div className="border-warning-200 bg-warning-50 rounded-lg border p-4">
-              <p className="text-warning-800 mb-2 text-sm font-medium">合規確認</p>
-              <p className="text-warning-700 mb-3 text-xs">
-                建立房源前，請確認此房源不是頂樓加蓋、違建或依法不得出租之空間，且刊登內容不包含性別或其他敏感屬性限制。
-              </p>
-              <label className="text-warning-800 flex cursor-pointer items-start gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  {...register("compliance_confirmed", {
-                    validate: (v) =>
-                      editingId ? true : v || "請勾選合規確認才能建立房源",
-                  })}
-                  className="border-warning-200 accent-warning-800 mt-0.5 h-4 w-4 rounded"
-                />
-                <span>我確認此房源符合上述合規條件</span>
-              </label>
-              {errors.compliance_confirmed && (
-                <p className="mt-1 text-xs text-red-600">
-                  {errors.compliance_confirmed.message}
-                </p>
-              )}
-            </div>
-          )}
+          <ComplianceBox register={register} errors={errors} editingId={editingId} />
 
           {editingId && (
             <>

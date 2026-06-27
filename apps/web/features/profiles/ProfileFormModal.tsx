@@ -1,9 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import { useForm, Controller } from "react-hook-form";
+import {
+  useForm,
+  Controller,
+  type Control,
+  type FieldErrors,
+  type UseFormRegister,
+  type UseFormSetValue,
+} from "react-hook-form";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
+import { CheckboxGroup } from "@/components/ui/CheckboxGroup";
 import { LocationPicker } from "@/components/LocationPicker";
 import { api, extractFieldErrors } from "@/lib/api";
 import type { TenantProfile } from "@/types";
@@ -31,6 +39,157 @@ type FormValues = {
   description: string;
   contact_info: string;
 };
+
+function BudgetChips({
+  setValue,
+  budgetMin,
+  budgetMax,
+}: {
+  setValue: UseFormSetValue<FormValues>;
+  budgetMin: number;
+  budgetMax: number;
+}) {
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {(
+        [
+          [10000, 15000, "1–1.5 萬"],
+          [15000, 20000, "1.5–2 萬"],
+          [20000, 30000, "2–3 萬"],
+          [30000, 50000, "3–5 萬"],
+          [50000, 100000, "5 萬以上"],
+        ] as [number, number, string][]
+      ).map(([mn, mx, label]) => (
+        <button
+          key={label}
+          type="button"
+          onClick={() => {
+            setValue("budget_min", mn);
+            setValue("budget_max", mx);
+          }}
+          className={`rounded-full px-3 py-1 text-xs font-medium transition ${
+            budgetMin === mn && budgetMax === mx
+              ? "bg-primary-600 text-white"
+              : "border border-gray-200 text-gray-600 hover:border-gray-400"
+          }`}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function LocationField({
+  control,
+  errors,
+  locPickerOpen,
+  setLocPickerOpen,
+}: {
+  control: Control<FormValues>;
+  errors: FieldErrors<FormValues>;
+  locPickerOpen: boolean;
+  setLocPickerOpen: (v: boolean) => void;
+}) {
+  return (
+    <div>
+      <p className="mb-1 text-sm font-medium text-gray-700">
+        可接受地區（多選）<span className="ml-0.5 text-red-500">*</span>
+      </p>
+      <Controller
+        name="locations"
+        control={control}
+        rules={{ validate: (v) => v.length > 0 || "請至少選擇一個地區" }}
+        render={({ field }) => (
+          <>
+            <button
+              type="button"
+              onClick={() => setLocPickerOpen(true)}
+              className="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-600 hover:border-gray-400 hover:text-gray-800"
+            >
+              {field.value.length > 0
+                ? `已選 ${field.value.length} 個地區`
+                : "選擇地區 ›"}
+            </button>
+            {field.value.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {field.value.map((id) => (
+                  <span
+                    key={id}
+                    className="flex items-center gap-1 rounded-full bg-orange-50 px-2.5 py-0.5 text-xs text-orange-700"
+                  >
+                    {LOCATION_LABELS[id] ?? id}
+                    <button
+                      type="button"
+                      onClick={() => field.onChange(field.value.filter((l) => l !== id))}
+                      className="ml-0.5 text-orange-400 hover:text-orange-600"
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+            <LocationPicker
+              open={locPickerOpen}
+              value={field.value}
+              onChange={field.onChange}
+              onClose={() => setLocPickerOpen(false)}
+            />
+          </>
+        )}
+      />
+      {errors.locations && (
+        <p className="mt-1 text-xs text-red-600">{errors.locations.message}</p>
+      )}
+    </div>
+  );
+}
+
+function RoomTypeChips({
+  preferredRoomTypes,
+  toggleRoomType,
+  errors,
+  register,
+}: {
+  preferredRoomTypes: string[];
+  toggleRoomType: (rt: string) => void;
+  errors: FieldErrors<FormValues>;
+  register: UseFormRegister<FormValues>;
+}) {
+  return (
+    <div>
+      <p className="mb-1 text-sm font-medium text-gray-700">
+        偏好房型（多選）<span className="ml-0.5 text-red-500">*</span>
+      </p>
+      <div className="flex gap-2">
+        {Object.entries(ROOM_TYPE_LABELS).map(([rt, label]) => (
+          <button
+            key={rt}
+            type="button"
+            onClick={() => toggleRoomType(rt)}
+            className={`rounded-full px-3 py-1 text-sm font-medium transition ${
+              (preferredRoomTypes ?? []).includes(rt)
+                ? "bg-primary-600 text-white"
+                : "border border-gray-200 text-gray-600 hover:border-gray-400"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      {errors.preferred_room_types && (
+        <p className="mt-1 text-xs text-red-600">{errors.preferred_room_types.message}</p>
+      )}
+      <input
+        type="hidden"
+        {...register("preferred_room_types", {
+          validate: (v) => v.length > 0 || "請至少選擇一種偏好房型",
+        })}
+      />
+    </div>
+  );
+}
 
 export function ProfileFormModal({
   editingProfile,
@@ -181,34 +340,7 @@ export function ProfileFormModal({
             )}
           </div>
 
-          {/* Budget quick-select chips */}
-          <div className="flex flex-wrap gap-1.5">
-            {(
-              [
-                [10000, 15000, "1–1.5 萬"],
-                [15000, 20000, "1.5–2 萬"],
-                [20000, 30000, "2–3 萬"],
-                [30000, 50000, "3–5 萬"],
-                [50000, 100000, "5 萬以上"],
-              ] as [number, number, string][]
-            ).map(([mn, mx, label]) => (
-              <button
-                key={label}
-                type="button"
-                onClick={() => {
-                  setValue("budget_min", mn);
-                  setValue("budget_max", mx);
-                }}
-                className={`rounded-full px-3 py-1 text-xs font-medium transition ${
-                  budgetMin === mn && budgetMax === mx
-                    ? "bg-primary-600 text-white"
-                    : "border border-gray-200 text-gray-600 hover:border-gray-400"
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
+          <BudgetChips setValue={setValue} budgetMin={budgetMin} budgetMax={budgetMax} />
 
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -260,93 +392,19 @@ export function ProfileFormModal({
             </div>
           </div>
 
-          <div>
-            <p className="mb-1 text-sm font-medium text-gray-700">
-              可接受地區（多選）<span className="ml-0.5 text-red-500">*</span>
-            </p>
-            <Controller
-              name="locations"
-              control={control}
-              rules={{ validate: (v) => v.length > 0 || "請至少選擇一個地區" }}
-              render={({ field }) => (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => setLocPickerOpen(true)}
-                    className="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-600 hover:border-gray-400 hover:text-gray-800"
-                  >
-                    {field.value.length > 0
-                      ? `已選 ${field.value.length} 個地區`
-                      : "選擇地區 ›"}
-                  </button>
-                  {field.value.length > 0 && (
-                    <div className="mt-2 flex flex-wrap gap-1.5">
-                      {field.value.map((id) => (
-                        <span
-                          key={id}
-                          className="flex items-center gap-1 rounded-full bg-orange-50 px-2.5 py-0.5 text-xs text-orange-700"
-                        >
-                          {LOCATION_LABELS[id] ?? id}
-                          <button
-                            type="button"
-                            onClick={() =>
-                              field.onChange(field.value.filter((l) => l !== id))
-                            }
-                            className="ml-0.5 text-orange-400 hover:text-orange-600"
-                          >
-                            ×
-                          </button>
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                  <LocationPicker
-                    open={locPickerOpen}
-                    value={field.value}
-                    onChange={field.onChange}
-                    onClose={() => setLocPickerOpen(false)}
-                  />
-                </>
-              )}
-            />
-            {errors.locations && (
-              <p className="mt-1 text-xs text-red-600">{errors.locations.message}</p>
-            )}
-          </div>
+          <LocationField
+            control={control}
+            errors={errors}
+            locPickerOpen={locPickerOpen}
+            setLocPickerOpen={setLocPickerOpen}
+          />
 
-          <div>
-            <p className="mb-1 text-sm font-medium text-gray-700">
-              偏好房型（多選）<span className="ml-0.5 text-red-500">*</span>
-            </p>
-            <div className="flex gap-2">
-              {Object.entries(ROOM_TYPE_LABELS).map(([rt, label]) => (
-                <button
-                  key={rt}
-                  type="button"
-                  onClick={() => toggleRoomType(rt)}
-                  className={`rounded-full px-3 py-1 text-sm font-medium transition ${
-                    (preferredRoomTypes ?? []).includes(rt)
-                      ? "bg-primary-600 text-white"
-                      : "border border-gray-200 text-gray-600 hover:border-gray-400"
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-            {errors.preferred_room_types && (
-              <p className="mt-1 text-xs text-red-600">
-                {errors.preferred_room_types.message}
-              </p>
-            )}
-            {/* hidden input to trigger validation */}
-            <input
-              type="hidden"
-              {...register("preferred_room_types", {
-                validate: (v) => v.length > 0 || "請至少選擇一種偏好房型",
-              })}
-            />
-          </div>
+          <RoomTypeChips
+            preferredRoomTypes={preferredRoomTypes ?? []}
+            toggleRoomType={toggleRoomType}
+            errors={errors}
+            register={register}
+          />
 
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -417,32 +475,19 @@ export function ProfileFormModal({
             )}
           </div>
 
-          <div className="space-y-2">
-            <p className="text-sm font-medium text-gray-700">條件</p>
-            {(
-              [
-                ["has_pets", "我有養寵物"],
-                ["needs_subsidy", "需要租補"],
-                ["needs_tax_receipt", "需要報稅收據"],
-                ["needs_household_registration", "需要入籍"],
-                ["needs_cooking", "需要開伙"],
-                ["needs_parking", "需要車位"],
-                ["smoking", "會抽菸"],
-              ] as const
-            ).map(([key, label]) => (
-              <label
-                key={key}
-                className="flex cursor-pointer items-center gap-2 text-sm text-gray-700"
-              >
-                <input
-                  type="checkbox"
-                  {...register(key)}
-                  className="accent-primary-600 h-4 w-4 rounded border-gray-300"
-                />
-                {label}
-              </label>
-            ))}
-          </div>
+          <CheckboxGroup
+            label="條件"
+            register={register}
+            items={[
+              ["has_pets", "我有養寵物"],
+              ["needs_subsidy", "需要租補"],
+              ["needs_tax_receipt", "需要報稅收據"],
+              ["needs_household_registration", "需要入籍"],
+              ["needs_cooking", "需要開伙"],
+              ["needs_parking", "需要車位"],
+              ["smoking", "會抽菸"],
+            ]}
+          />
 
           {hasPets && (
             <div>
