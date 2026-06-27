@@ -704,19 +704,19 @@ export function ListingFormModal({
           </div>
 
           {!editingId && (
-            <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
-              <p className="mb-2 text-sm font-medium text-amber-800">合規確認</p>
-              <p className="mb-3 text-xs text-amber-700">
+            <div className="border-warning-200 bg-warning-50 rounded-lg border p-4">
+              <p className="text-warning-800 mb-2 text-sm font-medium">合規確認</p>
+              <p className="text-warning-700 mb-3 text-xs">
                 建立房源前，請確認此房源不是頂樓加蓋、違建或依法不得出租之空間，且刊登內容不包含性別或其他敏感屬性限制。
               </p>
-              <label className="flex cursor-pointer items-start gap-2 text-sm text-amber-800">
+              <label className="text-warning-800 flex cursor-pointer items-start gap-2 text-sm">
                 <input
                   type="checkbox"
                   {...register("compliance_confirmed", {
                     validate: (v) =>
                       editingId ? true : v || "請勾選合規確認才能建立房源",
                   })}
-                  className="mt-0.5 h-4 w-4 rounded border-amber-300 accent-amber-800"
+                  className="border-warning-200 accent-warning-800 mt-0.5 h-4 w-4 rounded"
                 />
                 <span>我確認此房源符合上述合規條件</span>
               </label>

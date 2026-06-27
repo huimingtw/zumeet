@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Search, SearchX } from "lucide-react";
 import { Dropdown } from "@/components/ui/Dropdown";
+import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SkeletonListingCard } from "@/components/ui/Skeletons";
 import { api } from "@/lib/api";
@@ -128,9 +129,7 @@ export function TenantBrowseTab({
             onClick={() => setDetailListing(listing)}
             action={
               listing.interest_sent ? (
-                <span className="rounded-full bg-[#EDE9FE] px-2.5 py-0.5 text-xs font-medium text-[#5B21B6]">
-                  已送出
-                </span>
+                <Badge tone="brand">已送出</Badge>
               ) : (
                 <button
                   type="button"

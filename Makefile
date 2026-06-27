@@ -1,4 +1,4 @@
-.PHONY: up down logs build test e2e api-test api-build api-run db-reset lint fmt token
+.PHONY: up down logs build test e2e api-test api-build api-run db-reset lint fmt token login
 
 # ── Local dev ─────────────────────────────────────────────────────────────────
 
@@ -72,6 +72,12 @@ token:
 	@test -n "$(EMAIL)" || { echo "usage: make token EMAIL=user@example.com"; exit 1; }
 	@cd apps/api && JWT_SECRET=$$(docker compose -f ../../docker-compose.yml exec -T api printenv JWT_SECRET) \
 		go run ./cmd/signtoken "$(EMAIL)"
+
+# Log into the local web app as an existing user, opening Chrome with the cookie already set.
+login:
+	@test -n "$(EMAIL)" || { echo "usage: make login EMAIL=user@example.com"; exit 1; }
+	@cd apps/api && JWT_SECRET=$$(docker compose -f ../../docker-compose.yml exec -T api printenv JWT_SECRET) \
+		go run ./cmd/devlogin "$(EMAIL)"
 
 # ── Storage (MinIO) ───────────────────────────────────────────────────────────
 

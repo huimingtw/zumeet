@@ -1,6 +1,7 @@
 "use client";
 
 import { ExpandableText } from "@/components/ui/ExpandableText";
+import { Badge } from "@/components/ui/Badge";
 import { getProfileTags } from "@/lib/listingTags";
 import { profileHeader } from "@/features/matches/LandlordMatches";
 import type { MatchedTenantProfileCard } from "@/types";
@@ -32,21 +33,16 @@ export function TenantProfileCard({
           {tags.length > 0 && (
             <div className="mt-2 flex flex-wrap gap-1">
               {tags.map((tag) => (
-                <span
-                  key={tag}
-                  className="rounded-full bg-[#EDE9FE] px-3 py-1 text-xs font-medium text-[#5B21B6]"
-                >
+                <Badge key={tag} tone="brand" className="px-3 py-1">
                   {tag}
-                </span>
+                </Badge>
               ))}
             </div>
           )}
         </div>
         <div className="flex flex-shrink-0 items-center">
           {profile.interest_sent ? (
-            <span className="rounded-full bg-[#EDE9FE] px-2.5 py-0.5 text-xs font-medium text-[#5B21B6]">
-              已送出
-            </span>
+            <Badge tone="brand">已送出</Badge>
           ) : (
             <button
               type="button"

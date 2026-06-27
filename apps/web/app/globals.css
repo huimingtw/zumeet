@@ -9,6 +9,17 @@
   --color-primary-500: #6366f1;
   --color-primary-600: #4f46e5;
   --color-primary-700: #4338ca;
+  /* success (greens) */
+  --color-success-50: #d1fae5;
+  --color-success-600: #059669;
+  --color-success-700: #065f46;
+
+  /* warning (ambers) */
+  --color-warning-50: #fef3c7;
+  --color-warning-200: #fcd34d;
+  --color-warning-700: #b45309;
+  --color-warning-800: #92400e;
+
   --font-sans:
     var(--font-inter), "PingFang TC", "Heiti TC", "Microsoft JhengHei", -apple-system,
     BlinkMacSystemFont, sans-serif;

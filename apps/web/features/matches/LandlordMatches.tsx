@@ -5,6 +5,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ChevronDown, Heart, Inbox, SendHorizonal } from "lucide-react";
 import { useConfirm } from "@/components/ConfirmDialog";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { Badge } from "@/components/ui/Badge";
 import { ExpandableText } from "@/components/ui/ExpandableText";
 import { Loading } from "@/components/ui/Loading";
 import { api } from "@/lib/api";
@@ -187,9 +188,7 @@ function ListingIncoming({
                   )}
                 </div>
                 {profile.interest_sent ? (
-                  <span className="rounded-full bg-[#EDE9FE] px-2.5 py-0.5 text-xs font-medium text-[#5B21B6]">
-                    已送出
-                  </span>
+                  <Badge tone="brand">已送出</Badge>
                 ) : (
                   <button
                     type="button"
@@ -302,9 +301,7 @@ export function LandlordMatchedTab() {
             className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
           >
             <div className="flex flex-wrap items-center gap-2 text-xs text-gray-400">
-              <span className="rounded-full bg-[#D1FAE5] px-2 py-0.5 font-medium text-[#065F46]">
-                媒合成功
-              </span>
+              <Badge tone="success">媒合成功</Badge>
               <span>{new Date(match.matched_at).toLocaleDateString("zh-TW")}</span>
               {match.listing_name && <span>房源：{match.listing_name}</span>}
             </div>

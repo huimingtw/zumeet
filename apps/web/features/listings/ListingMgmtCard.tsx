@@ -3,6 +3,7 @@
 import { type ReactNode, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { MoreHorizontal } from "lucide-react";
+import { Badge } from "@/components/ui/Badge";
 import { api } from "@/lib/api";
 import { qk } from "@/features/queryKeys";
 import type { Listing } from "@/types";
@@ -41,14 +42,15 @@ export function ListingMgmtCard({
     onSuccess: onChanged,
   });
 
-  const statusBadgeClass =
-    listing.status === "active"
-      ? "bg-[#D1FAE5] text-[#059669]"
-      : listing.status === "draft"
-        ? "bg-[#FEF3C7] text-[#92400E]"
-        : listing.status === "rented"
-          ? "bg-blue-100 text-blue-700"
-          : "bg-gray-100 text-gray-500";
+  const statusTone =
+    (
+      {
+        active: "success",
+        draft: "warning",
+        paused: "neutral",
+        rented: "neutral",
+      } as const
+    )[listing.status as "active" | "draft" | "paused" | "rented"] ?? "neutral";
 
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
@@ -73,11 +75,9 @@ export function ListingMgmtCard({
               {ROOM_TYPE_LABELS[listing.room_type] ?? listing.room_type}{" "}
               {listing.area_ping}坪
             </span>
-            <span
-              className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusBadgeClass}`}
-            >
+            <Badge tone={statusTone}>
               {STATUS_LABELS[listing.status] ?? listing.status}
-            </span>
+            </Badge>
           </div>
           <p className="mt-1 text-xs text-gray-400">
             可入住：{new Date(listing.available_from).toLocaleDateString("zh-TW")} ／{" "}
@@ -92,7 +92,7 @@ export function ListingMgmtCard({
               onClick={() => changeStatus.mutate("active")}
               disabled={listing.photos.length === 0}
               title={listing.photos.length === 0 ? "請先上傳至少一張照片" : ""}
-              className="rounded-lg bg-[#10B981] px-3 py-1.5 text-xs font-medium text-white transition hover:bg-[#059669] disabled:opacity-40"
+              className="bg-success-600 hover:bg-success-700 rounded-lg px-3 py-1.5 text-xs font-medium text-white transition disabled:opacity-40"
             >
               發布上架
             </button>
@@ -110,7 +110,7 @@ export function ListingMgmtCard({
             <button
               type="button"
               onClick={() => changeStatus.mutate("active")}
-              className="rounded-lg bg-[#10B981] px-3 py-1.5 text-xs font-medium text-white transition hover:bg-[#059669]"
+              className="bg-success-600 hover:bg-success-700 rounded-lg px-3 py-1.5 text-xs font-medium text-white transition"
             >
               重新上架
             </button>

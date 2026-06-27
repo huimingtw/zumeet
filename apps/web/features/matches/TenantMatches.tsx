@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronDown, Heart, Inbox, SendHorizonal } from "lucide-react";
 import { useConfirm } from "@/components/ConfirmDialog";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { Badge } from "@/components/ui/Badge";
 import { Loading } from "@/components/ui/Loading";
 import { api } from "@/lib/api";
 import {
@@ -136,9 +137,7 @@ function ProfileIncoming({
                     onClick={() => setDetail(card)}
                     action={
                       item.interest_sent ? (
-                        <span className="rounded-full bg-[#EDE9FE] px-2.5 py-0.5 text-xs font-medium text-[#5B21B6]">
-                          已送出
-                        </span>
+                        <Badge tone="brand">已送出</Badge>
                       ) : (
                         <button
                           type="button"
@@ -359,9 +358,9 @@ export function TenantMatchedTab() {
                     房東已標記出租
                   </span>
                 ) : viewing ? (
-                  <span className="rounded-full bg-[#D1FAE5] px-2.5 py-0.5 text-xs font-medium text-[#059669]">
+                  <Badge tone="success">
                     已預約 {formatSlot(viewing.starts_at, viewing.ends_at)}
-                  </span>
+                  </Badge>
                 ) : (
                   <button
                     type="button"

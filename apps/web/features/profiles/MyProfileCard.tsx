@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { MoreVertical } from "lucide-react";
 import { useConfirm } from "@/components/ConfirmDialog";
+import { Badge } from "@/components/ui/Badge";
 import { api } from "@/lib/api";
 import { qk } from "@/features/queryKeys";
 import type { TenantProfile } from "@/types";
@@ -55,15 +56,9 @@ export function MyProfileCard({
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="text-sm font-semibold text-gray-950">{profile.name}</h3>
-            <span
-              className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                profile.is_active
-                  ? "bg-[#D1FAE5] text-[#059669]"
-                  : "bg-gray-100 text-gray-500"
-              }`}
-            >
+            <Badge tone={profile.is_active ? "success" : "neutral"}>
               {profile.is_active ? "啟用中" : "已停用"}
-            </span>
+            </Badge>
           </div>
           <p className="mt-1 text-sm text-gray-500">
             預算 ${profile.budget_min.toLocaleString()}–$

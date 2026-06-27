@@ -309,7 +309,7 @@ function ListingMiniMap({
           className="block h-full w-full border-0"
         />
         {hasCoords && !precise && (
-          <div className="absolute top-1/2 left-1/2 h-28 w-28 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-indigo-500/60 bg-indigo-500/20" />
+          <div className="border-primary-500/60 bg-primary-500/20 absolute top-1/2 left-1/2 h-28 w-28 -translate-x-1/2 -translate-y-1/2 rounded-full border-2" />
         )}
       </div>
       {hasCoords && !precise && (
