@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { Button } from "@/components/ui/Button";
 import Image from "next/image";
 import { useForm, Controller } from "react-hook-form";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -352,13 +353,9 @@ export function ListingFormModal({
           <div className="space-y-4">
             <p className="text-sm text-gray-500">房源已建立，可以上傳照片（選填）。</p>
             <PhotoSection listingId={savedId} onChanged={onSaved} />
-            <button
-              type="button"
-              onClick={onSaved}
-              className="bg-primary-600 hover:bg-primary-500 w-full rounded-lg py-3 text-sm font-medium text-white transition"
-            >
+            <Button type="button" size="lg" fullWidth onClick={onSaved}>
               關閉
-            </button>
+            </Button>
           </div>
         ) : (
           <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
@@ -676,21 +673,13 @@ export function ListingFormModal({
 
             {globalError && <p className="text-sm text-red-600">{globalError}</p>}
 
-            <button
-              type="submit"
-              disabled={isSubmitting || formSaved}
-              className="bg-primary-600 hover:bg-primary-500 w-full rounded-lg py-3 text-sm font-medium text-white transition disabled:opacity-40"
-            >
+            <Button type="submit" size="lg" fullWidth disabled={isSubmitting || formSaved}>
               {isSubmitting ? "儲存中…" : editingId ? (formSaved ? "已儲存 ✓" : "儲存") : "建立房源"}
-            </button>
+            </Button>
             {editingId && (
-              <button
-                type="button"
-                onClick={onSaved}
-                className="w-full rounded-lg border border-gray-200 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
-              >
+              <Button type="button" size="lg" fullWidth variant="secondary" onClick={onSaved}>
                 關閉
-              </button>
+              </Button>
             )}
           </form>
         )}

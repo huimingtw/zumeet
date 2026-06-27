@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useForm, Controller } from "react-hook-form";
+import { Button } from "@/components/ui/Button";
 import { LocationPicker } from "@/components/LocationPicker";
 import { api, extractFieldErrors } from "@/lib/api";
 import type { TenantProfile } from "@/types";
@@ -477,11 +478,7 @@ export function ProfileFormModal({
           </div>
 
           <div className="flex-shrink-0 space-y-2 border-t border-gray-100 bg-white px-6 pt-3 pb-[max(16px,env(safe-area-inset-bottom))]">
-            <button
-              type="submit"
-              disabled={isSubmitting || formSaved}
-              className="bg-primary-600 hover:bg-primary-500 w-full rounded-lg py-3 text-sm font-medium text-white transition disabled:opacity-40"
-            >
+            <Button type="submit" size="lg" fullWidth disabled={isSubmitting || formSaved}>
               {isSubmitting
                 ? "儲存中…"
                 : editingProfile
@@ -489,15 +486,11 @@ export function ProfileFormModal({
                     ? "已儲存 ✓"
                     : "儲存"
                   : "建立需求卡"}
-            </button>
+            </Button>
             {editingProfile && (
-              <button
-                type="button"
-                onClick={onClose}
-                className="w-full rounded-lg border border-gray-200 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
-              >
+              <Button type="button" size="lg" fullWidth variant="secondary" onClick={onClose}>
                 關閉
-              </button>
+              </Button>
             )}
           </div>
         </form>

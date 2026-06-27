@@ -3,8 +3,12 @@
 @theme {
   --color-primary-50: #eef2ff;
   --color-primary-100: #e0e7ff;
+  --color-primary-200: #c7d2fe;
+  --color-primary-300: #a5b4fc;
+  --color-primary-400: #818cf8;
   --color-primary-500: #6366f1;
   --color-primary-600: #4f46e5;
+  --color-primary-700: #4338ca;
   --font-sans:
     var(--font-inter), "PingFang TC", "Heiti TC", "Microsoft JhengHei", -apple-system,
     BlinkMacSystemFont, sans-serif;
@@ -37,6 +41,13 @@ body {
 
 .input::placeholder {
   color: #9ca3af;
+}
+
+.card {
+  border-radius: 0.75rem;
+  border: 1px solid #e5e7eb;
+  background: white;
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
 }
 
 .no-scrollbar {
