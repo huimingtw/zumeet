@@ -272,6 +272,10 @@ function ListingMiniMap({
   if (!query && !lat) return null;
 
   const hasCoords = lat != null && lng != null;
+  // SECURITY(map): grid-snapping hides the pin position visually, but the raw
+  // lat/lng are still present in the API response (inspectable in devtools) for
+  // pre-match listings. To fully protect location, the backend should omit or
+  // round coords server-side before the match is created.
   const GRID = 0.005;
   const mapLat = hasCoords
     ? precise

@@ -23,6 +23,11 @@ api.interceptors.response.use(
 
     const config = err.config as RetryableConfig | undefined;
 
+    // Landing page probe — 401 is expected for logged-out users; don't attempt refresh
+    if (window.location.pathname === "/") {
+      return Promise.reject(err);
+    }
+
     // Refresh endpoint itself returned 401 — refresh token is expired/invalid
     if (config?.url?.includes("/auth/refresh")) {
       if (window.location.pathname !== "/") {

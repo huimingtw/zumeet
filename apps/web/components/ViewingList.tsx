@@ -7,6 +7,7 @@ import type { Viewing } from "@/types";
 import { dateKey, formatSlot, VIEWING_STATUS_BADGE } from "@/lib/viewings";
 import { SlotPicker } from "@/components/SlotPicker";
 import { Modal } from "@/components/ui/Modal";
+import { Loading } from "@/components/ui/Loading";
 import { qk } from "@/features/queryKeys";
 
 // ViewingList renders 帶看 grouped by date for either side.
@@ -62,8 +63,7 @@ export function ViewingList({ role }: { role: "tenant" | "landlord" }) {
     return [...map.entries()];
   }, [data]);
 
-  if (isLoading)
-    return <p className="py-10 text-center text-sm text-gray-400">載入中…</p>;
+  if (isLoading) return <Loading />;
   if (grouped.length === 0)
     return (
       <p className="py-10 text-center text-sm text-gray-400">

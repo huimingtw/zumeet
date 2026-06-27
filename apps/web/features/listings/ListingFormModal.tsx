@@ -487,6 +487,10 @@ export function ListingFormModal({
       num_living_rooms: isWholeFloor ? Number(data.num_living_rooms) : null,
       num_bathrooms: isWholeFloor ? Number(data.num_bathrooms) : null,
       num_balconies: isWholeFloor ? Number(data.num_balconies) : null,
+      // TODO(tz): sending UTC midnight; backend stores as time.Time (UTC).
+      // date_trunc matching is symmetric so no functional bug, but display near
+      // midnight could be off by one day. Fix server-side by accepting date-only
+      // strings and storing as Taipei midnight (T00:00:00+08:00).
       available_from: data.available_from
         ? `${data.available_from}T00:00:00Z`
         : data.available_from,

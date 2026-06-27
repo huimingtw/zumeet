@@ -266,6 +266,7 @@ export function ProfileFormModal({
       min_lease_months: Number(data.min_lease_months),
       min_area_ping: data.min_area_ping ? Number(data.min_area_ping) : null,
       age: data.age ? Number(data.age) : null,
+      // TODO(tz): see ListingFormModal — same UTC midnight behavior
       available_from: data.available_from
         ? `${data.available_from}T00:00:00Z`
         : data.available_from,
