@@ -101,7 +101,7 @@ function OnboardingForm() {
                 type="checkbox"
                 checked={agreed}
                 onChange={(e) => setAgreed(e.target.checked)}
-                className="mt-0.5 h-4 w-4 rounded border-gray-300 accent-primary-600"
+                className="accent-primary-600 mt-0.5 h-4 w-4 rounded border-gray-300"
               />
               <span>我已閱讀並同意上述服務條款與平台免責聲明</span>
             </label>
@@ -112,7 +112,7 @@ function OnboardingForm() {
           <button
             type="submit"
             disabled={!role || !agreed || !oauthState || loading}
-            className="w-full rounded-lg bg-primary-600 py-3 text-sm font-medium text-white transition hover:bg-primary-500 disabled:opacity-40"
+            className="bg-primary-600 hover:bg-primary-500 w-full rounded-lg py-3 text-sm font-medium text-white transition disabled:opacity-40"
           >
             {loading ? "請稍候…" : "完成設定，開始使用"}
           </button>
@@ -147,10 +147,14 @@ function RoleCard({
     >
       <span className={selected ? "text-primary-600" : "text-gray-400"}>{icon}</span>
       <div>
-        <p className={`text-sm font-semibold ${selected ? "text-gray-950" : "text-gray-800"}`}>
+        <p
+          className={`text-sm font-semibold ${selected ? "text-gray-950" : "text-gray-800"}`}
+        >
           {title}
         </p>
-        <p className={`text-xs ${selected ? "text-primary-600" : "text-gray-500"}`}>{desc}</p>
+        <p className={`text-xs ${selected ? "text-primary-600" : "text-gray-500"}`}>
+          {desc}
+        </p>
       </div>
     </button>
   );

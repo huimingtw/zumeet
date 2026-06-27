@@ -59,7 +59,10 @@ export function totalMonthly(listing: { rent: number; management_fee?: number })
   return listing.rent + (listing.management_fee ?? 0);
 }
 
-export function pricePerPing(listing: { rent: number; area_ping: number }): number | null {
+export function pricePerPing(listing: {
+  rent: number;
+  area_ping: number;
+}): number | null {
   if (!listing.area_ping || listing.area_ping <= 0) return null;
   return Math.round(listing.rent / listing.area_ping);
 }

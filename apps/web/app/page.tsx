@@ -29,7 +29,7 @@ export default function LoginPage() {
     <div className="flex min-h-screen flex-col items-center justify-center bg-gray-100 px-4">
       <div className="w-full max-w-sm">
         <div className="mb-10 text-center">
-          <h1 className="text-[32px] font-bold leading-10 tracking-wide text-gray-950">
+          <h1 className="text-[32px] leading-10 font-bold tracking-wide text-gray-950">
             Zumeet
           </h1>
           <p className="mt-2 text-sm text-gray-500">租客與房東條件雙向媒合平台</p>
@@ -45,8 +45,7 @@ export default function LoginPage() {
             href={`${API_BASE}/api/v1/auth/google`}
             className="flex w-full items-center justify-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-800 shadow-sm transition hover:bg-gray-50 active:bg-gray-100"
           >
-            <GoogleIcon />
-            以 Google 帳號繼續
+            <GoogleIcon />以 Google 帳號繼續
           </a>
         </div>
 

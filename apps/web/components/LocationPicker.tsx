@@ -1,11 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {
-  LOCATION_GROUPS,
-  RECOMMENDED_LOCATION_IDS,
-  type LocationCity,
-} from "@/types";
+import { LOCATION_GROUPS, RECOMMENDED_LOCATION_IDS, type LocationCity } from "@/types";
 
 interface Props {
   open: boolean;
@@ -27,8 +23,14 @@ function cityState(city: LocationCity, selected: Set<string>): CityState {
 function CityCheckbox({ state }: { state: CityState }) {
   if (state === "all") {
     return (
-      <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded bg-primary-600 text-white">
-        <svg viewBox="0 0 10 8" className="h-2.5 w-2.5" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <span className="bg-primary-600 flex h-4 w-4 shrink-0 items-center justify-center rounded text-white">
+        <svg
+          viewBox="0 0 10 8"
+          className="h-2.5 w-2.5"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.8"
+        >
           <path d="M1 4l2.5 2.5L9 1" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </span>
@@ -36,8 +38,14 @@ function CityCheckbox({ state }: { state: CityState }) {
   }
   if (state === "partial") {
     return (
-      <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded bg-primary-600 text-white">
-        <svg viewBox="0 0 10 2" className="h-2.5 w-2.5" fill="none" stroke="currentColor" strokeWidth="2">
+      <span className="bg-primary-600 flex h-4 w-4 shrink-0 items-center justify-center rounded text-white">
+        <svg
+          viewBox="0 0 10 2"
+          className="h-2.5 w-2.5"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+        >
           <path d="M1 1h8" strokeLinecap="round" />
         </svg>
       </span>
@@ -50,8 +58,14 @@ function CityCheckbox({ state }: { state: CityState }) {
 
 function DistrictCheckbox({ checked }: { checked: boolean }) {
   return checked ? (
-    <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded bg-primary-600 text-white">
-      <svg viewBox="0 0 10 8" className="h-2.5 w-2.5" fill="none" stroke="currentColor" strokeWidth="1.8">
+    <span className="bg-primary-600 flex h-4 w-4 shrink-0 items-center justify-center rounded text-white">
+      <svg
+        viewBox="0 0 10 8"
+        className="h-2.5 w-2.5"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+      >
         <path d="M1 4l2.5 2.5L9 1" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     </span>
@@ -118,7 +132,9 @@ export function LocationPicker({ open, value, onChange, onClose }: Props) {
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
     >
       <div className="flex h-[600px] w-[700px] max-w-[95vw] flex-col rounded-xl bg-white shadow-2xl">
         {/* Header */}
@@ -140,9 +156,7 @@ export function LocationPicker({ open, value, onChange, onClose }: Props) {
             placeholder="搜尋縣市或地區..."
             className="flex-1 text-sm outline-none placeholder:text-gray-400"
           />
-          <span className="shrink-0 text-sm font-medium text-gray-700">
-            地區類別選單
-          </span>
+          <span className="shrink-0 text-sm font-medium text-gray-700">地區類別選單</span>
           <button
             onClick={onClose}
             className="ml-2 text-gray-400 hover:text-gray-600"
@@ -155,13 +169,11 @@ export function LocationPicker({ open, value, onChange, onClose }: Props) {
         {/* Counter + clear + recommended toggle */}
         <div className="flex items-center justify-between border-b px-4 py-2">
           <div className="flex items-center gap-3">
-            <span className="text-sm text-gray-600">
-              已選擇：{draft.length}
-            </span>
+            <span className="text-sm text-gray-600">已選擇：{draft.length}</span>
             {draft.length > 0 && (
               <button
                 onClick={() => setDraft([])}
-                className="text-sm text-primary-600 hover:text-primary-500"
+                className="text-primary-600 hover:text-primary-500 text-sm"
               >
                 清除全部
               </button>
@@ -210,9 +222,7 @@ export function LocationPicker({ open, value, onChange, onClose }: Props) {
         {trimmedQuery ? (
           <div className="flex-1 overflow-y-auto px-4 py-2">
             {searchResults.length === 0 ? (
-              <p className="py-8 text-center text-sm text-gray-400">
-                找不到符合的地區
-              </p>
+              <p className="py-8 text-center text-sm text-gray-400">找不到符合的地區</p>
             ) : (
               searchResults.map((d) => (
                 <label
@@ -237,9 +247,7 @@ export function LocationPicker({ open, value, onChange, onClose }: Props) {
             <div className="w-36 shrink-0 overflow-y-auto border-r bg-gray-50">
               {LOCATION_GROUPS.map((city) => {
                 const state = cityState(city, draftSet);
-                const count = city.districts.filter((d) =>
-                  draftSet.has(d.id)
-                ).length;
+                const count = city.districts.filter((d) => draftSet.has(d.id)).length;
                 const isActive = activeCityCode === city.cityCode;
                 return (
                   <button
@@ -248,7 +256,7 @@ export function LocationPicker({ open, value, onChange, onClose }: Props) {
                     onClick={() => setActiveCityCode(city.cityCode)}
                     className={`flex w-full items-center justify-between px-3 py-2.5 text-left text-sm transition ${
                       isActive
-                        ? "bg-white font-medium text-primary-600"
+                        ? "text-primary-600 bg-white font-medium"
                         : "text-gray-700 hover:bg-white"
                     }`}
                   >
@@ -296,9 +304,7 @@ export function LocationPicker({ open, value, onChange, onClose }: Props) {
                         }`}
                       >
                         <DistrictCheckbox checked={checked} />
-                        <span className="text-sm text-gray-700">
-                          {d.districtLabel}
-                        </span>
+                        <span className="text-sm text-gray-700">{d.districtLabel}</span>
                       </button>
                     );
                   })}
@@ -316,7 +322,7 @@ export function LocationPicker({ open, value, onChange, onClose }: Props) {
               onChange(draft);
               onClose();
             }}
-            className="rounded-lg bg-primary-600 px-8 py-2 text-sm font-medium text-white transition hover:bg-primary-500"
+            className="bg-primary-600 hover:bg-primary-500 rounded-lg px-8 py-2 text-sm font-medium text-white transition"
           >
             確定
           </button>
