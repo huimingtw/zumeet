@@ -17,6 +17,7 @@ import {
 import { useConfirm } from "@/components/ConfirmDialog";
 import { RoleGuard } from "@/components/RoleGuard";
 import { Dropdown } from "@/components/ui/Dropdown";
+import { TabButton } from "@/components/ui/TabButton";
 import { api, extractFieldErrors } from "@/lib/api";
 import { getProfileTags } from "@/lib/listingTags";
 import type {
@@ -159,31 +160,6 @@ function DashboardHeader() {
         </button>
       </div>
     </header>
-  );
-}
-
-function TabButton({
-  active,
-  onClick,
-  icon,
-  label,
-}: {
-  active: boolean;
-  onClick: () => void;
-  icon: ReactNode;
-  label: string;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition ${
-        active ? "bg-primary-600 text-white" : "text-gray-500 hover:bg-gray-100"
-      }`}
-    >
-      {icon}
-      {label}
-    </button>
   );
 }
 
