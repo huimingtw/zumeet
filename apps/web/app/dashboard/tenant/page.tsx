@@ -21,6 +21,7 @@ import { LocationPicker } from "@/components/LocationPicker";
 import { Dropdown } from "@/components/ui/Dropdown";
 import { BottomTabItem } from "@/components/ui/BottomTabItem";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { Loading } from "@/components/ui/Loading";
 import { TabButton } from "@/components/ui/TabButton";
 import { RoleGuard } from "@/components/RoleGuard";
 import { SlotPicker } from "@/components/SlotPicker";
@@ -2155,10 +2156,6 @@ function ProfileFormModal({
 }
 
 // ---- Shared UI ----
-
-function Loading() {
-  return <div className="py-8 text-center text-sm text-gray-400">載入中…</div>;
-}
 
 function SkeletonListingCard() {
   return (
