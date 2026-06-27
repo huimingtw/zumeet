@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import { MapPin, X } from "lucide-react";
+import { Modal } from "@/components/ui/Modal";
 import { SlotPicker } from "@/components/SlotPicker";
 import {
   formatLayout,
@@ -339,13 +340,8 @@ export function ListingDetailDialog({
   const photoCount = listing.photos.length;
 
   useEffect(() => {
+    if (photoCount <= 1) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        e.preventDefault();
-        onClose();
-        return;
-      }
-      if (photoCount <= 1) return;
       if (e.key === "ArrowLeft") {
         e.preventDefault();
         setPhotoIdx((i) => (i - 1 + photoCount) % photoCount);
@@ -356,164 +352,159 @@ export function ListingDetailDialog({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [onClose, photoCount]);
+  }, [photoCount]);
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 sm:items-center sm:p-4"
+    <Modal
+      open
+      onClose={onClose}
+      labelledBy="listing-detail-title"
+      className="flex w-screen flex-col !overflow-hidden sm:min-h-[520px] sm:max-w-[min(80vw,1280px)] sm:flex-row"
     >
       <button
         type="button"
-        className="absolute inset-0"
-        aria-label="關閉"
         onClick={onClose}
-      />
-      <div
-        className="relative z-10 flex w-screen flex-col overflow-hidden rounded-t-2xl bg-white sm:min-h-[520px] sm:w-[min(80vw,1280px)] sm:flex-row sm:rounded-2xl"
-        style={{ maxHeight: "90vh" }}
+        className="absolute top-3 right-3 z-20 rounded-full bg-black/50 p-1.5 text-white backdrop-blur-sm hover:bg-black/70"
+        aria-label="關閉"
       >
-        <button
-          type="button"
-          onClick={onClose}
-          className="absolute top-3 right-3 z-20 rounded-full bg-black/50 p-1.5 text-white backdrop-blur-sm hover:bg-black/70"
-          aria-label="關閉"
-        >
-          <X size={16} strokeWidth={2} />
-        </button>
+        <X size={16} strokeWidth={2} />
+      </button>
 
-        {/* Photo panel */}
-        <div className="relative flex-shrink-0 bg-gray-100 sm:w-[62%] sm:self-stretch">
-          {listing.photos.length > 0 ? (
-            <div className="relative h-64 w-full sm:absolute sm:inset-0 sm:h-auto">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={listing.photos[photoIdx]}
-                alt=""
-                className="block h-full w-full object-cover"
-              />
-            </div>
-          ) : (
-            <div className="flex h-48 w-full items-center justify-center sm:absolute sm:inset-0 sm:h-auto">
-              <span className="text-sm text-gray-500">暫無照片</span>
-            </div>
-          )}
-          {listing.photos.length > 1 && (
-            <>
-              <button
-                type="button"
-                onClick={() =>
-                  setPhotoIdx(
-                    (i) => (i - 1 + listing.photos.length) % listing.photos.length
-                  )
-                }
-                className="absolute top-1/2 left-3 -translate-y-1/2 rounded-full bg-black/50 px-2.5 py-1.5 text-lg leading-none text-white backdrop-blur-sm"
-              >
-                ‹
-              </button>
-              <button
-                type="button"
-                onClick={() => setPhotoIdx((i) => (i + 1) % listing.photos.length)}
-                className="absolute top-1/2 right-3 -translate-y-1/2 rounded-full bg-black/50 px-2.5 py-1.5 text-lg leading-none text-white backdrop-blur-sm"
-              >
-                ›
-              </button>
-              <span className="absolute right-3 bottom-3 rounded-full bg-black/50 px-2.5 py-1 text-xs text-white backdrop-blur-sm">
-                {photoIdx + 1} / {listing.photos.length}
-              </span>
-            </>
-          )}
-        </div>
-
-        {/* Info panel */}
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col sm:max-h-[90vh] sm:w-[38%] sm:flex-none">
-          <div className="min-h-0 overflow-y-auto p-6">
-            {listing.name && (
-              <p className="mb-1 text-base font-semibold text-gray-950">{listing.name}</p>
-            )}
-            <div className="flex flex-wrap items-baseline gap-2">
-              <span className="text-2xl font-bold text-gray-950">
-                ${total.toLocaleString()}
-              </span>
-              <span className="text-sm text-gray-500">
-                {ROOM_TYPE_LABELS[listing.room_type] ?? listing.room_type}
-              </span>
-              <span className="text-sm text-gray-500">
-                {listing.area_ping} 坪
-                {perPing != null && (
-                  <span className="ml-1 text-gray-400">
-                    （每坪 ${perPing.toLocaleString()}）
-                  </span>
-                )}
-              </span>
-              {layout && <span className="text-sm text-gray-500">{layout}</span>}
-            </div>
-            {listing.management_fee > 0 && (
-              <p className="text-xs text-gray-400">
-                房租 ${listing.rent.toLocaleString()} + 管理費 $
-                {listing.management_fee.toLocaleString()}
-              </p>
-            )}
-            <div className="mt-2 flex items-center gap-1 text-sm text-gray-500">
-              <MapPin size={14} strokeWidth={1.5} />
-              {listing.address ? (
-                <a
-                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(listing.address)}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-primary-600 hover:underline"
-                >
-                  {listing.address}
-                </a>
-              ) : (
-                (LOCATION_LABELS[listing.location_id] ?? listing.location_id)
-              )}
-            </div>
-            <p className="mt-1 text-sm text-gray-400">
-              可入住：{new Date(listing.available_from).toLocaleDateString("zh-TW")}
-            </p>
-            <ListingMiniMap
-              address={listing.address}
-              locationLabel={LOCATION_LABELS[listing.location_id] ?? listing.location_id}
-              lat={listing.lat}
-              lng={listing.lng}
-              precise={!!contactInfo}
+      {/* Photo panel */}
+      <div className="relative flex-shrink-0 bg-gray-100 sm:w-[62%] sm:self-stretch">
+        {listing.photos.length > 0 ? (
+          <div className="relative h-64 w-full sm:absolute sm:inset-0 sm:h-auto">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={listing.photos[photoIdx]}
+              alt=""
+              className="block h-full w-full object-cover"
             />
-            {listing.description && (
-              <p className="mt-3 text-sm whitespace-pre-wrap text-gray-700">
-                {listing.description}
-              </p>
-            )}
-            {tags.length > 0 && (
-              <div className="mt-4 flex flex-wrap gap-2">
-                {tags.map((tag) => (
-                  <span
-                    key={tag}
-                    className="bg-primary-100 text-primary-600 rounded-full px-3 py-1 text-xs font-medium"
-                  >
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            )}
-            {contactInfo && (
-              <div className="mt-4 rounded-lg border border-gray-200 bg-gray-50 p-3">
-                <p className="mb-1 text-xs text-gray-400">
-                  以下為對方自填資料，平台不保證真實性，請自行確認。
-                </p>
-                <p className="text-sm font-medium text-gray-950">{contactInfo}</p>
-              </div>
+          </div>
+        ) : (
+          <div className="flex h-48 w-full items-center justify-center sm:absolute sm:inset-0 sm:h-auto">
+            <span className="text-sm text-gray-500">暫無照片</span>
+          </div>
+        )}
+        {listing.photos.length > 1 && (
+          <>
+            <button
+              type="button"
+              onClick={() =>
+                setPhotoIdx(
+                  (i) => (i - 1 + listing.photos.length) % listing.photos.length
+                )
+              }
+              className="absolute top-1/2 left-3 -translate-y-1/2 rounded-full bg-black/50 px-2.5 py-1.5 text-lg leading-none text-white backdrop-blur-sm"
+            >
+              ‹
+            </button>
+            <button
+              type="button"
+              onClick={() => setPhotoIdx((i) => (i + 1) % listing.photos.length)}
+              className="absolute top-1/2 right-3 -translate-y-1/2 rounded-full bg-black/50 px-2.5 py-1.5 text-lg leading-none text-white backdrop-blur-sm"
+            >
+              ›
+            </button>
+            <span className="absolute right-3 bottom-3 rounded-full bg-black/50 px-2.5 py-1 text-xs text-white backdrop-blur-sm">
+              {photoIdx + 1} / {listing.photos.length}
+            </span>
+          </>
+        )}
+      </div>
+
+      {/* Info panel */}
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col sm:max-h-[90vh] sm:w-[38%] sm:flex-none">
+        <div className="min-h-0 overflow-y-auto p-6">
+          {listing.name && (
+            <p
+              id="listing-detail-title"
+              className="mb-1 text-base font-semibold text-gray-950"
+            >
+              {listing.name}
+            </p>
+          )}
+          <div className="flex flex-wrap items-baseline gap-2">
+            <span className="text-2xl font-bold text-gray-950">
+              ${total.toLocaleString()}
+            </span>
+            <span className="text-sm text-gray-500">
+              {ROOM_TYPE_LABELS[listing.room_type] ?? listing.room_type}
+            </span>
+            <span className="text-sm text-gray-500">
+              {listing.area_ping} 坪
+              {perPing != null && (
+                <span className="ml-1 text-gray-400">
+                  （每坪 ${perPing.toLocaleString()}）
+                </span>
+              )}
+            </span>
+            {layout && <span className="text-sm text-gray-500">{layout}</span>}
+          </div>
+          {listing.management_fee > 0 && (
+            <p className="text-xs text-gray-400">
+              房租 ${listing.rent.toLocaleString()} + 管理費 $
+              {listing.management_fee.toLocaleString()}
+            </p>
+          )}
+          <div className="mt-2 flex items-center gap-1 text-sm text-gray-500">
+            <MapPin size={14} strokeWidth={1.5} />
+            {listing.address ? (
+              <a
+                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(listing.address)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary-600 hover:underline"
+              >
+                {listing.address}
+              </a>
+            ) : (
+              (LOCATION_LABELS[listing.location_id] ?? listing.location_id)
             )}
           </div>
-          {action && (
-            <div className="flex min-h-[72px] items-center justify-center px-6 pt-2 pb-6">
-              {action}
+          <p className="mt-1 text-sm text-gray-400">
+            可入住：{new Date(listing.available_from).toLocaleDateString("zh-TW")}
+          </p>
+          <ListingMiniMap
+            address={listing.address}
+            locationLabel={LOCATION_LABELS[listing.location_id] ?? listing.location_id}
+            lat={listing.lat}
+            lng={listing.lng}
+            precise={!!contactInfo}
+          />
+          {listing.description && (
+            <p className="mt-3 text-sm whitespace-pre-wrap text-gray-700">
+              {listing.description}
+            </p>
+          )}
+          {tags.length > 0 && (
+            <div className="mt-4 flex flex-wrap gap-2">
+              {tags.map((tag) => (
+                <span
+                  key={tag}
+                  className="bg-primary-100 text-primary-600 rounded-full px-3 py-1 text-xs font-medium"
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
+          )}
+          {contactInfo && (
+            <div className="mt-4 rounded-lg border border-gray-200 bg-gray-50 p-3">
+              <p className="mb-1 text-xs text-gray-400">
+                以下為對方自填資料，平台不保證真實性，請自行確認。
+              </p>
+              <p className="text-sm font-medium text-gray-950">{contactInfo}</p>
             </div>
           )}
         </div>
+        {action && (
+          <div className="flex min-h-[72px] items-center justify-center px-6 pt-2 pb-6">
+            {action}
+          </div>
+        )}
       </div>
-    </div>
+    </Modal>
   );
 }
 
@@ -530,37 +521,36 @@ export function BookViewingModal({
 }) {
   const [slot, setSlot] = useState("");
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center"
-      onClick={onClose}
+    <Modal
+      open
+      onClose={onClose}
+      labelledBy="book-viewing-title"
+      className="max-w-sm p-5"
     >
-      <div
-        className="w-full max-w-sm rounded-t-2xl bg-white p-5 sm:rounded-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <p className="mb-1 text-sm font-semibold text-gray-900">預約看房</p>
-        <p className="mb-3 text-xs text-gray-500">
-          {match.listing_name || "此房源"}｜選擇房東開放的帶看時段。
-        </p>
-        <SlotPicker listingId={match.listing_id} value={slot} onChange={setSlot} />
-        <div className="mt-4 flex gap-2">
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex-1 rounded-lg border border-gray-200 py-2.5 text-sm text-gray-600 hover:bg-gray-50"
-          >
-            取消
-          </button>
-          <button
-            type="button"
-            disabled={!slot || pending}
-            onClick={() => onSubmit(slot)}
-            className="bg-primary-600 hover:bg-primary-500 flex-1 rounded-lg py-2.5 text-sm font-medium text-white disabled:opacity-50"
-          >
-            確認預約
-          </button>
-        </div>
+      <p id="book-viewing-title" className="mb-1 text-sm font-semibold text-gray-900">
+        預約看房
+      </p>
+      <p className="mb-3 text-xs text-gray-500">
+        {match.listing_name || "此房源"}｜選擇房東開放的帶看時段。
+      </p>
+      <SlotPicker listingId={match.listing_id} value={slot} onChange={setSlot} />
+      <div className="mt-4 flex gap-2">
+        <button
+          type="button"
+          onClick={onClose}
+          className="flex-1 rounded-lg border border-gray-200 py-2.5 text-sm text-gray-600 hover:bg-gray-50"
+        >
+          取消
+        </button>
+        <button
+          type="button"
+          disabled={!slot || pending}
+          onClick={() => onSubmit(slot)}
+          className="bg-primary-600 hover:bg-primary-500 flex-1 rounded-lg py-2.5 text-sm font-medium text-white disabled:opacity-50"
+        >
+          確認預約
+        </button>
       </div>
-    </div>
+    </Modal>
   );
 }

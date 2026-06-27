@@ -6,6 +6,7 @@ import { api } from "@/lib/api";
 import type { Viewing } from "@/types";
 import { dateKey, formatSlot, VIEWING_STATUS_BADGE } from "@/lib/viewings";
 import { SlotPicker } from "@/components/SlotPicker";
+import { Modal } from "@/components/ui/Modal";
 import { qk } from "@/features/queryKeys";
 
 // ViewingList renders 帶看 grouped by date for either side.
@@ -195,57 +196,57 @@ export function ViewingList({ role }: { role: "tenant" | "landlord" }) {
         </div>
       ))}
 
-      {slotModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center"
-          onClick={() => setSlotModal(null)}
-        >
-          <div
-            className="w-full max-w-sm rounded-t-2xl bg-white p-5 sm:rounded-2xl"
-            onClick={(e) => e.stopPropagation()}
+      <Modal
+        open={!!slotModal}
+        onClose={() => setSlotModal(null)}
+        labelledBy="slot-modal-title"
+        className="max-w-sm p-5"
+      >
+        <p id="slot-modal-title" className="mb-3 text-sm font-semibold text-gray-900">
+          {slotModal?.mode === "reschedule"
+            ? "改期 — 選擇新的帶看時段"
+            : "重新預約 — 選擇帶看時段"}
+        </p>
+        {slotModal && (
+          <SlotPicker
+            listingId={slotModal.viewing.listing_id}
+            value={pickedSlot}
+            onChange={setPickedSlot}
+          />
+        )}
+        <div className="mt-4 flex gap-2">
+          <button
+            type="button"
+            onClick={() => setSlotModal(null)}
+            className="flex-1 rounded-lg border border-gray-200 py-2 text-sm text-gray-600 hover:bg-gray-50"
           >
-            <p className="mb-3 text-sm font-semibold text-gray-900">
-              {slotModal.mode === "reschedule"
-                ? "改期 — 選擇新的帶看時段"
-                : "重新預約 — 選擇帶看時段"}
-            </p>
-            <SlotPicker
-              listingId={slotModal.viewing.listing_id}
-              value={pickedSlot}
-              onChange={setPickedSlot}
-            />
-            <div className="mt-4 flex gap-2">
-              <button
-                type="button"
-                onClick={() => setSlotModal(null)}
-                className="flex-1 rounded-lg border border-gray-200 py-2 text-sm text-gray-600 hover:bg-gray-50"
-              >
-                取消
-              </button>
-              <button
-                type="button"
-                disabled={!pickedSlot || reschedule.isPending || rebook.isPending}
-                onClick={() => {
-                  if (slotModal.mode === "reschedule") {
-                    reschedule.mutate(
-                      { id: slotModal.viewing.id, starts_at: pickedSlot },
-                      { onSuccess: () => setSlotModal(null) }
-                    );
-                  } else {
-                    rebook.mutate(
-                      { match_id: slotModal.viewing.match_id, starts_at: pickedSlot },
-                      { onSuccess: () => setSlotModal(null) }
-                    );
-                  }
-                }}
-                className="bg-primary-600 hover:bg-primary-500 flex-1 rounded-lg py-2 text-sm font-medium text-white disabled:opacity-50"
-              >
-                {slotModal.mode === "reschedule" ? "確認改期" : "確認預約"}
-              </button>
-            </div>
-          </div>
+            取消
+          </button>
+          <button
+            type="button"
+            disabled={
+              !pickedSlot || reschedule.isPending || rebook.isPending || !slotModal
+            }
+            onClick={() => {
+              if (!slotModal) return;
+              if (slotModal.mode === "reschedule") {
+                reschedule.mutate(
+                  { id: slotModal.viewing.id, starts_at: pickedSlot },
+                  { onSuccess: () => setSlotModal(null) }
+                );
+              } else {
+                rebook.mutate(
+                  { match_id: slotModal.viewing.match_id, starts_at: pickedSlot },
+                  { onSuccess: () => setSlotModal(null) }
+                );
+              }
+            }}
+            className="bg-primary-600 hover:bg-primary-500 flex-1 rounded-lg py-2 text-sm font-medium text-white disabled:opacity-50"
+          >
+            {slotModal?.mode === "reschedule" ? "確認改期" : "確認預約"}
+          </button>
         </div>
-      )}
+      </Modal>
     </div>
   );
 }

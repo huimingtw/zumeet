@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Modal } from "@/components/ui/Modal";
 import { LOCATION_GROUPS, RECOMMENDED_LOCATION_IDS, type LocationCity } from "@/types";
 
 interface Props {
@@ -90,8 +91,6 @@ export function LocationPicker({ open, value, onChange, onClose }: Props) {
     }
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (!open) return null;
-
   const draftSet = new Set(draft);
 
   function toggleDistrict(id: string) {
@@ -130,13 +129,13 @@ export function LocationPicker({ open, value, onChange, onClose }: Props) {
   );
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
+    <Modal
+      open={open}
+      onClose={onClose}
+      align="center"
+      className="h-[600px] max-w-[min(700px,95vw)] !overflow-hidden rounded-xl shadow-2xl"
     >
-      <div className="flex h-[600px] w-[700px] max-w-[95vw] flex-col rounded-xl bg-white shadow-2xl">
+      <div className="flex h-full flex-col">
         {/* Header */}
         <div className="flex items-center gap-2 border-b px-4 py-3">
           <svg
@@ -328,6 +327,6 @@ export function LocationPicker({ open, value, onChange, onClose }: Props) {
           </button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }

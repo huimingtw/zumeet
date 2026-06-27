@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { Modal } from "@/components/ui/Modal";
 import Image from "next/image";
 import { useForm, Controller } from "react-hook-form";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -342,430 +343,422 @@ export function ListingFormModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
-      <button
-        type="button"
-        className="absolute inset-0 bg-black/50"
-        aria-label="關閉"
-        onClick={activeId ? onSaved : onClose}
-      />
-      <div className="no-scrollbar relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-t-2xl bg-white p-6 sm:rounded-2xl">
-        <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-base font-semibold text-gray-950">
-            {editingId ? "編輯房源" : savedId ? "上傳照片" : "新增房源"}
-          </h3>
-          <button
-            type="button"
-            onClick={activeId ? onSaved : onClose}
-            className="text-gray-400 hover:text-gray-700"
-            aria-label="關閉"
-          >
-            ✕
-          </button>
+    <Modal
+      open
+      onClose={activeId ? onSaved : onClose}
+      labelledBy="listing-form-title"
+      className="p-6"
+    >
+      <div className="mb-4 flex items-center justify-between">
+        <h3 id="listing-form-title" className="text-base font-semibold text-gray-950">
+          {editingId ? "編輯房源" : savedId ? "上傳照片" : "新增房源"}
+        </h3>
+        <button
+          type="button"
+          onClick={activeId ? onSaved : onClose}
+          className="text-gray-400 hover:text-gray-700"
+          aria-label="關閉"
+        >
+          ✕
+        </button>
+      </div>
+
+      {savedId ? (
+        <div className="space-y-4">
+          <p className="text-sm text-gray-500">房源已建立，可以上傳照片（選填）。</p>
+          <PhotoSection listingId={savedId} onChanged={onSaved} />
+          <Button type="button" size="lg" fullWidth onClick={onSaved}>
+            關閉
+          </Button>
         </div>
-
-        {savedId ? (
-          <div className="space-y-4">
-            <p className="text-sm text-gray-500">房源已建立，可以上傳照片（選填）。</p>
-            <PhotoSection listingId={savedId} onChanged={onSaved} />
-            <Button type="button" size="lg" fullWidth onClick={onSaved}>
-              關閉
-            </Button>
+      ) : (
+        <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
+          <div>
+            <label
+              htmlFor="listing-name"
+              className="mb-1 block text-sm font-medium text-gray-700"
+            >
+              房源名稱（選填）
+            </label>
+            <input
+              id="listing-name"
+              {...register("name")}
+              className="input"
+              placeholder="例：台北大安捷運套房"
+            />
           </div>
-        ) : (
-          <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
-            <div>
-              <label
-                htmlFor="listing-name"
-                className="mb-1 block text-sm font-medium text-gray-700"
-              >
-                房源名稱（選填）
-              </label>
-              <input
-                id="listing-name"
-                {...register("name")}
-                className="input"
-                placeholder="例：台北大安捷運套房"
-              />
-            </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <p className="mb-1 text-sm font-medium text-gray-700">
-                  縣市<span className="ml-0.5 text-red-500">*</span>
-                </p>
-                <Controller
-                  name="city"
-                  control={control}
-                  rules={{ required: "請選擇縣市" }}
-                  render={({ field }) => (
-                    <Dropdown
-                      value={field.value}
-                      placeholder="請選擇縣市"
-                      options={LOCATION_GROUPS.map((g) => ({
-                        value: g.cityLabel,
-                        label: g.cityLabel,
-                      }))}
-                      onChange={(v) => {
-                        field.onChange(v);
-                      }}
-                    />
-                  )}
-                />
-                {errors.city && (
-                  <p className="mt-1 text-xs text-red-600">{errors.city.message}</p>
-                )}
-              </div>
-              <div>
-                <p className="mb-1 text-sm font-medium text-gray-700">
-                  地區<span className="ml-0.5 text-red-500">*</span>
-                </p>
-                <Controller
-                  name="district"
-                  control={control}
-                  rules={{ required: "請選擇地區" }}
-                  render={({ field }) => (
-                    <Dropdown
-                      value={field.value}
-                      placeholder="請選擇地區"
-                      disabled={!city}
-                      options={(
-                        LOCATION_GROUPS.find((g) => g.cityLabel === city)?.districts ?? []
-                      ).map((d) => ({ value: d.districtLabel, label: d.districtLabel }))}
-                      onChange={field.onChange}
-                    />
-                  )}
-                />
-                {errors.district && (
-                  <p className="mt-1 text-xs text-red-600">{errors.district.message}</p>
-                )}
-              </div>
-            </div>
-
-            <div>
-              <label
-                htmlFor="address"
-                className="mb-1 block text-sm font-medium text-gray-700"
-              >
-                詳細地址
-              </label>
-              <input
-                id="address"
-                {...register("address")}
-                className="input"
-                placeholder="例：台北市大安區忠孝東路四段 100 號 5 樓"
-              />
-              <p className="mt-1 text-xs text-gray-400">
-                媒合成功後才會顯示給租客。系統將自動定位經緯度。
-              </p>
-            </div>
-
-            <div className="grid grid-cols-3 gap-3">
-              <div>
-                <label
-                  htmlFor="rent"
-                  className="mb-1 block text-sm font-medium text-gray-700"
-                >
-                  租金（元/月）<span className="ml-0.5 text-red-500">*</span>
-                </label>
-                <input
-                  id="rent"
-                  type="number"
-                  min={1}
-                  {...register("rent", {
-                    required: "請填寫租金",
-                    min: { value: 1, message: "請填寫租金" },
-                    max: { value: 999999, message: "租金不得超過 999,999 元" },
-                    valueAsNumber: true,
-                  })}
-                  className={`input ${errors.rent ? "border-red-500" : ""}`}
-                />
-                {errors.rent && (
-                  <p className="mt-1 text-xs text-red-600">{errors.rent.message}</p>
-                )}
-              </div>
-              <div>
-                <label
-                  htmlFor="management_fee"
-                  className="mb-1 block text-sm font-medium text-gray-700"
-                >
-                  管理費（元/月）
-                </label>
-                <input
-                  id="management_fee"
-                  type="number"
-                  min={0}
-                  {...register("management_fee", {
-                    min: { value: 0, message: "管理費需介於 0 ~ 999,999 元" },
-                    max: { value: 999999, message: "管理費需介於 0 ~ 999,999 元" },
-                    valueAsNumber: true,
-                  })}
-                  className={`input ${errors.management_fee ? "border-red-500" : ""}`}
-                />
-                {errors.management_fee && (
-                  <p className="mt-1 text-xs text-red-600">
-                    {errors.management_fee.message}
-                  </p>
-                )}
-              </div>
-              <div>
-                <label
-                  htmlFor="area_ping"
-                  className="mb-1 block text-sm font-medium text-gray-700"
-                >
-                  坪數<span className="ml-0.5 text-red-500">*</span>
-                </label>
-                <input
-                  id="area_ping"
-                  type="number"
-                  min={1}
-                  step="0.1"
-                  {...register("area_ping", {
-                    required: "請填寫坪數",
-                    min: { value: 0.1, message: "請填寫坪數" },
-                    max: { value: 999.99, message: "坪數不得超過 999.99" },
-                    valueAsNumber: true,
-                  })}
-                  className={`input ${errors.area_ping ? "border-red-500" : ""}`}
-                />
-                {errors.area_ping && (
-                  <p className="mt-1 text-xs text-red-600">{errors.area_ping.message}</p>
-                )}
-              </div>
-            </div>
-
+          <div className="grid grid-cols-2 gap-3">
             <div>
               <p className="mb-1 text-sm font-medium text-gray-700">
-                房型<span className="ml-0.5 text-red-500">*</span>
+                縣市<span className="ml-0.5 text-red-500">*</span>
               </p>
               <Controller
-                name="room_type"
+                name="city"
                 control={control}
-                rules={{ required: "請選擇房型" }}
+                rules={{ required: "請選擇縣市" }}
                 render={({ field }) => (
-                  <div className="flex gap-2">
-                    {Object.entries(ROOM_TYPE_LABELS).map(([rt, label]) => (
-                      <button
-                        key={rt}
-                        type="button"
-                        onClick={() => field.onChange(rt)}
-                        className={`rounded-full px-3 py-1 text-sm font-medium transition ${
-                          field.value === rt
-                            ? "bg-primary-600 text-white"
-                            : "border border-gray-200 text-gray-600 hover:border-gray-400"
-                        }`}
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
+                  <Dropdown
+                    value={field.value}
+                    placeholder="請選擇縣市"
+                    options={LOCATION_GROUPS.map((g) => ({
+                      value: g.cityLabel,
+                      label: g.cityLabel,
+                    }))}
+                    onChange={(v) => {
+                      field.onChange(v);
+                    }}
+                  />
                 )}
               />
-              {errors.room_type && (
-                <p className="mt-1 text-xs text-red-600">{errors.room_type.message}</p>
+              {errors.city && (
+                <p className="mt-1 text-xs text-red-600">{errors.city.message}</p>
               )}
             </div>
-
-            {roomType === "whole_floor" && (
-              <div>
-                <p className="mb-1 text-sm font-medium text-gray-700">格局</p>
-                <div className="grid grid-cols-4 gap-2">
-                  {(
-                    [
-                      ["num_bedrooms", "房"],
-                      ["num_living_rooms", "廳"],
-                      ["num_bathrooms", "衛"],
-                      ["num_balconies", "陽台"],
-                    ] as const
-                  ).map(([key, label]) => (
-                    <div key={key}>
-                      <input
-                        type="number"
-                        min={0}
-                        {...register(key, { valueAsNumber: true })}
-                        className="input"
-                        placeholder={label}
-                      />
-                      <p className="mt-1 text-center text-xs text-gray-400">{label}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label
-                  htmlFor="available_from"
-                  className="mb-1 block text-sm font-medium text-gray-700"
-                >
-                  可入住日<span className="ml-0.5 text-red-500">*</span>
-                </label>
-                <input
-                  id="available_from"
-                  type="date"
-                  min={new Date().toISOString().split("T")[0]}
-                  {...register("available_from", { required: "請填寫可入住日" })}
-                  className={`input ${errors.available_from ? "border-red-500" : ""}`}
-                />
-                {errors.available_from && (
-                  <p className="mt-1 text-xs text-red-600">
-                    {errors.available_from.message}
-                  </p>
-                )}
-              </div>
-              <div>
-                <label
-                  htmlFor="min_lease_months"
-                  className="mb-1 block text-sm font-medium text-gray-700"
-                >
-                  最短租期（月）<span className="ml-0.5 text-red-500">*</span>
-                </label>
-                <input
-                  id="min_lease_months"
-                  type="number"
-                  min={1}
-                  {...register("min_lease_months", {
-                    required: "請填寫最短租期",
-                    min: { value: 1, message: "請填寫最短租期" },
-                    valueAsNumber: true,
-                  })}
-                  className={`input ${errors.min_lease_months ? "border-red-500" : ""}`}
-                />
-                {errors.min_lease_months && (
-                  <p className="mt-1 text-xs text-red-600">
-                    {errors.min_lease_months.message}
-                  </p>
-                )}
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <p className="text-sm font-medium text-gray-700">房源條件</p>
-              {(
-                [
-                  ["allow_pets", "可養寵物"],
-                  ["allow_subsidy", "可申請租屋補助"],
-                  ["allow_tax_receipt", "可報稅"],
-                  ["allow_household_registration", "可遷入戶籍"],
-                  ["allow_cooking", "可開伙"],
-                ] as const
-              ).map(([key, label]) => (
-                <label
-                  key={key}
-                  className="flex cursor-pointer items-center gap-2 text-sm text-gray-700"
-                >
-                  <input
-                    type="checkbox"
-                    {...register(key)}
-                    className="accent-primary-600 h-4 w-4 rounded border-gray-300"
+            <div>
+              <p className="mb-1 text-sm font-medium text-gray-700">
+                地區<span className="ml-0.5 text-red-500">*</span>
+              </p>
+              <Controller
+                name="district"
+                control={control}
+                rules={{ required: "請選擇地區" }}
+                render={({ field }) => (
+                  <Dropdown
+                    value={field.value}
+                    placeholder="請選擇地區"
+                    disabled={!city}
+                    options={(
+                      LOCATION_GROUPS.find((g) => g.cityLabel === city)?.districts ?? []
+                    ).map((d) => ({ value: d.districtLabel, label: d.districtLabel }))}
+                    onChange={field.onChange}
                   />
-                  {label}
-                </label>
-              ))}
-            </div>
-
-            <div>
-              <label
-                htmlFor="description"
-                className="mb-1 block text-sm font-medium text-gray-700"
-              >
-                房源說明（選填）
-              </label>
-              <textarea
-                id="description"
-                rows={4}
-                {...register("description")}
-                className="input resize-none"
-                placeholder="描述房源特色、生活環境、附近交通或其他租客需要知道的資訊"
+                )}
               />
+              {errors.district && (
+                <p className="mt-1 text-xs text-red-600">{errors.district.message}</p>
+              )}
             </div>
+          </div>
 
+          <div>
+            <label
+              htmlFor="address"
+              className="mb-1 block text-sm font-medium text-gray-700"
+            >
+              詳細地址
+            </label>
+            <input
+              id="address"
+              {...register("address")}
+              className="input"
+              placeholder="例：台北市大安區忠孝東路四段 100 號 5 樓"
+            />
+            <p className="mt-1 text-xs text-gray-400">
+              媒合成功後才會顯示給租客。系統將自動定位經緯度。
+            </p>
+          </div>
+
+          <div className="grid grid-cols-3 gap-3">
             <div>
               <label
-                htmlFor="contact_info"
+                htmlFor="rent"
                 className="mb-1 block text-sm font-medium text-gray-700"
               >
-                聯絡方式（媒合成功後才對租客顯示）
-                <span className="ml-0.5 text-red-500">*</span>
+                租金（元/月）<span className="ml-0.5 text-red-500">*</span>
               </label>
               <input
-                id="contact_info"
-                {...register("contact_info", { required: "請填寫聯絡方式" })}
-                className={`input ${errors.contact_info ? "border-red-500" : ""}`}
-                placeholder="例：Line ID: xxx 或 0912-345-678"
+                id="rent"
+                type="number"
+                min={1}
+                {...register("rent", {
+                  required: "請填寫租金",
+                  min: { value: 1, message: "請填寫租金" },
+                  max: { value: 999999, message: "租金不得超過 999,999 元" },
+                  valueAsNumber: true,
+                })}
+                className={`input ${errors.rent ? "border-red-500" : ""}`}
               />
-              {errors.contact_info ? (
-                <p className="mt-1 text-xs text-red-600">{errors.contact_info.message}</p>
-              ) : (
-                <p className="mt-1 text-xs text-gray-400">
-                  媒合成功後才會顯示給租客，請填真實聯絡方式
+              {errors.rent && (
+                <p className="mt-1 text-xs text-red-600">{errors.rent.message}</p>
+              )}
+            </div>
+            <div>
+              <label
+                htmlFor="management_fee"
+                className="mb-1 block text-sm font-medium text-gray-700"
+              >
+                管理費（元/月）
+              </label>
+              <input
+                id="management_fee"
+                type="number"
+                min={0}
+                {...register("management_fee", {
+                  min: { value: 0, message: "管理費需介於 0 ~ 999,999 元" },
+                  max: { value: 999999, message: "管理費需介於 0 ~ 999,999 元" },
+                  valueAsNumber: true,
+                })}
+                className={`input ${errors.management_fee ? "border-red-500" : ""}`}
+              />
+              {errors.management_fee && (
+                <p className="mt-1 text-xs text-red-600">
+                  {errors.management_fee.message}
                 </p>
               )}
             </div>
+            <div>
+              <label
+                htmlFor="area_ping"
+                className="mb-1 block text-sm font-medium text-gray-700"
+              >
+                坪數<span className="ml-0.5 text-red-500">*</span>
+              </label>
+              <input
+                id="area_ping"
+                type="number"
+                min={1}
+                step="0.1"
+                {...register("area_ping", {
+                  required: "請填寫坪數",
+                  min: { value: 0.1, message: "請填寫坪數" },
+                  max: { value: 999.99, message: "坪數不得超過 999.99" },
+                  valueAsNumber: true,
+                })}
+                className={`input ${errors.area_ping ? "border-red-500" : ""}`}
+              />
+              {errors.area_ping && (
+                <p className="mt-1 text-xs text-red-600">{errors.area_ping.message}</p>
+              )}
+            </div>
+          </div>
 
-            {!editingId && (
-              <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
-                <p className="mb-2 text-sm font-medium text-amber-800">合規確認</p>
-                <p className="mb-3 text-xs text-amber-700">
-                  建立房源前，請確認此房源不是頂樓加蓋、違建或依法不得出租之空間，且刊登內容不包含性別或其他敏感屬性限制。
-                </p>
-                <label className="flex cursor-pointer items-start gap-2 text-sm text-amber-800">
-                  <input
-                    type="checkbox"
-                    {...register("compliance_confirmed", {
-                      validate: (v) =>
-                        editingId ? true : v || "請勾選合規確認才能建立房源",
-                    })}
-                    className="mt-0.5 h-4 w-4 rounded border-amber-300 accent-amber-800"
-                  />
-                  <span>我確認此房源符合上述合規條件</span>
-                </label>
-                {errors.compliance_confirmed && (
-                  <p className="mt-1 text-xs text-red-600">
-                    {errors.compliance_confirmed.message}
-                  </p>
-                )}
+          <div>
+            <p className="mb-1 text-sm font-medium text-gray-700">
+              房型<span className="ml-0.5 text-red-500">*</span>
+            </p>
+            <Controller
+              name="room_type"
+              control={control}
+              rules={{ required: "請選擇房型" }}
+              render={({ field }) => (
+                <div className="flex gap-2">
+                  {Object.entries(ROOM_TYPE_LABELS).map(([rt, label]) => (
+                    <button
+                      key={rt}
+                      type="button"
+                      onClick={() => field.onChange(rt)}
+                      className={`rounded-full px-3 py-1 text-sm font-medium transition ${
+                        field.value === rt
+                          ? "bg-primary-600 text-white"
+                          : "border border-gray-200 text-gray-600 hover:border-gray-400"
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            />
+            {errors.room_type && (
+              <p className="mt-1 text-xs text-red-600">{errors.room_type.message}</p>
+            )}
+          </div>
+
+          {roomType === "whole_floor" && (
+            <div>
+              <p className="mb-1 text-sm font-medium text-gray-700">格局</p>
+              <div className="grid grid-cols-4 gap-2">
+                {(
+                  [
+                    ["num_bedrooms", "房"],
+                    ["num_living_rooms", "廳"],
+                    ["num_bathrooms", "衛"],
+                    ["num_balconies", "陽台"],
+                  ] as const
+                ).map(([key, label]) => (
+                  <div key={key}>
+                    <input
+                      type="number"
+                      min={0}
+                      {...register(key, { valueAsNumber: true })}
+                      className="input"
+                      placeholder={label}
+                    />
+                    <p className="mt-1 text-center text-xs text-gray-400">{label}</p>
+                  </div>
+                ))}
               </div>
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label
+                htmlFor="available_from"
+                className="mb-1 block text-sm font-medium text-gray-700"
+              >
+                可入住日<span className="ml-0.5 text-red-500">*</span>
+              </label>
+              <input
+                id="available_from"
+                type="date"
+                min={new Date().toISOString().split("T")[0]}
+                {...register("available_from", { required: "請填寫可入住日" })}
+                className={`input ${errors.available_from ? "border-red-500" : ""}`}
+              />
+              {errors.available_from && (
+                <p className="mt-1 text-xs text-red-600">
+                  {errors.available_from.message}
+                </p>
+              )}
+            </div>
+            <div>
+              <label
+                htmlFor="min_lease_months"
+                className="mb-1 block text-sm font-medium text-gray-700"
+              >
+                最短租期（月）<span className="ml-0.5 text-red-500">*</span>
+              </label>
+              <input
+                id="min_lease_months"
+                type="number"
+                min={1}
+                {...register("min_lease_months", {
+                  required: "請填寫最短租期",
+                  min: { value: 1, message: "請填寫最短租期" },
+                  valueAsNumber: true,
+                })}
+                className={`input ${errors.min_lease_months ? "border-red-500" : ""}`}
+              />
+              {errors.min_lease_months && (
+                <p className="mt-1 text-xs text-red-600">
+                  {errors.min_lease_months.message}
+                </p>
+              )}
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <p className="text-sm font-medium text-gray-700">房源條件</p>
+            {(
+              [
+                ["allow_pets", "可養寵物"],
+                ["allow_subsidy", "可申請租屋補助"],
+                ["allow_tax_receipt", "可報稅"],
+                ["allow_household_registration", "可遷入戶籍"],
+                ["allow_cooking", "可開伙"],
+              ] as const
+            ).map(([key, label]) => (
+              <label
+                key={key}
+                className="flex cursor-pointer items-center gap-2 text-sm text-gray-700"
+              >
+                <input
+                  type="checkbox"
+                  {...register(key)}
+                  className="accent-primary-600 h-4 w-4 rounded border-gray-300"
+                />
+                {label}
+              </label>
+            ))}
+          </div>
+
+          <div>
+            <label
+              htmlFor="description"
+              className="mb-1 block text-sm font-medium text-gray-700"
+            >
+              房源說明（選填）
+            </label>
+            <textarea
+              id="description"
+              rows={4}
+              {...register("description")}
+              className="input resize-none"
+              placeholder="描述房源特色、生活環境、附近交通或其他租客需要知道的資訊"
+            />
+          </div>
+
+          <div>
+            <label
+              htmlFor="contact_info"
+              className="mb-1 block text-sm font-medium text-gray-700"
+            >
+              聯絡方式（媒合成功後才對租客顯示）
+              <span className="ml-0.5 text-red-500">*</span>
+            </label>
+            <input
+              id="contact_info"
+              {...register("contact_info", { required: "請填寫聯絡方式" })}
+              className={`input ${errors.contact_info ? "border-red-500" : ""}`}
+              placeholder="例：Line ID: xxx 或 0912-345-678"
+            />
+            {errors.contact_info ? (
+              <p className="mt-1 text-xs text-red-600">{errors.contact_info.message}</p>
+            ) : (
+              <p className="mt-1 text-xs text-gray-400">
+                媒合成功後才會顯示給租客，請填真實聯絡方式
+              </p>
             )}
+          </div>
 
-            {editingId && (
-              <>
-                <hr className="border-gray-100" />
-                <PhotoSection listingId={editingId} onChanged={() => {}} />
-              </>
-            )}
+          {!editingId && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+              <p className="mb-2 text-sm font-medium text-amber-800">合規確認</p>
+              <p className="mb-3 text-xs text-amber-700">
+                建立房源前，請確認此房源不是頂樓加蓋、違建或依法不得出租之空間，且刊登內容不包含性別或其他敏感屬性限制。
+              </p>
+              <label className="flex cursor-pointer items-start gap-2 text-sm text-amber-800">
+                <input
+                  type="checkbox"
+                  {...register("compliance_confirmed", {
+                    validate: (v) =>
+                      editingId ? true : v || "請勾選合規確認才能建立房源",
+                  })}
+                  className="mt-0.5 h-4 w-4 rounded border-amber-300 accent-amber-800"
+                />
+                <span>我確認此房源符合上述合規條件</span>
+              </label>
+              {errors.compliance_confirmed && (
+                <p className="mt-1 text-xs text-red-600">
+                  {errors.compliance_confirmed.message}
+                </p>
+              )}
+            </div>
+          )}
 
-            {globalError && <p className="text-sm text-red-600">{globalError}</p>}
+          {editingId && (
+            <>
+              <hr className="border-gray-100" />
+              <PhotoSection listingId={editingId} onChanged={() => {}} />
+            </>
+          )}
 
+          {globalError && <p className="text-sm text-red-600">{globalError}</p>}
+
+          <Button type="submit" size="lg" fullWidth disabled={isSubmitting || formSaved}>
+            {isSubmitting
+              ? "儲存中…"
+              : editingId
+                ? formSaved
+                  ? "已儲存 ✓"
+                  : "儲存"
+                : "建立房源"}
+          </Button>
+          {editingId && (
             <Button
-              type="submit"
+              type="button"
               size="lg"
               fullWidth
-              disabled={isSubmitting || formSaved}
+              variant="secondary"
+              onClick={onSaved}
             >
-              {isSubmitting
-                ? "儲存中…"
-                : editingId
-                  ? formSaved
-                    ? "已儲存 ✓"
-                    : "儲存"
-                  : "建立房源"}
+              關閉
             </Button>
-            {editingId && (
-              <Button
-                type="button"
-                size="lg"
-                fullWidth
-                variant="secondary"
-                onClick={onSaved}
-              >
-                關閉
-              </Button>
-            )}
-          </form>
-        )}
-      </div>
-    </div>
+          )}
+        </form>
+      )}
+    </Modal>
   );
 }

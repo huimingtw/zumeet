@@ -1,6 +1,7 @@
 "use client";
 
 import { type ReactNode, useCallback, useRef, useState } from "react";
+import { Modal } from "@/components/ui/Modal";
 
 type ConfirmOptions = {
   message: string;
@@ -32,41 +33,31 @@ export function useConfirm(): [
     setState(null);
   }, []);
 
-  const element = state ? (
-    <div
-      className="fixed inset-0 z-[60] flex items-end justify-center bg-black/40 sm:items-center sm:p-4"
-      onClick={() => close(false)}
-    >
-      <div
-        role="dialog"
-        aria-modal="true"
-        onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-sm rounded-t-2xl bg-white p-5 shadow-xl sm:rounded-2xl"
-      >
-        <p className="text-sm leading-relaxed text-gray-900">{state.message}</p>
-        <div className="mt-5 flex gap-2">
-          <button
-            type="button"
-            onClick={() => close(false)}
-            className="flex-1 rounded-xl border border-gray-200 py-2.5 text-sm font-medium text-gray-600 transition hover:bg-gray-50"
-          >
-            {state.cancelText ?? "取消"}
-          </button>
-          <button
-            type="button"
-            onClick={() => close(true)}
-            className={`flex-1 rounded-xl py-2.5 text-sm font-medium text-white transition ${
-              state.danger
-                ? "bg-red-600 hover:bg-red-700"
-                : "bg-gray-900 hover:bg-gray-800"
-            }`}
-          >
-            {state.confirmText ?? "確定"}
-          </button>
-        </div>
+  const element = (
+    <Modal open={!!state} onClose={() => close(false)} className="z-[60] max-w-sm p-5">
+      <p className="text-sm leading-relaxed text-gray-900">{state?.message}</p>
+      <div className="mt-5 flex gap-2">
+        <button
+          type="button"
+          onClick={() => close(false)}
+          className="flex-1 rounded-xl border border-gray-200 py-2.5 text-sm font-medium text-gray-600 transition hover:bg-gray-50"
+        >
+          {state?.cancelText ?? "取消"}
+        </button>
+        <button
+          type="button"
+          onClick={() => close(true)}
+          className={`flex-1 rounded-xl py-2.5 text-sm font-medium text-white transition ${
+            state?.danger
+              ? "bg-red-600 hover:bg-red-700"
+              : "bg-gray-900 hover:bg-gray-800"
+          }`}
+        >
+          {state?.confirmText ?? "確定"}
+        </button>
       </div>
-    </div>
-  ) : null;
+    </Modal>
+  );
 
   return [element, confirm];
 }
