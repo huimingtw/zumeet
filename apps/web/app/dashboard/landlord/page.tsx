@@ -28,8 +28,6 @@ import { getProfileTags } from "@/lib/listingTags";
 import type {
   Listing,
   MatchedTenantProfileCard,
-  MutualMatch,
-  Viewing,
   ViewingAvailability,
 } from "@/types";
 import { LOCATION_CITY_DISTRICT, LOCATION_GROUPS, ROOM_TYPE_LABELS } from "@/types";
@@ -41,13 +39,14 @@ import {
   useListingDetail,
   useListingEdit,
   useProfilesBrowse,
-  useIncomingListing,
   useViewingAvailability,
 } from "@/features/listings/useListings";
-import { useOutgoing, useMatched } from "@/features/matches/useMatches";
+import { MatchesView } from "@/features/matches/MatchesView";
+import { profileHeader } from "@/features/matches/LandlordMatches";
+import { ExpandableText } from "@/components/ui/ExpandableText";
 
 type MainTab = "listings" | "browse" | "matches" | "viewings";
-type MatchesSubTab = "incoming" | "outgoing" | "matched";
+type MatchesSubTab = "incoming" | "outgoing" | "matched"; // kept for local state typing
 
 const STATUS_LABELS: Record<string, string> = {
   draft: "草稿",
@@ -116,7 +115,7 @@ function LandlordDashboardInner() {
           />
         )}
         {tab === "matches" && (
-          <MatchesView subTab={matchesSubTab} onSubTabChange={setMatchesSubTab} />
+          <MatchesView role="landlord" subTab={matchesSubTab} onSubTabChange={setMatchesSubTab} />
         )}
         {tab === "viewings" && <ViewingsView />}
       </div>
@@ -158,31 +157,6 @@ function LandlordDashboardInner() {
 
 // ---- Listings Tab ----
 
-// ExpandableText clamps long tenant bios to 2 lines with a 顯示更多/收合 toggle.
-// ponytail: length>50 heuristic for the toggle instead of measuring DOM line count.
-function ExpandableText({ text, className = "" }: { text: string; className?: string }) {
-  const [open, setOpen] = useState(false);
-  if (!text) return null;
-  const long = text.length > 50;
-  return (
-    <div>
-      <p
-        className={`${open || !long ? "whitespace-pre-wrap" : "line-clamp-2"} ${className}`}
-      >
-        {text}
-      </p>
-      {long && (
-        <button
-          type="button"
-          onClick={() => setOpen((o) => !o)}
-          className="text-primary-600 mt-0.5 text-xs font-medium hover:underline"
-        >
-          {open ? "收合" : "顯示更多"}
-        </button>
-      )}
-    </div>
-  );
-}
 
 function ListingsTab({ onSelectListing }: { onSelectListing: (id: string) => void }) {
   const qc = useQueryClient();
@@ -585,16 +559,6 @@ function BrowseTab({
   );
 }
 
-function profileHeader(
-  profile: Pick<MatchedTenantProfileCard, "occupation" | "age" | "has_pets">
-) {
-  const parts = [
-    profile.occupation,
-    profile.age != null ? `${profile.age} 歲` : null,
-    profile.has_pets ? "養寵物" : null,
-  ].filter(Boolean) as string[];
-  return parts.length > 0 ? `[${parts.join("，")}]` : "租客";
-}
 
 function TenantProfileCard({
   profile,
@@ -653,352 +617,7 @@ function TenantProfileCard({
   );
 }
 
-// ---- Matches View ----
 
-function MatchesView({
-  subTab,
-  onSubTabChange,
-}: {
-  subTab: MatchesSubTab;
-  onSubTabChange: (t: MatchesSubTab) => void;
-}) {
-  return (
-    <div>
-      <div className="mb-4 flex gap-1 rounded-xl border border-gray-200 bg-white p-1 shadow-sm">
-        {(
-          [
-            ["incoming", "待確認"],
-            ["outgoing", "等待中"],
-            ["matched", "已媒合"],
-          ] as [MatchesSubTab, string][]
-        ).map(([t, label]) => (
-          <button
-            key={t}
-            type="button"
-            onClick={() => onSubTabChange(t)}
-            className={`flex-1 rounded-lg py-2 text-sm font-medium transition ${
-              subTab === t
-                ? "bg-primary-600 text-white"
-                : "text-gray-500 hover:bg-gray-100"
-            }`}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-      {subTab === "incoming" && <IncomingTab />}
-      {subTab === "outgoing" && <OutgoingTab />}
-      {subTab === "matched" && <MatchedTab />}
-    </div>
-  );
-}
-
-// ---- Incoming (accordion per listing) ----
-
-function IncomingTab() {
-  const { data: listings = [], isLoading } = useListings();
-  const qc = useQueryClient();
-  const [expandedSet, setExpandedSet] = useState<Set<string>>(new Set());
-
-  useEffect(() => {
-    if (listings.length > 0) setExpandedSet(new Set(listings.map((l) => l.id)));
-  }, [listings]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  if (isLoading) return <Loading />;
-
-  if (listings.length === 0) {
-    return (
-      <EmptyState
-        icon={<Inbox size={32} strokeWidth={1.5} className="text-gray-300" />}
-        title="尚無房源"
-        description="建立並上架房源後，才能接收租客的媒合興趣"
-      />
-    );
-  }
-
-  function toggle(id: string) {
-    setExpandedSet((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }
-
-  return (
-    <div className="space-y-3">
-      {listings.map((listing) => (
-        <ListingIncoming
-          key={listing.id}
-          listing={listing}
-          expanded={expandedSet.has(listing.id)}
-          onToggle={() => toggle(listing.id)}
-          onMatched={() => qc.invalidateQueries({ queryKey: qk.matched() })}
-        />
-      ))}
-    </div>
-  );
-}
-
-function ListingIncoming({
-  listing,
-  expanded,
-  onToggle,
-  onMatched,
-}: {
-  listing: Listing;
-  expanded: boolean;
-  onToggle: () => void;
-  onMatched: () => void;
-}) {
-  const qc = useQueryClient();
-  const { data, isLoading } = useIncomingListing(listing.id, { enabled: expanded });
-
-  const expressInterest = useMutation({
-    mutationFn: (profileId: string) =>
-      api.post(`/listings/${listing.id}/tenant-profiles/${profileId}/interest`),
-    onSuccess: (res) => {
-      if (res.data.status === "matched") onMatched();
-      // Always refresh both lists so a freshly-matched pair leaves 待確認 and
-      // shows only under 已媒合 (no duplicate row across the two tabs).
-      qc.invalidateQueries({ queryKey: qk.incomingListing(listing.id) });
-      qc.invalidateQueries({ queryKey: qk.matched() });
-    },
-  });
-
-  const pendingCount = (data?.items ?? []).filter((p) => !p.interest_sent).length;
-
-  return (
-    <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
-      <button
-        type="button"
-        onClick={onToggle}
-        className="flex w-full items-center justify-between px-4 py-3 text-left"
-      >
-        <span className="text-sm font-medium text-gray-700">
-          {listing.name ||
-            `$${listing.rent.toLocaleString()} ${ROOM_TYPE_LABELS[listing.room_type] ?? listing.room_type}`}
-        </span>
-        <div className="flex items-center gap-2">
-          {expanded && pendingCount > 0 && (
-            <span className="bg-primary-600 rounded-full px-2 py-0.5 text-xs font-medium text-white">
-              {pendingCount}
-            </span>
-          )}
-          <ChevronDown
-            size={16}
-            strokeWidth={1.5}
-            className={`text-gray-400 transition-transform ${expanded ? "rotate-180" : ""}`}
-          />
-        </div>
-      </button>
-      {expanded && (
-        <div className="border-t border-gray-100 px-4 py-3">
-          {isLoading && <Loading />}
-          {!isLoading && (data?.items ?? []).length === 0 && (
-            <p className="py-4 text-center text-sm text-gray-400">目前無符合條件的租客</p>
-          )}
-          <div className="space-y-2">
-            {(data?.items ?? []).map((profile) => (
-              <div
-                key={profile.id}
-                className="flex items-start justify-between gap-3 rounded-lg border border-gray-100 px-3 py-2.5"
-              >
-                <div className="min-w-0 flex-1 text-sm">
-                  <div className="font-medium text-gray-900">
-                    {profileHeader(profile)}
-                  </div>
-                  {profile.description && (
-                    <ExpandableText
-                      text={profile.description}
-                      className="mt-1 text-xs text-gray-600"
-                    />
-                  )}
-                </div>
-                {profile.interest_sent ? (
-                  <span className="rounded-full bg-[#EDE9FE] px-2.5 py-0.5 text-xs font-medium text-[#5B21B6]">
-                    已送出
-                  </span>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => expressInterest.mutate(profile.id)}
-                    className="bg-primary-600 hover:bg-primary-500 rounded-lg px-3 py-1 text-xs font-medium text-white transition"
-                  >
-                    回應興趣
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ---- Outgoing ----
-
-type OutgoingItem = {
-  tenant_profile_id: string;
-  listing_id: string;
-  profile_name: string;
-  budget_min: number;
-  budget_max: number;
-  tenant_occupation?: string;
-  tenant_age?: number;
-  tenant_has_pets?: boolean;
-  tenant_description?: string;
-};
-
-function tenantHeader(p: {
-  tenant_occupation?: string;
-  tenant_age?: number;
-  tenant_has_pets?: boolean;
-}) {
-  const parts = [
-    p.tenant_occupation,
-    p.tenant_age != null ? `${p.tenant_age} 歲` : null,
-    p.tenant_has_pets ? "養寵物" : null,
-  ].filter(Boolean) as string[];
-  return parts.length > 0 ? `[${parts.join("，")}]` : "租客";
-}
-
-function OutgoingTab() {
-  const qc = useQueryClient();
-  const [confirmEl, confirm] = useConfirm();
-  const { data, isLoading } = useOutgoing<OutgoingItem>();
-
-  const withdraw = useMutation({
-    mutationFn: (i: OutgoingItem) =>
-      api.delete(
-        `/listings/${i.listing_id}/tenant-profiles/${i.tenant_profile_id}/interest`
-      ),
-    onSuccess: () => qc.invalidateQueries({ queryKey: qk.outgoing() }),
-  });
-
-  if (isLoading) return <Loading />;
-
-  if ((data?.items ?? []).length === 0) {
-    return (
-      <EmptyState
-        icon={<SendHorizonal size={32} strokeWidth={1.5} className="text-gray-300" />}
-        title="尚未送出任何興趣"
-        description="前往找租客，對感興趣的需求卡按「有興趣」"
-      />
-    );
-  }
-
-  return (
-    <div className="space-y-2">
-      {(data?.items ?? []).map((i) => (
-        <div
-          key={i.tenant_profile_id}
-          className="flex items-start justify-between gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm"
-        >
-          <div className="min-w-0 flex-1 text-sm">
-            <div className="font-medium text-gray-900">{tenantHeader(i)}</div>
-            {i.tenant_description && (
-              <ExpandableText
-                text={i.tenant_description}
-                className="mt-1 text-xs text-gray-600"
-              />
-            )}
-          </div>
-          <button
-            type="button"
-            disabled={withdraw.isPending}
-            onClick={async () => {
-              if (
-                await confirm({
-                  message: "確定收回對這張需求卡的興趣？",
-                  confirmText: "收回",
-                  danger: true,
-                })
-              )
-                withdraw.mutate(i);
-            }}
-            className="flex-shrink-0 rounded-full border border-gray-200 px-2.5 py-0.5 text-xs font-medium text-gray-500 transition hover:bg-gray-50 disabled:opacity-50"
-          >
-            收回
-          </button>
-        </div>
-      ))}
-      {confirmEl}
-    </div>
-  );
-}
-
-// ---- Matched ----
-
-type MatchItem = {
-  match_id: string;
-  tenant_profile_id: string;
-  listing_id: string;
-  listing_name?: string;
-  contact_info: string;
-  matched_at: string;
-  profile_name?: string;
-  tenant_occupation?: string;
-  tenant_age?: number;
-  tenant_has_pets?: boolean;
-  tenant_description?: string;
-};
-
-function MatchedTab() {
-  const { data, isLoading } = useMatched<MutualMatch>();
-
-  if (isLoading) return <Loading />;
-
-  if ((data?.items ?? []).length === 0) {
-    return (
-      <EmptyState
-        icon={<Heart size={32} strokeWidth={1.5} className="text-gray-300" />}
-        title="尚無媒合結果"
-        description="繼續瀏覽租客需求卡，或等待租客對你的房源表示興趣"
-      />
-    );
-  }
-
-  return (
-    <div className="space-y-3">
-      {(data?.items ?? []).map((m) => {
-        const match = m as unknown as MatchItem;
-        return (
-          <div
-            key={match.match_id}
-            className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
-          >
-            <div className="flex flex-wrap items-center gap-2 text-xs text-gray-400">
-              <span className="rounded-full bg-[#D1FAE5] px-2 py-0.5 font-medium text-[#065F46]">
-                媒合成功
-              </span>
-              <span>{new Date(match.matched_at).toLocaleDateString("zh-TW")}</span>
-              {match.listing_name && <span>房源：{match.listing_name}</span>}
-            </div>
-            <div className="mt-3">
-              <div className="text-sm font-medium text-gray-950">
-                {tenantHeader(match)}
-              </div>
-              {match.tenant_description && (
-                <ExpandableText
-                  text={match.tenant_description}
-                  className="mt-1 text-sm text-gray-600"
-                />
-              )}
-            </div>
-            <div className="mt-3 rounded-lg border border-gray-200 bg-gray-50 p-3">
-              <p className="mb-1 text-xs text-gray-400">
-                以下為對方自填資料，平台不保證真實性，請自行確認。
-              </p>
-              <p className="text-sm font-medium text-gray-950">{match.contact_info}</p>
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
 
 // ---- Listing Form Modal ----
 
