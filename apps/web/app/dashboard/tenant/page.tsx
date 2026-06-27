@@ -19,6 +19,7 @@ import { type ReactNode, Suspense, useEffect, useRef, useState } from "react";
 import { useConfirm } from "@/components/ConfirmDialog";
 import { LocationPicker } from "@/components/LocationPicker";
 import { Dropdown } from "@/components/ui/Dropdown";
+import { BottomTabItem } from "@/components/ui/BottomTabItem";
 import { TabButton } from "@/components/ui/TabButton";
 import { RoleGuard } from "@/components/RoleGuard";
 import { SlotPicker } from "@/components/SlotPicker";
@@ -169,31 +170,6 @@ function DashboardHeader() {
         </button>
       </div>
     </header>
-  );
-}
-
-function BottomTabItem({
-  active,
-  onClick,
-  icon,
-  label,
-}: {
-  active: boolean;
-  onClick: () => void;
-  icon: ReactNode;
-  label: string;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`flex flex-1 flex-col items-center justify-center gap-0.5 transition ${
-        active ? "text-primary-600" : "text-gray-400"
-      }`}
-    >
-      {icon}
-      <span className="text-[10px]">{label}</span>
-    </button>
   );
 }
 
