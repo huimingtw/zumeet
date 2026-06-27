@@ -22,6 +22,10 @@ import { Dropdown } from "@/components/ui/Dropdown";
 import { BottomTabItem } from "@/components/ui/BottomTabItem";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Loading } from "@/components/ui/Loading";
+import {
+  SkeletonListingCard,
+  SkeletonMyProfileCard as SkeletonProfileCard,
+} from "@/components/ui/Skeletons";
 import { TabButton } from "@/components/ui/TabButton";
 import { RoleGuard } from "@/components/RoleGuard";
 import { SlotPicker } from "@/components/SlotPicker";
@@ -2157,34 +2161,3 @@ function ProfileFormModal({
 
 // ---- Shared UI ----
 
-function SkeletonListingCard() {
-  return (
-    <div className="flex animate-pulse gap-4 rounded-xl border border-gray-200 bg-white p-5">
-      <div className="h-[132px] w-44 flex-shrink-0 rounded-lg bg-gray-200" />
-      <div className="flex-1 space-y-2 py-1">
-        <div className="h-5 w-32 rounded bg-gray-200" />
-        <div className="h-4 w-24 rounded bg-gray-200" />
-        <div className="h-4 w-48 rounded bg-gray-200" />
-        <div className="flex gap-1">
-          <div className="h-5 w-14 rounded-full bg-gray-200" />
-          <div className="h-5 w-14 rounded-full bg-gray-200" />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function SkeletonProfileCard() {
-  return (
-    <div className="flex animate-pulse items-center justify-between rounded-xl border border-gray-200 bg-white p-5">
-      <div className="space-y-2">
-        <div className="h-4 w-28 rounded bg-gray-200" />
-        <div className="h-3 w-44 rounded bg-gray-200" />
-      </div>
-      <div className="flex gap-2">
-        <div className="h-7 w-16 rounded-lg bg-gray-200" />
-        <div className="h-7 w-12 rounded-lg bg-gray-200" />
-      </div>
-    </div>
-  );
-}
