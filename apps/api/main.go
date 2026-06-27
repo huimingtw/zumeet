@@ -44,7 +44,9 @@ func main() {
 		zapCfg := zap.NewDevelopmentConfig()
 		zapCfg.EncoderConfig.CallerKey = "caller"
 		zapCfg.EncoderConfig.EncodeCaller = zapcore.ShortCallerEncoder
-		logger, err = zapCfg.Build(zap.AddCaller())
+		// DevelopmentConfig stack-traces from Warn up, so every 4xx (e.g. a 401
+		// refresh) dumps a trace. Pin to Error like production — keep 5xx traces only.
+		logger, err = zapCfg.Build(zap.AddCaller(), zap.AddStacktrace(zapcore.ErrorLevel))
 	}
 	if err != nil {
 		log.Fatalf("init logger: %v", err)

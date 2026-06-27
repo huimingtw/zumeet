@@ -121,11 +121,13 @@ func New(h *handler.Handler, cfg *config.AppConfig, logger *zap.Logger) *gin.Eng
 
 		tp.GET("/:profileId/listings", t.Public(h.BrowseListingsForProfile))
 		tp.POST("/:profileId/listings/:listingId/interest", t.Public(h.ExpressInterestAsTenant))
+		tp.DELETE("/:profileId/listings/:listingId/interest", t.Public(h.WithdrawInterestAsTenant))
 		tp.GET("/:profileId/matches", t.Public(h.GetProfileMatches))
 		tp.GET("/:profileId/interests/incoming", t.Public(h.GetProfileIncomingInterests))
 		tp.GET("/:profileId/interests/outgoing", t.Public(h.GetProfileOutgoingInterests))
 
 		ls.POST("/:listingId/tenant-profiles/:profileId/interest", t.Public(h.ExpressInterestAsLandlord))
+		ls.DELETE("/:listingId/tenant-profiles/:profileId/interest", t.Public(h.WithdrawInterestAsLandlord))
 
 		matches := protected.Group("/matches")
 		{

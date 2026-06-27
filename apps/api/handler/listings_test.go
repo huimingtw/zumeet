@@ -68,8 +68,11 @@ func TestListing_Create(t *testing.T) {
 	if resp["status"] != "draft" {
 		t.Errorf("new listing should be draft, got %v", resp["status"])
 	}
-	if _, ok := resp["contact_info"]; ok {
-		t.Error("contact_info must not appear in listing response")
+	// Owner-scoped responses (create/get/update) return contact_info so the
+	// owner can see and edit their own listing. It must never leak through
+	// browse/match views (covered by matching tests).
+	if resp["contact_info"] != "line:test" {
+		t.Errorf("owner should see own contact_info, got %v", resp["contact_info"])
 	}
 	if resp["room_type"] != "suite" {
 		t.Errorf("unexpected room_type: %v", resp["room_type"])

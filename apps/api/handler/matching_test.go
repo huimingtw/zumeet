@@ -114,6 +114,10 @@ func TestMatching_TenantBrowsesMatchingListing(t *testing.T) {
 	if card["interest_sent"] != false {
 		t.Errorf("expected interest_sent=false, got %v", card["interest_sent"])
 	}
+	// Privacy: pre-match browse must not expose the exact street address.
+	if a, ok := card["address"]; ok && a != "" {
+		t.Errorf("exact address must not appear in browse, got %v", a)
+	}
 }
 
 func TestMatching_RentOutOfRange_Excluded(t *testing.T) {

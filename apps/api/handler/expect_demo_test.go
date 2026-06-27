@@ -36,7 +36,8 @@ func TestListing_Create_Httpexpect(t *testing.T) {
 
 	obj.Value("status").String().IsEqual("draft")
 	obj.Value("room_type").String().IsEqual("suite")
-	obj.NotContainsKey("contact_info")
+	// Owner-scoped response includes contact_info for editing.
+	obj.Value("contact_info").String().IsEqual("line:test")
 }
 
 // TestTenantProfile_Create_Httpexpect demonstrates httpexpect for tenant profile creation.
@@ -68,5 +69,6 @@ func TestTenantProfile_Create_Httpexpect(t *testing.T) {
 
 	obj.Value("name").String().IsEqual("測試需求卡")
 	obj.Value("is_active").Boolean().IsTrue()
-	obj.NotContainsKey("contact_info")
+	// Owner-scoped response includes contact_info for editing.
+	obj.Value("contact_info").String().IsEqual("Line: httpexpect-test")
 }

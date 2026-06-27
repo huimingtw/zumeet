@@ -18,7 +18,10 @@ type MutualMatchResponse struct {
 	ListingID                  string    `json:"listing_id" db:"listing_id"`
 	ListingName                string    `json:"listing_name,omitempty" db:"listing_name"`
 	ContactInfo                string    `json:"contact_info" db:"contact_info"`
+	Status                     string    `json:"status" db:"status"`
 	Address                    string    `json:"address,omitempty" db:"address"`
+	Lat                        *float64  `json:"lat" db:"lat"`
+	Lng                        *float64  `json:"lng" db:"lng"`
 	MatchedAt                  time.Time `json:"matched_at" db:"matched_at"`
 	LocationID                 string    `json:"location_id,omitempty" db:"location_id"`
 	Rent                       int       `json:"rent,omitempty" db:"rent"`
@@ -200,7 +203,7 @@ func (h *Handler) GetProfileIncomingInterests(c *Context) {
 		       tp.age AS tenant_age,
 		       tp.has_pets AS tenant_has_pets,
 		       COALESCE(tp.description, '') AS tenant_description,
-		       COALESCE(l.address, '') AS address,
+		       '' AS address,
 		       false AS interest_sent
 		FROM interests i
 		JOIN listings l ON l.id = i.listing_id
@@ -269,7 +272,7 @@ func (h *Handler) GetProfileOutgoingInterests(c *Context) {
 		       tp.age AS tenant_age,
 		       tp.has_pets AS tenant_has_pets,
 		       COALESCE(tp.description, '') AS tenant_description,
-		       COALESCE(l.address, '') AS address
+		       '' AS address
 		FROM interests i
 		JOIN listings l ON l.id = i.listing_id
 		JOIN tenant_profiles tp ON tp.id = i.tenant_profile_id
@@ -322,7 +325,9 @@ func (h *Handler) GetAllMutualMatches(c *Context) {
 		       tp.name AS profile_name, COALESCE(l.name, '') AS listing_name,
 		       CASE WHEN m.tenant_id = $1 THEN l.contact_info
 		            ELSE tp.contact_info END AS contact_info,
+		       m.status::text AS status,
 		       COALESCE(l.address, '') AS address,
+		       l.lat, l.lng,
 		       m.matched_at,
 		       l.location_id, l.rent, l.management_fee, l.room_type::text AS room_type, l.area_ping,
 		       l.num_bedrooms, l.num_living_rooms, l.num_bathrooms, l.num_balconies,
@@ -337,7 +342,7 @@ func (h *Handler) GetAllMutualMatches(c *Context) {
 		JOIN listings l ON l.id = m.listing_id
 		JOIN tenant_profiles tp ON tp.id = m.tenant_profile_id
 		WHERE (m.tenant_id = $1 OR m.landlord_id = $1)
-		  AND m.status = 'active'
+		  AND m.status IN ('active', 'listing_rented')
 		  AND m.deleted_at IS NULL
 		  AND NOT EXISTS (
 		      SELECT 1 FROM blocks b
@@ -382,7 +387,7 @@ func (h *Handler) GetAllIncomingInterests(c *Context) {
 		       tp.age AS tenant_age,
 		       tp.has_pets AS tenant_has_pets,
 		       COALESCE(tp.description, '') AS tenant_description,
-		       COALESCE(l.address, '') AS address,
+		       '' AS address,
 		       false AS interest_sent
 		FROM interests i
 		JOIN listings l ON l.id = i.listing_id
@@ -445,7 +450,7 @@ func (h *Handler) GetAllOutgoingInterests(c *Context) {
 		       tp.age AS tenant_age,
 		       tp.has_pets AS tenant_has_pets,
 		       COALESCE(tp.description, '') AS tenant_description,
-		       COALESCE(l.address, '') AS address
+		       '' AS address
 		FROM interests i
 		JOIN listings l ON l.id = i.listing_id
 		JOIN tenant_profiles tp ON tp.id = i.tenant_profile_id

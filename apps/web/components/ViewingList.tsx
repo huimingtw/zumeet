@@ -35,8 +35,17 @@ export function ViewingList({ role }: { role: "tenant" | "landlord" }) {
       qc.invalidateQueries({ queryKey: ["viewing-slots"] });
     },
   });
+  const rebook = useMutation({
+    mutationFn: (p: { match_id: string; starts_at: string }) =>
+      api.post(`/viewings`, { match_id: p.match_id, starts_at: p.starts_at }),
+    onSuccess: () => {
+      invalidate();
+      qc.invalidateQueries({ queryKey: ["viewing-slots"] });
+    },
+  });
 
-  const [rescheduleFor, setRescheduleFor] = useState<Viewing | null>(null);
+  // One slot-picker modal serves both reschedule (confirmed) and re-book (cancelled).
+  const [slotModal, setSlotModal] = useState<{ viewing: Viewing; mode: "reschedule" | "rebook" } | null>(null);
   const [pickedSlot, setPickedSlot] = useState("");
 
   const grouped = useMemo(() => {
@@ -125,7 +134,7 @@ export function ViewingList({ role }: { role: "tenant" | "landlord" }) {
                       <button
                         type="button"
                         onClick={() => {
-                          setRescheduleFor(v);
+                          setSlotModal({ viewing: v, mode: "reschedule" });
                           setPickedSlot("");
                         }}
                         className="font-medium text-primary-600 hover:underline"
@@ -141,6 +150,24 @@ export function ViewingList({ role }: { role: "tenant" | "landlord" }) {
                       </button>
                     </div>
                   )}
+
+                  {/* Tenant re-book on cancelled viewings while the match is still active */}
+                  {role === "tenant" &&
+                    (v.status === "cancelled" || v.status === "cancelled_landlord") &&
+                    v.match_active && (
+                      <div className="mt-3 text-xs">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSlotModal({ viewing: v, mode: "rebook" });
+                            setPickedSlot("");
+                          }}
+                          className="font-medium text-primary-600 hover:underline"
+                        >
+                          重新預約
+                        </button>
+                      </div>
+                    )}
                 </div>
               );
             })}
@@ -148,37 +175,46 @@ export function ViewingList({ role }: { role: "tenant" | "landlord" }) {
         </div>
       ))}
 
-      {rescheduleFor && (
+      {slotModal && (
         <div
           className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center"
-          onClick={() => setRescheduleFor(null)}
+          onClick={() => setSlotModal(null)}
         >
           <div
             className="w-full max-w-sm rounded-t-2xl bg-white p-5 sm:rounded-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <p className="mb-3 text-sm font-semibold text-gray-900">改期 — 選擇新的帶看時段</p>
-            <SlotPicker listingId={rescheduleFor.listing_id} value={pickedSlot} onChange={setPickedSlot} />
+            <p className="mb-3 text-sm font-semibold text-gray-900">
+              {slotModal.mode === "reschedule" ? "改期 — 選擇新的帶看時段" : "重新預約 — 選擇帶看時段"}
+            </p>
+            <SlotPicker listingId={slotModal.viewing.listing_id} value={pickedSlot} onChange={setPickedSlot} />
             <div className="mt-4 flex gap-2">
               <button
                 type="button"
-                onClick={() => setRescheduleFor(null)}
+                onClick={() => setSlotModal(null)}
                 className="flex-1 rounded-lg border border-gray-200 py-2 text-sm text-gray-600 hover:bg-gray-50"
               >
                 取消
               </button>
               <button
                 type="button"
-                disabled={!pickedSlot || reschedule.isPending}
-                onClick={() =>
-                  reschedule.mutate(
-                    { id: rescheduleFor.id, starts_at: pickedSlot },
-                    { onSuccess: () => setRescheduleFor(null) }
-                  )
-                }
+                disabled={!pickedSlot || reschedule.isPending || rebook.isPending}
+                onClick={() => {
+                  if (slotModal.mode === "reschedule") {
+                    reschedule.mutate(
+                      { id: slotModal.viewing.id, starts_at: pickedSlot },
+                      { onSuccess: () => setSlotModal(null) }
+                    );
+                  } else {
+                    rebook.mutate(
+                      { match_id: slotModal.viewing.match_id, starts_at: pickedSlot },
+                      { onSuccess: () => setSlotModal(null) }
+                    );
+                  }
+                }}
                 className="flex-1 rounded-lg bg-primary-600 py-2 text-sm font-medium text-white hover:bg-primary-500 disabled:opacity-50"
               >
-                確認改期
+                {slotModal.mode === "reschedule" ? "確認改期" : "確認預約"}
               </button>
             </div>
           </div>

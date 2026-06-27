@@ -224,6 +224,130 @@ func (h *Handler) expressInterest(c *Context, userID, profileID, listingID, acto
 	return &interestResult{Status: "matched", ContactInfo: contactInfo}, nil
 }
 
+// WithdrawInterestAsTenant handles DELETE /api/v1/tenant-profiles/:profileId/listings/:listingId/interest
+func (h *Handler) WithdrawInterestAsTenant(c *Context) {
+	userID := middleware.MustUserID(c)
+	profileID := c.Param("profileId")
+	listingID := c.Param("listingId")
+
+	if err := h.RequireRole(c.Request.Context(), userID, "tenant"); err != nil {
+		respondForbidden(c, err)
+		return
+	}
+	h.handleWithdraw(c, userID, profileID, listingID, "tenant")
+}
+
+// WithdrawInterestAsLandlord handles DELETE /api/v1/listings/:listingId/tenant-profiles/:profileId/interest
+func (h *Handler) WithdrawInterestAsLandlord(c *Context) {
+	userID := middleware.MustUserID(c)
+	listingID := c.Param("listingId")
+	profileID := c.Param("profileId")
+
+	if err := h.RequireRole(c.Request.Context(), userID, "landlord"); err != nil {
+		respondForbidden(c, err)
+		return
+	}
+	h.handleWithdraw(c, userID, profileID, listingID, "landlord")
+}
+
+func (h *Handler) handleWithdraw(c *Context, userID, profileID, listingID, actorRole string) {
+	if err := h.withdrawInterest(c, userID, profileID, listingID, actorRole); err != nil {
+		if errors.Is(err, ErrForbidden) {
+			respondForbidden(c, err)
+			return
+		}
+		var httpErr *httpError
+		if errors.As(err, &httpErr) {
+			c.JSON(httpErr.code, gin.H{"error": httpErr.msg, "code": httpErr.errCode})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"status": "withdrawn"})
+}
+
+// withdrawInterest retracts a pre-match interest. It uses the same advisory lock as
+// expressInterest so it cannot race a match-forming express on the same pair.
+// Once a match exists, contact info is already revealed and cannot be unrevealed
+// (see CLAUDE.md privacy rules) — withdrawal is rejected with 409.
+func (h *Handler) withdrawInterest(c *Context, userID, profileID, listingID, actorRole string) error {
+	ctx := c.Request.Context()
+
+	tx, err := h.db.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	if _, err = tx.Exec(ctx,
+		`SELECT pg_advisory_xact_lock(hashtext($1 || ':' || $2))`,
+		profileID, listingID,
+	); err != nil {
+		return err
+	}
+
+	// Ownership check for the acting side.
+	if actorRole == "tenant" {
+		var tenantOwnerID string
+		err = tx.QueryRow(ctx,
+			`SELECT tenant_id FROM tenant_profiles WHERE id=$1 AND deleted_at IS NULL`,
+			profileID,
+		).Scan(&tenantOwnerID)
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return &httpError{http.StatusNotFound, "profile not found", "not_found"}
+			}
+			return err
+		}
+		if tenantOwnerID != userID {
+			return ErrForbidden
+		}
+	} else {
+		var landlordOwnerID string
+		err = tx.QueryRow(ctx,
+			`SELECT landlord_id FROM listings WHERE id=$1 AND deleted_at IS NULL`,
+			listingID,
+		).Scan(&landlordOwnerID)
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return &httpError{http.StatusNotFound, "listing not found", "not_found"}
+			}
+			return err
+		}
+		if landlordOwnerID != userID {
+			return ErrForbidden
+		}
+	}
+
+	// Cannot withdraw after a match — contact is already revealed.
+	var matched bool
+	err = tx.QueryRow(ctx, `
+		SELECT EXISTS(
+			SELECT 1 FROM matches
+			WHERE tenant_profile_id=$1 AND listing_id=$2 AND deleted_at IS NULL
+		)`, profileID, listingID,
+	).Scan(&matched)
+	if err != nil {
+		return err
+	}
+	if matched {
+		return &httpError{http.StatusConflict, "already matched", "already_matched"}
+	}
+
+	// Idempotent: withdrawing a non-existent or already-withdrawn interest is a no-op.
+	if _, err = tx.Exec(ctx, `
+		UPDATE interests SET status='withdrawn', withdrawn_at=NOW(), updated_at=NOW()
+		WHERE tenant_profile_id=$1 AND listing_id=$2
+		  AND actor_role=$3::interest_actor_role AND status='active' AND deleted_at IS NULL`,
+		profileID, listingID, actorRole,
+	); err != nil {
+		return err
+	}
+
+	return tx.Commit(ctx)
+}
+
 // httpError is a sentinel error that carries HTTP status code and message.
 type httpError struct {
 	code    int

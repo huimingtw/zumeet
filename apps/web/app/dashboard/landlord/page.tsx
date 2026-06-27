@@ -14,6 +14,7 @@ import {
   SearchX,
   SendHorizonal,
 } from "lucide-react";
+import { useConfirm } from "@/components/ConfirmDialog";
 import { RoleGuard } from "@/components/RoleGuard";
 import { api, extractFieldErrors } from "@/lib/api";
 import { getProfileTags } from "@/lib/listingTags";
@@ -206,6 +207,30 @@ function BottomTabItem({
 
 // ---- Listings Tab ----
 
+// ExpandableText clamps long tenant bios to 2 lines with a 顯示更多/收合 toggle.
+// ponytail: length>50 heuristic for the toggle instead of measuring DOM line count.
+function ExpandableText({ text, className = "" }: { text: string; className?: string }) {
+  const [open, setOpen] = useState(false);
+  if (!text) return null;
+  const long = text.length > 50;
+  return (
+    <div>
+      <p className={`${open || !long ? "whitespace-pre-wrap" : "line-clamp-2"} ${className}`}>
+        {text}
+      </p>
+      {long && (
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          className="mt-0.5 text-xs font-medium text-primary-600 hover:underline"
+        >
+          {open ? "收合" : "顯示更多"}
+        </button>
+      )}
+    </div>
+  );
+}
+
 function ListingsTab({ onSelectListing }: { onSelectListing: (id: string) => void }) {
   const qc = useQueryClient();
   const { data: listings = [], isLoading } = useQuery<Listing[]>({
@@ -214,6 +239,10 @@ function ListingsTab({ onSelectListing }: { onSelectListing: (id: string) => voi
   });
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [filter, setFilter] = useState<"all" | "active" | "rented">("all");
+
+  const filtered =
+    filter === "all" ? listings : listings.filter((l) => l.status === filter);
 
   if (isLoading) {
     return (
@@ -269,8 +298,33 @@ function ListingsTab({ onSelectListing }: { onSelectListing: (id: string) => voi
           + 新增房源
         </button>
       </div>
+      <div className="mb-4 flex gap-1.5">
+        {(
+          [
+            ["all", "全部"],
+            ["active", "刊登中"],
+            ["rented", "已出租"],
+          ] as const
+        ).map(([key, label]) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => setFilter(key)}
+            className={`rounded-full px-3 py-1 text-xs font-medium transition ${
+              filter === key
+                ? "bg-gray-900 text-white"
+                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      {filtered.length === 0 && (
+        <p className="py-8 text-center text-sm text-gray-400">此分類沒有房源</p>
+      )}
       <div className="space-y-3">
-        {listings.map((l) => (
+        {filtered.map((l) => (
           <ListingCard
             key={l.id}
             listing={l}
@@ -597,7 +651,7 @@ function TenantProfileCard({
             <span className="text-sm font-semibold text-gray-950">{profileHeader(profile)}</span>
           </div>
           {profile.description && (
-            <p className="mt-1.5 text-sm text-gray-600">{profile.description}</p>
+            <ExpandableText text={profile.description} className="mt-1.5 text-sm text-gray-600" />
           )}
           {tags.length > 0 && (
             <div className="mt-2 flex flex-wrap gap-1">
@@ -743,7 +797,10 @@ function ListingIncoming({
       api.post(`/listings/${listing.id}/tenant-profiles/${profileId}/interest`),
     onSuccess: (res) => {
       if (res.data.status === "matched") onMatched();
+      // Always refresh both lists so a freshly-matched pair leaves 待確認 and
+      // shows only under 已媒合 (no duplicate row across the two tabs).
       qc.invalidateQueries({ queryKey: ["incoming-listing", listing.id] });
+      qc.invalidateQueries({ queryKey: ["matched"] });
     },
   });
 
@@ -789,7 +846,7 @@ function ListingIncoming({
                     {profileHeader(profile)}
                   </div>
                   {profile.description && (
-                    <p className="mt-1 text-xs text-gray-600">{profile.description}</p>
+                    <ExpandableText text={profile.description} className="mt-1 text-xs text-gray-600" />
                   )}
                 </div>
                 {profile.interest_sent ? (
@@ -818,6 +875,7 @@ function ListingIncoming({
 
 type OutgoingItem = {
   tenant_profile_id: string;
+  listing_id: string;
   profile_name: string;
   budget_min: number;
   budget_max: number;
@@ -841,9 +899,19 @@ function tenantHeader(p: {
 }
 
 function OutgoingTab() {
+  const qc = useQueryClient();
+  const [confirmEl, confirm] = useConfirm();
   const { data, isLoading } = useQuery<{ items: OutgoingItem[] }>({
     queryKey: ["outgoing"],
     queryFn: () => api.get("/matches/outgoing?limit=50").then((r) => r.data),
+  });
+
+  const withdraw = useMutation({
+    mutationFn: (i: OutgoingItem) =>
+      api.delete(
+        `/listings/${i.listing_id}/tenant-profiles/${i.tenant_profile_id}/interest`,
+      ),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["outgoing"] }),
   });
 
   if (isLoading) return <Loading />;
@@ -868,14 +936,29 @@ function OutgoingTab() {
           <div className="min-w-0 flex-1 text-sm">
             <div className="font-medium text-gray-900">{tenantHeader(i)}</div>
             {i.tenant_description && (
-              <p className="mt-1 text-xs text-gray-600">{i.tenant_description}</p>
+              <ExpandableText text={i.tenant_description} className="mt-1 text-xs text-gray-600" />
             )}
           </div>
-          <span className="flex-shrink-0 rounded-full bg-[#EDE9FE] px-2.5 py-0.5 text-xs font-medium text-[#5B21B6]">
-            已送出
-          </span>
+          <button
+            type="button"
+            disabled={withdraw.isPending}
+            onClick={async () => {
+              if (
+                await confirm({
+                  message: "確定收回對這張需求卡的興趣？",
+                  confirmText: "收回",
+                  danger: true,
+                })
+              )
+                withdraw.mutate(i);
+            }}
+            className="flex-shrink-0 rounded-full border border-gray-200 px-2.5 py-0.5 text-xs font-medium text-gray-500 transition hover:bg-gray-50 disabled:opacity-50"
+          >
+            收回
+          </button>
         </div>
       ))}
+      {confirmEl}
     </div>
   );
 }
@@ -933,7 +1016,7 @@ function MatchedTab() {
             <div className="mt-3">
               <div className="text-sm font-medium text-gray-950">{tenantHeader(match)}</div>
               {match.tenant_description && (
-                <p className="mt-1 text-sm text-gray-600">{match.tenant_description}</p>
+                <ExpandableText text={match.tenant_description} className="mt-1 text-sm text-gray-600" />
               )}
             </div>
             <div className="mt-3 rounded-lg border border-gray-200 bg-gray-50 p-3">
@@ -1151,7 +1234,7 @@ function ListingFormModal({
     num_bathrooms: 0,
     num_balconies: 0,
     available_from: new Date().toISOString().split("T")[0],
-    min_lease_months: 6,
+    min_lease_months: 12,
     allow_pets: false,
     allow_subsidy: false,
     allow_tax_receipt: false,
@@ -1192,6 +1275,7 @@ function ListingFormModal({
       has_parking: existing.has_parking,
       allow_smoking: existing.allow_smoking,
       description: existing.description ?? "",
+      contact_info: existing.contact_info ?? "",
     }));
   }, [existing]);
   const [error, setError] = useState("");
@@ -1225,7 +1309,7 @@ function ListingFormModal({
     }
     if (!form.available_from) { setError("請填寫可入住日"); return; }
     if (!form.min_lease_months || form.min_lease_months <= 0) { setError("請填寫最短租期"); return; }
-    if (!editingId && !form.contact_info.trim()) { setError("請填寫聯絡方式"); return; }
+    if (!form.contact_info.trim()) { setError("請填寫聯絡方式"); return; }
     if (!editingId && !form.compliance_confirmed) {
       setError("請勾選合規確認才能建立房源");
       return;
@@ -1324,7 +1408,7 @@ function ListingFormModal({
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <p className="mb-1 text-sm font-medium text-gray-700">縣市</p>
+              <p className="mb-1 text-sm font-medium text-gray-700">縣市<span className="ml-0.5 text-red-500">*</span></p>
               <Dropdown
                 value={form.city}
                 placeholder="請選擇縣市"
@@ -1333,7 +1417,7 @@ function ListingFormModal({
               />
             </div>
             <div>
-              <p className="mb-1 text-sm font-medium text-gray-700">地區</p>
+              <p className="mb-1 text-sm font-medium text-gray-700">地區<span className="ml-0.5 text-red-500">*</span></p>
               <Dropdown
                 value={form.district}
                 placeholder="請選擇地區"
@@ -1363,7 +1447,7 @@ function ListingFormModal({
           <div className="grid grid-cols-3 gap-3">
             <div>
               <label htmlFor="rent" className="mb-1 block text-sm font-medium text-gray-700">
-                租金（元/月）
+                租金（元/月）<span className="ml-0.5 text-red-500">*</span>
               </label>
               <input
                 id="rent"
@@ -1390,7 +1474,7 @@ function ListingFormModal({
             </div>
             <div>
               <label htmlFor="area_ping" className="mb-1 block text-sm font-medium text-gray-700">
-                坪數
+                坪數<span className="ml-0.5 text-red-500">*</span>
               </label>
               <input
                 id="area_ping"
@@ -1406,7 +1490,7 @@ function ListingFormModal({
           </div>
 
           <div>
-            <p className="mb-1 text-sm font-medium text-gray-700">房型</p>
+            <p className="mb-1 text-sm font-medium text-gray-700">房型<span className="ml-0.5 text-red-500">*</span></p>
             <div className="flex gap-2">
               {Object.entries(ROOM_TYPE_LABELS).map(([rt, label]) => (
                 <button
@@ -1459,7 +1543,7 @@ function ListingFormModal({
                 htmlFor="available_from"
                 className="mb-1 block text-sm font-medium text-gray-700"
               >
-                可入住日
+                可入住日<span className="ml-0.5 text-red-500">*</span>
               </label>
               <input
                 id="available_from"
@@ -1476,7 +1560,7 @@ function ListingFormModal({
                 htmlFor="min_lease_months"
                 className="mb-1 block text-sm font-medium text-gray-700"
               >
-                最短租期（月）
+                最短租期（月）<span className="ml-0.5 text-red-500">*</span>
               </label>
               <input
                 id="min_lease_months"
@@ -1498,6 +1582,8 @@ function ListingFormModal({
               [
                 ["allow_pets", "可養寵物"],
                 ["allow_subsidy", "可申請租屋補助"],
+                ["allow_tax_receipt", "可報稅"],
+                ["allow_household_registration", "可遷入戶籍"],
                 ["allow_cooking", "可開伙"],
               ] as const
             ).map(([key, label]) => (
@@ -1536,11 +1622,11 @@ function ListingFormModal({
               className="mb-1 block text-sm font-medium text-gray-700"
             >
               聯絡方式（媒合成功後才對租客顯示）
-              {!editingId && <span className="ml-0.5 text-red-500">*</span>}
+              <span className="ml-0.5 text-red-500">*</span>
             </label>
             <input
               id="contact_info"
-              required={!editingId}
+              required
               value={form.contact_info}
               onChange={(e) => {
                 setForm((f) => ({ ...f, contact_info: e.target.value }));
@@ -1668,8 +1754,8 @@ function AvailabilityEditor() {
 
   const [enabled, setEnabled] = useState(false);
   const [slotMinutes, setSlotMinutes] = useState(30);
-  const [slotCapacity, setSlotCapacity] = useState(1);
-  const [rangeDays, setRangeDays] = useState(14);
+  const [slotCapacity, setSlotCapacity] = useState<number | "">(1);
+  const [rangeDays, setRangeDays] = useState<number | "">(14);
   const [week, setWeek] = useState<DayForm[]>(EMPTY_WEEK);
   const [exceptions, setExceptions] = useState<string[]>([]);
   const [newException, setNewException] = useState("");
@@ -1700,9 +1786,9 @@ function AvailabilityEditor() {
       const body: ViewingAvailability = {
         enabled,
         slot_minutes: slotMinutes,
-        slot_capacity: slotCapacity,
+        slot_capacity: slotCapacity === "" ? 1 : slotCapacity,
         weekly,
-        booking_range_days: rangeDays,
+        booking_range_days: rangeDays === "" ? 14 : rangeDays,
         exceptions,
       };
       return api.put(`/listings/${listingId}/viewing-availability`, body);
@@ -1764,7 +1850,7 @@ function AvailabilityEditor() {
                     min={1}
                     max={60}
                     value={rangeDays}
-                    onChange={(e) => setRangeDays(Number(e.target.value))}
+                    onChange={(e) => setRangeDays(e.target.value === "" ? "" : Number(e.target.value))}
                     className="input"
                   />
                 </div>
@@ -1775,7 +1861,7 @@ function AvailabilityEditor() {
                     min={1}
                     max={20}
                     value={slotCapacity}
-                    onChange={(e) => setSlotCapacity(Number(e.target.value))}
+                    onChange={(e) => setSlotCapacity(e.target.value === "" ? "" : Number(e.target.value))}
                     className="input"
                   />
                   <p className="mt-1 text-xs text-gray-400">大於 1 即開放多組同時帶看（團體帶看）。</p>

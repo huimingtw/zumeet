@@ -71,9 +71,10 @@ func TestTenantProfile_CreateAndList(t *testing.T) {
 	if created["name"] != "台北套房" {
 		t.Errorf("unexpected name: %v", created["name"])
 	}
-	// contact_info must NOT be in response
-	if _, ok := created["contact_info"]; ok {
-		t.Error("contact_info must not appear in profile response")
+	// Owner-scoped responses return contact_info so the owner can edit their
+	// own profile. It must never leak through browse/match views.
+	if created["contact_info"] != "line:abc123" {
+		t.Errorf("owner should see own contact_info, got %v", created["contact_info"])
 	}
 
 	// List
@@ -391,7 +392,10 @@ func TestTenantProfile_LandlordCannotCreate(t *testing.T) {
 	}
 }
 
-func TestTenantProfile_ContactInfoNotExposed(t *testing.T) {
+// Owner GET /tenant-profiles/:id is owner-scoped and returns contact_info so
+// the owner can edit it. Leakage to other parties is guarded by the matching
+// and match-view tests, which use separate response structs.
+func TestTenantProfile_OwnerSeesContactInfo(t *testing.T) {
 	truncate(t)
 	userID := seedUser(t, "tp-ci@example.com", "tenant")
 	cookie := validAccessCookie(t, userID, "tp-ci@example.com", []string{"tenant"})
@@ -404,7 +408,7 @@ func TestTenantProfile_ContactInfoNotExposed(t *testing.T) {
 
 	var resp map[string]any
 	json.NewDecoder(w.Body).Decode(&resp)
-	if _, ok := resp["contact_info"]; ok {
-		t.Error("contact_info must not appear in GET /tenant-profiles/:id response")
+	if _, ok := resp["contact_info"]; !ok {
+		t.Error("owner GET /tenant-profiles/:id should include contact_info")
 	}
 }

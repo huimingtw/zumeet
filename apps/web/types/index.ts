@@ -32,6 +32,7 @@ export interface TenantProfile {
   occupation?: string;
   age?: number;
   description?: string;
+  contact_info?: string;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -58,6 +59,8 @@ export interface ViewingSlot {
 
 export interface Viewing {
   id: string;
+  match_id: string;
+  match_active: boolean;
   tenant_profile_id: string;
   listing_id: string;
   profile_name: string;
@@ -98,6 +101,7 @@ export interface Listing {
   has_parking: boolean;
   allow_smoking: boolean;
   description?: string;
+  contact_info?: string;
   status: string;
   photos: string[];
   lat?: number | null;

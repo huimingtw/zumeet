@@ -107,8 +107,10 @@ func (h *Handler) BrowseListingsForProfile(c *Context) {
 			l.allow_pets, l.allow_subsidy, l.allow_tax_receipt,
 			l.allow_household_registration, l.allow_cooking, l.has_parking, l.allow_smoking,
 			COALESCE(l.description, '') AS description,
-			COALESCE(l.address, '') AS address,
-			l.lat, l.lng,
+			-- pre-match: exact address withheld, coordinates snapped to a ~550m grid
+			'' AS address,
+			ROUND(l.lat / 0.005) * 0.005 AS lat,
+			ROUND(l.lng / 0.005) * 0.005 AS lng,
 			EXISTS(
 				SELECT 1 FROM interests i
 				WHERE i.tenant_profile_id = $1
@@ -156,6 +158,12 @@ func (h *Handler) BrowseListingsForProfile(c *Context) {
 				SELECT blocked_id  FROM blocks WHERE blocker_id = tp.tenant_id   AND deleted_at IS NULL
 				UNION ALL
 				SELECT blocker_id  FROM blocks WHERE blocked_id  = tp.tenant_id  AND deleted_at IS NULL
+			)
+			-- already matched pairs live in the match list, not browse
+			AND NOT EXISTS (
+				SELECT 1 FROM matches m
+				WHERE m.tenant_profile_id = tp.id AND m.listing_id = l.id
+				  AND m.status = 'active' AND m.deleted_at IS NULL
 			)
 			-- cursor pagination
 			AND ($2::text = '' OR l.id < $2)
@@ -280,6 +288,12 @@ func (h *Handler) BrowseTenantProfilesForListing(c *Context) {
 				SELECT blocked_id  FROM blocks WHERE blocker_id = l.landlord_id AND deleted_at IS NULL
 				UNION ALL
 				SELECT blocker_id  FROM blocks WHERE blocked_id  = l.landlord_id AND deleted_at IS NULL
+			)
+			-- already matched pairs live in the match list, not browse
+			AND NOT EXISTS (
+				SELECT 1 FROM matches m
+				WHERE m.tenant_profile_id = tp.id AND m.listing_id = $1
+				  AND m.status = 'active' AND m.deleted_at IS NULL
 			)
 			-- cursor pagination
 			AND ($2::text = '' OR tp.id < $2)

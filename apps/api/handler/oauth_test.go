@@ -46,6 +46,10 @@ func patchJSON(t *testing.T, path string, body any, cookies ...*http.Cookie) *ht
 	return jsonRequest(t, "PATCH", path, body, cookies...)
 }
 
+func deleteJSON(t *testing.T, path string, body any, cookies ...*http.Cookie) *httptest.ResponseRecorder {
+	return jsonRequest(t, "DELETE", path, body, cookies...)
+}
+
 // callbackState hits /api/v1/auth/google/callback and returns the "state" query param
 // from the redirect URL (i.e. the signed onboarding state).
 func callbackState(t *testing.T, code string) string {

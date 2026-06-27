@@ -61,9 +61,12 @@ type TenantProfileResponse struct {
 	Age                        *int      `json:"age,omitempty"`
 	Description                string    `json:"description"`
 	IsActive                   bool      `json:"is_active"`
+	ContactInfo                string    `json:"contact_info"`
 	CreatedAt                  time.Time `json:"created_at"`
 	UpdatedAt                  time.Time `json:"updated_at"`
-	// ContactInfo intentionally omitted — only returned after mutual match
+	// ContactInfo is the owner's own data — only returned by owner-scoped
+	// queries (list/get/loadProfile, all filtered by tenant_id). Matching and
+	// match views use separate structs and must never reuse this one.
 }
 
 // ListTenantProfiles GET /api/v1/tenant-profiles
@@ -96,6 +99,7 @@ func (h *Handler) ListTenantProfiles(c *Context) {
 		Age                        *int      `db:"age"`
 		Description                string    `db:"description"`
 		IsActive                   bool      `db:"is_active"`
+		ContactInfo                string    `db:"contact_info"`
 		CreatedAt                  time.Time `db:"created_at"`
 		UpdatedAt                  time.Time `db:"updated_at"`
 	}
@@ -105,7 +109,7 @@ func (h *Handler) ListTenantProfiles(c *Context) {
 		        has_pets, COALESCE(pet_description, '') AS pet_description, needs_subsidy, needs_tax_receipt,
 		        needs_household_registration, needs_cooking, needs_parking, smoking,
 		        COALESCE(occupation, '') AS occupation, age, COALESCE(description, '') AS description,
-		        is_active, created_at, updated_at
+		        is_active, COALESCE(contact_info, '') AS contact_info, created_at, updated_at
 		 FROM tenant_profiles
 		 WHERE tenant_id = $1 AND deleted_at IS NULL
 		 ORDER BY created_at DESC`,
@@ -146,6 +150,7 @@ func (h *Handler) ListTenantProfiles(c *Context) {
 			Age:                        row.Age,
 			Description:                row.Description,
 			IsActive:                   row.IsActive,
+			ContactInfo:                row.ContactInfo,
 			CreatedAt:                  row.CreatedAt,
 			UpdatedAt:                  row.UpdatedAt,
 		})
@@ -292,7 +297,9 @@ func (h *Handler) UpdateTenantProfile(c *Context) {
 			available_from=$5, min_lease_months=$6, min_area_ping=$7,
 			has_pets=$8, pet_description=$9, needs_subsidy=$10, needs_tax_receipt=$11,
 			needs_household_registration=$12, needs_cooking=$13, needs_parking=$14,
-			smoking=$15, occupation=$16, age=$17, description=$18, contact_info=$19, updated_at=NOW()
+			smoking=$15, occupation=$16, age=$17, description=$18,
+			-- preserve existing contact_info when the request sends it empty
+			contact_info=COALESCE(NULLIF($19, ''), contact_info), updated_at=NOW()
 		 WHERE id=$20 AND tenant_id=$21 AND deleted_at IS NULL`,
 		req.Name, req.BudgetMin, req.BudgetMax, req.PreferredRoomTypes,
 		req.AvailableFrom, req.MinLeaseMonths, req.MinAreaPing,
@@ -405,7 +412,7 @@ func scanProfile(s profileScanner) (TenantProfileResponse, error) {
 		&p.PreferredRoomTypes, &p.AvailableFrom, &p.MinLeaseMonths, &p.MinAreaPing,
 		&p.HasPets, &p.PetDescription, &p.NeedsSubsidy, &p.NeedsTaxReceipt,
 		&p.NeedsHouseholdRegistration, &p.NeedsCooking, &p.NeedsParking, &p.Smoking,
-		&p.Occupation, &p.Age, &p.Description, &p.IsActive, &p.CreatedAt, &p.UpdatedAt,
+		&p.Occupation, &p.Age, &p.Description, &p.IsActive, &p.ContactInfo, &p.CreatedAt, &p.UpdatedAt,
 	)
 	return p, err
 }
@@ -416,7 +423,8 @@ func (h *Handler) loadProfile(c *Context, profileID, tenantID string) (TenantPro
 		        preferred_room_types, available_from, min_lease_months, min_area_ping,
 		        has_pets, COALESCE(pet_description, ''), needs_subsidy, needs_tax_receipt,
 		        needs_household_registration, needs_cooking, needs_parking, smoking,
-		        COALESCE(occupation, ''), age, COALESCE(description, ''), is_active, created_at, updated_at
+		        COALESCE(occupation, ''), age, COALESCE(description, ''), is_active,
+		        COALESCE(contact_info, ''), created_at, updated_at
 		 FROM tenant_profiles
 		 WHERE id=$1 AND tenant_id=$2 AND deleted_at IS NULL`,
 		profileID, tenantID,

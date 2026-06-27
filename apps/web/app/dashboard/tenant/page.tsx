@@ -16,6 +16,7 @@ import {
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { type ReactNode, Suspense, useEffect, useRef, useState } from "react";
+import { useConfirm } from "@/components/ConfirmDialog";
 import { LocationPicker } from "@/components/LocationPicker";
 import { RoleGuard } from "@/components/RoleGuard";
 import { SlotPicker } from "@/components/SlotPicker";
@@ -351,6 +352,7 @@ function ProfileCard({
 	const qc = useQueryClient();
 	const [menuOpen, setMenuOpen] = useState(false);
 	const menuRef = useRef<HTMLDivElement>(null);
+	const [confirmEl, confirm] = useConfirm();
 
 	useEffect(() => {
 		if (!menuOpen) return;
@@ -428,7 +430,7 @@ function ProfileCard({
 						<div className="absolute right-0 z-30 mt-1 w-32 overflow-hidden rounded-xl border border-gray-200 bg-white py-1 shadow-lg">
 							<button type="button" onClick={() => { setMenuOpen(false); onEdit(); }} className="w-full px-4 py-2 text-left text-sm text-gray-700 transition hover:bg-gray-50">編輯</button>
 							<button type="button" onClick={() => { setMenuOpen(false); toggleStatus.mutate(); }} className="w-full px-4 py-2 text-left text-sm text-gray-700 transition hover:bg-gray-50">{profile.is_active ? "停用" : "啟用"}</button>
-							<button type="button" onClick={() => { setMenuOpen(false); if (confirm("確定刪除這張需求卡？")) deleteProfile.mutate(); }} className="w-full px-4 py-2 text-left text-sm text-red-600 transition hover:bg-red-50">刪除</button>
+							<button type="button" onClick={async () => { setMenuOpen(false); if (await confirm({ message: "確定刪除這張需求卡？", confirmText: "刪除", danger: true })) deleteProfile.mutate(); }} className="w-full px-4 py-2 text-left text-sm text-red-600 transition hover:bg-red-50">刪除</button>
 						</div>
 					)}
 				</div>
@@ -446,6 +448,7 @@ function ProfileCard({
 					</button>
 				</div>
 			)}
+			{confirmEl}
 		</div>
 	);
 }
@@ -494,6 +497,15 @@ function BrowseTab({
 	const [detailListing, setDetailListing] = useState<MatchedListingCard | null>(
 		null,
 	);
+	const [filter, setFilter] = useState<"all" | "sent" | "open">("all");
+
+	const allItems = data?.items ?? [];
+	const items =
+		filter === "sent"
+			? allItems.filter((l) => l.interest_sent)
+			: filter === "open"
+				? allItems.filter((l) => !l.interest_sent)
+				: allItems;
 
 	if (activeProfiles.length === 0) {
 		return (
@@ -523,6 +535,29 @@ function BrowseTab({
 				</div>
 			</div>
 
+			<div className="mb-4 flex gap-1.5">
+				{(
+					[
+						["all", "全部"],
+						["open", "有興趣"],
+						["sent", "已送出"],
+					] as const
+				).map(([key, label]) => (
+					<button
+						key={key}
+						type="button"
+						onClick={() => setFilter(key)}
+						className={`rounded-full px-3 py-1 text-xs font-medium transition ${
+							filter === key
+								? "bg-gray-900 text-white"
+								: "bg-gray-100 text-gray-600 hover:bg-gray-200"
+						}`}
+					>
+						{label}
+					</button>
+				))}
+			</div>
+
 			{isLoading && (
 				<div className="space-y-3">
 					{[0, 1, 2].map((i) => (
@@ -530,7 +565,7 @@ function BrowseTab({
 					))}
 				</div>
 			)}
-			{!isLoading && (data?.items ?? []).length === 0 && (
+			{!isLoading && allItems.length === 0 && (
 				<EmptyState
 					icon={
 						<SearchX size={32} strokeWidth={1.5} className="text-gray-300" />
@@ -539,8 +574,11 @@ function BrowseTab({
 					description="條件可能較嚴格，可嘗試調整需求卡中的預算或地區範圍"
 				/>
 			)}
+			{!isLoading && allItems.length > 0 && items.length === 0 && (
+				<p className="py-8 text-center text-sm text-gray-400">此分類沒有房源</p>
+			)}
 			<div className="space-y-3">
-				{(data?.items ?? []).map((listing) => (
+				{items.map((listing) => (
 					<ListingCard
 						key={listing.id}
 						listing={listing}
@@ -635,14 +673,14 @@ function ListingCard({
 										(i) => (i - 1 + listing.photos.length) % listing.photos.length,
 									)
 								}
-								className="absolute left-1 top-1/2 -translate-y-1/2 rounded-full bg-black/40 p-0.5 text-white"
+								className="absolute left-1 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-black/40 text-lg leading-none text-white"
 							>
 								‹
 							</button>
 							<button
 								type="button"
 								onClick={() => setPhotoIdx((i) => (i + 1) % listing.photos.length)}
-								className="absolute right-1 top-1/2 -translate-y-1/2 rounded-full bg-black/40 p-0.5 text-white"
+								className="absolute right-1 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-black/40 text-lg leading-none text-white"
 							>
 								›
 							</button>
@@ -660,6 +698,11 @@ function ListingCard({
 
 				{/* Info */}
 				<button type="button" onClick={onClick} className="block w-full p-4 text-left sm:min-w-0 sm:flex-1 sm:p-0">
+					{listing.name && (
+						<p className="mb-0.5 text-sm font-semibold text-gray-950">
+							{listing.name}
+						</p>
+					)}
 					<div className="flex flex-wrap items-baseline gap-2">
 						<span className="text-xl font-semibold text-gray-950">
 							${total.toLocaleString()}
@@ -738,20 +781,34 @@ function ListingMiniMap({
 	locationLabel,
 	lat,
 	lng,
+	precise = false,
 }: {
 	address?: string;
 	locationLabel?: string;
 	lat?: number | null;
 	lng?: number | null;
+	precise?: boolean;
 }) {
 	const query = (address && address.trim()) || locationLabel;
 	if (!query && !lat) return null;
-	const externalQuery = lat && lng ? `${lat},${lng}` : encodeURIComponent(query ?? '');
+
+	// Privacy: before mutual match (precise=false) never expose the exact pin —
+	// snap to a ~550m grid and show an approximate-area circle. After match
+	// (precise=true) show the exact location. The circle is an indicative
+	// affordance, not a surveyed radius — its pixel size doesn't track map scale
+	// exactly. ponytail: fixed-size CSS circle, switch to the Maps JS API +
+	// google.maps.Circle if exact metric radius is ever needed.
+	const hasCoords = lat != null && lng != null;
+	const GRID = 0.005;
+	const mapLat = hasCoords ? (precise ? (lat as number) : Math.round((lat as number) / GRID) * GRID) : null;
+	const mapLng = hasCoords ? (precise ? (lng as number) : Math.round((lng as number) / GRID) * GRID) : null;
+	const zoom = precise ? 16 : 14;
+
+	const externalQuery = hasCoords ? `${mapLat},${mapLng}` : encodeURIComponent(query ?? '');
 	const externalUrl = `https://www.google.com/maps/search/?api=1&query=${externalQuery}`;
-	const embedUrl =
-		lat && lng
-			? `https://maps.google.com/maps?q=${lat},${lng}&output=embed&hl=zh-TW`
-			: `https://maps.google.com/maps?q=${encodeURIComponent(query ?? '')}&output=embed&hl=zh-TW`;
+	const embedUrl = hasCoords
+		? `https://maps.google.com/maps?q=${mapLat},${mapLng}&z=${zoom}&output=embed&hl=zh-TW`
+		: `https://maps.google.com/maps?q=${encodeURIComponent(query ?? '')}&z=${zoom}&output=embed&hl=zh-TW`;
 	return (
 		<a
 			href={externalUrl}
@@ -768,7 +825,15 @@ function ListingMiniMap({
 					referrerPolicy="no-referrer-when-downgrade"
 					className="block h-full w-full border-0"
 				/>
+				{hasCoords && !precise && (
+					<div className="absolute left-1/2 top-1/2 h-28 w-28 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-indigo-500/60 bg-indigo-500/20" />
+				)}
 			</div>
+			{hasCoords && !precise && (
+				<div className="bg-gray-50 px-2 py-1 text-center text-[11px] text-gray-500">
+					僅顯示大約範圍，非精確位置
+				</div>
+			)}
 		</a>
 	);
 }
@@ -949,6 +1014,7 @@ function ListingDetailDialog({
 							}
 							lat={listing.lat}
 							lng={listing.lng}
+							precise={!!contactInfo}
 						/>
 						{listing.description && (
 							<p className="mt-3 whitespace-pre-wrap text-sm text-gray-700">
@@ -1049,6 +1115,8 @@ type ListingFields = {
 	allow_smoking: boolean;
 	description?: string;
 	address?: string;
+	lat?: number | null;
+	lng?: number | null;
 };
 
 type IncomingListingItem = ListingFields & {
@@ -1068,6 +1136,7 @@ type OutgoingItem = ListingFields & {
 	room_type: string;
 	area_ping: number;
 	location_id?: string;
+	tenant_profile_id: string;
 	tenant_profile_name: string;
 };
 
@@ -1082,6 +1151,7 @@ type MatchItem = ListingFields & {
 	area_ping?: number;
 	location_id?: string;
 	profile_name?: string;
+	status?: string;
 };
 
 function toListingCard(
@@ -1119,6 +1189,8 @@ function toListingCard(
 		interest_sent: item.interest_sent ?? false,
 		description: item.description,
 		address: item.address,
+		lat: item.lat ?? null,
+		lng: item.lng ?? null,
 	};
 }
 
@@ -1301,11 +1373,24 @@ function ProfileIncoming({
 // ---- Outgoing ----
 
 function OutgoingTab() {
+	const qc = useQueryClient();
 	const { data, isLoading } = useQuery<{ items: OutgoingItem[] }>({
 		queryKey: ["outgoing"],
 		queryFn: () => api.get("/matches/outgoing?limit=50").then((r) => r.data),
 	});
-	const [detail, setDetail] = useState<MatchedListingCard | null>(null);
+	const [detail, setDetail] = useState<OutgoingItem | null>(null);
+	const [confirmEl, confirm] = useConfirm();
+
+	const withdraw = useMutation({
+		mutationFn: (i: OutgoingItem) =>
+			api.delete(
+				`/tenant-profiles/${i.tenant_profile_id}/listings/${i.listing_id}/interest`,
+			),
+		onSuccess: () => {
+			qc.invalidateQueries({ queryKey: ["outgoing"] });
+			setDetail(null);
+		},
+	});
 
 	if (isLoading) return <Loading />;
 
@@ -1334,11 +1419,26 @@ function OutgoingTab() {
 						<ListingCard
 							key={i.listing_id}
 							listing={card}
-							onClick={() => setDetail(card)}
+							onClick={() => setDetail(i)}
 							action={
-								<span className="rounded-full bg-[#EDE9FE] px-2.5 py-0.5 text-xs font-medium text-[#5B21B6]">
-									等待中
-								</span>
+								<button
+									type="button"
+									disabled={withdraw.isPending}
+									onClick={async (e) => {
+										e.stopPropagation();
+										if (
+											await confirm({
+												message: "確定收回對這筆房源的興趣？",
+												confirmText: "收回興趣",
+												danger: true,
+											})
+										)
+											withdraw.mutate(i);
+									}}
+									className="rounded-full border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 transition hover:bg-gray-50 disabled:opacity-50"
+								>
+									收回興趣
+								</button>
 							}
 						/>
 					);
@@ -1346,15 +1446,30 @@ function OutgoingTab() {
 			</div>
 			{detail && (
 				<ListingDetailDialog
-					listing={detail}
+					listing={toListingCard(detail)}
 					onClose={() => setDetail(null)}
 					action={
-						<p className="text-center text-sm text-gray-400">
-							已送出興趣，等待房東回應
-						</p>
+						<button
+							type="button"
+							disabled={withdraw.isPending}
+							onClick={async () => {
+								if (
+									await confirm({
+										message: "確定收回對這筆房源的興趣？",
+										confirmText: "收回興趣",
+										danger: true,
+									})
+								)
+									withdraw.mutate(detail);
+							}}
+							className="w-full rounded-xl border border-gray-200 py-2.5 text-sm font-medium text-gray-600 transition hover:bg-gray-50 disabled:opacity-50"
+						>
+							收回興趣
+						</button>
 					}
 				/>
 			)}
+			{confirmEl}
 		</>
 	);
 }
@@ -1424,8 +1539,12 @@ function MatchedTab() {
 						allow_cooking: m.allow_cooking,
 						has_parking: m.has_parking,
 						allow_smoking: m.allow_smoking,
+						address: m.address,
+						lat: m.lat,
+						lng: m.lng,
 					});
 					const viewing = viewingByListing.get(m.listing_id);
+					const rented = m.status === "listing_rented";
 					return (
 						<ListingCard
 							key={m.match_id}
@@ -1433,7 +1552,11 @@ function MatchedTab() {
 							onClick={() => setDetail({ card, contactInfo: m.contact_info })}
 							contactInfo={m.contact_info}
 							action={
-								viewing ? (
+								rented ? (
+									<span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-500">
+										房東已標記出租
+									</span>
+								) : viewing ? (
 									<span className="rounded-full bg-[#D1FAE5] px-2.5 py-0.5 text-xs font-medium text-[#059669]">
 										已預約 {formatSlot(viewing.starts_at, viewing.ends_at)}
 									</span>
@@ -1548,7 +1671,7 @@ function ProfileFormModal({
 		available_from: editingProfile?.available_from
 			? new Date(editingProfile.available_from).toISOString().split("T")[0]
 			: new Date().toISOString().split("T")[0],
-		min_lease_months: editingProfile?.min_lease_months ?? 6,
+		min_lease_months: editingProfile?.min_lease_months ?? 12,
 		min_area_ping: editingProfile?.min_area_ping
 			? String(editingProfile.min_area_ping)
 			: "",
@@ -1564,7 +1687,7 @@ function ProfileFormModal({
 		occupation: editingProfile?.occupation ?? "",
 		age: editingProfile?.age ? String(editingProfile.age) : "",
 		description: editingProfile?.description ?? "",
-		contact_info: "",
+		contact_info: editingProfile?.contact_info ?? "",
 	}));
 	const [error, setError] = useState("");
 	const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -1628,7 +1751,7 @@ function ProfileFormModal({
 			setError("請填寫最短租期");
 			return;
 		}
-		if (!editingProfile && !form.contact_info.trim()) {
+		if (!form.contact_info.trim()) {
 			setError("請填寫聯絡方式");
 			return;
 		}
@@ -2030,11 +2153,11 @@ function ProfileFormModal({
 							className="mb-1 block text-sm font-medium text-gray-700"
 						>
 							聯絡方式（媒合成功後才對房東顯示）
-							{!editingProfile && <span className="ml-0.5 text-red-500">*</span>}
+							<span className="ml-0.5 text-red-500">*</span>
 						</label>
 						<input
 							id="contact-info"
-							required={!editingProfile}
+							required
 							value={form.contact_info}
 							onChange={(e) => {
 								setForm((f) => ({ ...f, contact_info: e.target.value }));

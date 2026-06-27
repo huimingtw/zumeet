@@ -61,6 +61,40 @@ func TestMatches_MutualContainsContactInfo(t *testing.T) {
 	}
 }
 
+func TestMatches_RentedListingStaysInTenantMutual(t *testing.T) {
+	truncate(t)
+	landlordID := seedUser(t, "mx-llr@example.com", "landlord")
+	tenantID := seedUser(t, "mx-tr@example.com", "tenant")
+
+	listingID := activeListing(t, landlordID, "taipei-daan", 20000, false, false)
+	profileID := activeTenantProfile(t, tenantID, "taipei-daan", 15000, 25000, false, false)
+
+	tCookie := validAccessCookie(t, tenantID, "mx-tr@example.com", []string{"tenant"})
+	lCookie := validAccessCookie(t, landlordID, "mx-llr@example.com", []string{"landlord"})
+
+	// create mutual match
+	postJSON(t, "/api/v1/tenant-profiles/"+profileID+"/listings/"+listingID+"/interest", nil, tCookie)
+	postJSON(t, "/api/v1/listings/"+listingID+"/tenant-profiles/"+profileID+"/interest", nil, lCookie)
+
+	// landlord marks the listing as rented (the only way to end a match)
+	if w := patchJSON(t, "/api/v1/listings/"+listingID+"/status", map[string]any{"status": "rented"}, lCookie); w.Code != http.StatusOK {
+		t.Fatalf("mark rented: %d %s", w.Code, w.Body.String())
+	}
+
+	// tenant must still see the match, now flagged listing_rented (not silently gone)
+	req := httptest.NewRequest("GET", "/api/v1/matches/mutual", nil)
+	req.AddCookie(tCookie)
+	w := httptest.NewRecorder()
+	testR.ServeHTTP(w, req)
+	matches := decodeItems(t, w)
+	if len(matches) != 1 {
+		t.Fatalf("expected rented match to remain visible, got %d", len(matches))
+	}
+	if matches[0]["status"] != "listing_rented" {
+		t.Errorf("expected status=listing_rented, got %v", matches[0]["status"])
+	}
+}
+
 func TestMatches_Incoming_NoContactInfo(t *testing.T) {
 	truncate(t)
 	landlordID := seedUser(t, "mx-ll2@example.com", "landlord")

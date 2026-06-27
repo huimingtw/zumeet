@@ -408,6 +408,8 @@ func (h *Handler) BookViewing(c *Context) {
 // populated only when the underlying match is still active (no new disclosure path).
 type ViewingResponse struct {
 	ID              string    `json:"id" db:"id"`
+	MatchID         string    `json:"match_id" db:"match_id"`
+	MatchActive     bool      `json:"match_active" db:"match_active"`
 	TenantProfileID string    `json:"tenant_profile_id" db:"tenant_profile_id"`
 	ListingID       string    `json:"listing_id" db:"listing_id"`
 	ProfileName     string    `json:"profile_name" db:"profile_name"`
@@ -446,7 +448,8 @@ func (h *Handler) ListViewings(c *Context) {
 	}
 
 	rows, err := h.db.Query(c.Request.Context(), `
-		SELECT v.id, v.tenant_profile_id, v.listing_id,
+		SELECT v.id, v.match_id, (m.status='active') AS match_active,
+		       v.tenant_profile_id, v.listing_id,
 		       tp.name AS profile_name, COALESCE(l.name, '') AS listing_name,
 		       v.starts_at, v.ends_at, v.status::text AS status,
 		       COALESCE(v.attendance::text, '') AS attendance,

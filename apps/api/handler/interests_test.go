@@ -193,6 +193,93 @@ func TestInterest_BlockedPair_Rejected(t *testing.T) {
 	}
 }
 
+func TestWithdraw_Tenant_PreventsMatch(t *testing.T) {
+	truncate(t)
+	landlordID := seedUser(t, "wd-ll1@example.com", "landlord")
+	tenantID := seedUser(t, "wd-t1@example.com", "tenant")
+
+	listingID := activeListing(t, landlordID, "taipei-daan", 20000, false, false)
+	profileID := activeTenantProfile(t, tenantID, "taipei-daan", 15000, 25000, false, false)
+
+	tCookie := validAccessCookie(t, tenantID, "wd-t1@example.com", []string{"tenant"})
+	postJSON(t, "/api/v1/tenant-profiles/"+profileID+"/listings/"+listingID+"/interest", nil, tCookie)
+
+	// tenant withdraws before landlord reciprocates
+	w := deleteJSON(t, "/api/v1/tenant-profiles/"+profileID+"/listings/"+listingID+"/interest", nil, tCookie)
+	if w.Code != http.StatusOK {
+		t.Fatalf("withdraw: expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	var status string
+	testPool.QueryRow(t.Context(),
+		`SELECT status FROM interests WHERE tenant_profile_id=$1 AND listing_id=$2 AND actor_role='tenant'`,
+		profileID, listingID,
+	).Scan(&status)
+	if status != "withdrawn" {
+		t.Errorf("expected status=withdrawn, got %q", status)
+	}
+
+	// landlord now expresses interest — must NOT match, since tenant withdrew
+	lCookie := validAccessCookie(t, landlordID, "wd-ll1@example.com", []string{"landlord"})
+	lw := postJSON(t, "/api/v1/listings/"+listingID+"/tenant-profiles/"+profileID+"/interest", nil, lCookie)
+	var resp map[string]any
+	json.NewDecoder(lw.Body).Decode(&resp)
+	if resp["status"] != "pending" {
+		t.Errorf("expected pending after counterpart withdrew, got %v", resp["status"])
+	}
+}
+
+func TestWithdraw_AfterMatch_Conflict(t *testing.T) {
+	truncate(t)
+	landlordID := seedUser(t, "wd-ll2@example.com", "landlord")
+	tenantID := seedUser(t, "wd-t2@example.com", "tenant")
+
+	listingID := activeListing(t, landlordID, "taipei-daan", 20000, false, false)
+	profileID := activeTenantProfile(t, tenantID, "taipei-daan", 15000, 25000, false, false)
+
+	tCookie := validAccessCookie(t, tenantID, "wd-t2@example.com", []string{"tenant"})
+	lCookie := validAccessCookie(t, landlordID, "wd-ll2@example.com", []string{"landlord"})
+	postJSON(t, "/api/v1/tenant-profiles/"+profileID+"/listings/"+listingID+"/interest", nil, tCookie)
+	postJSON(t, "/api/v1/listings/"+listingID+"/tenant-profiles/"+profileID+"/interest", nil, lCookie)
+
+	w := deleteJSON(t, "/api/v1/tenant-profiles/"+profileID+"/listings/"+listingID+"/interest", nil, tCookie)
+	if w.Code != http.StatusConflict {
+		t.Errorf("withdraw after match: expected 409, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestWithdraw_WrongOwner_Rejected(t *testing.T) {
+	truncate(t)
+	landlordID := seedUser(t, "wd-ll3@example.com", "landlord")
+	tenantID := seedUser(t, "wd-t3@example.com", "tenant")
+	otherTenantID := seedUser(t, "wd-ot3@example.com", "tenant")
+
+	listingID := activeListing(t, landlordID, "taipei-daan", 20000, false, false)
+	profileID := activeTenantProfile(t, tenantID, "taipei-daan", 15000, 25000, false, false)
+
+	otherCookie := validAccessCookie(t, otherTenantID, "wd-ot3@example.com", []string{"tenant"})
+	w := deleteJSON(t, "/api/v1/tenant-profiles/"+profileID+"/listings/"+listingID+"/interest", nil, otherCookie)
+	if w.Code != http.StatusForbidden {
+		t.Errorf("expected 403, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestWithdraw_Idempotent(t *testing.T) {
+	truncate(t)
+	landlordID := seedUser(t, "wd-ll4@example.com", "landlord")
+	tenantID := seedUser(t, "wd-t4@example.com", "tenant")
+
+	listingID := activeListing(t, landlordID, "taipei-daan", 20000, false, false)
+	profileID := activeTenantProfile(t, tenantID, "taipei-daan", 15000, 25000, false, false)
+
+	tCookie := validAccessCookie(t, tenantID, "wd-t4@example.com", []string{"tenant"})
+	// withdraw without ever expressing interest — no-op, still 200
+	w := deleteJSON(t, "/api/v1/tenant-profiles/"+profileID+"/listings/"+listingID+"/interest", nil, tCookie)
+	if w.Code != http.StatusOK {
+		t.Errorf("withdraw with no interest: expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
 func TestInterest_IdempotentRe_Expression(t *testing.T) {
 	truncate(t)
 	landlordID := seedUser(t, "int-ll8@example.com", "landlord")

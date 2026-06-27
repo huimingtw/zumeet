@@ -111,6 +111,10 @@ type ListingResponse struct {
 	HasParking                 bool          `json:"has_parking"`
 	AllowSmoking               bool          `json:"allow_smoking"`
 	Description                string        `json:"description"`
+	// ContactInfo is the owner's own data. fetchListingResponse is only used by
+	// owner-scoped handlers (create/get/update/status/photo, all gated on
+	// landlord_id == userID). Never reuse this struct for browse/match views.
+	ContactInfo                string        `json:"contact_info"`
 	Status                     string        `json:"status"`
 	Photos                     []string      `json:"photos" db:"-"`
 	PhotoList                  []PhotoDetail `json:"photo_list" db:"-"`
@@ -865,7 +869,7 @@ func (h *Handler) fetchListingResponse(c *Context, id string) (*ListingResponse,
 		       available_from, min_lease_months,
 		       allow_pets, allow_subsidy, allow_tax_receipt,
 		       allow_household_registration, allow_cooking, has_parking, allow_smoking,
-		       COALESCE(description, ''), status::text, lat, lng, created_at, updated_at
+		       COALESCE(description, ''), COALESCE(contact_info, ''), status::text, lat, lng, created_at, updated_at
 		FROM listings
 		WHERE id=$1 AND deleted_at IS NULL`,
 		id,
@@ -876,7 +880,7 @@ func (h *Handler) fetchListingResponse(c *Context, id string) (*ListingResponse,
 		&r.AvailableFrom, &r.MinLeaseMonths,
 		&r.AllowPets, &r.AllowSubsidy, &r.AllowTaxReceipt,
 		&r.AllowHouseholdRegistration, &r.AllowCooking, &r.HasParking, &r.AllowSmoking,
-		&r.Description, &r.Status, &r.Lat, &r.Lng, &r.CreatedAt, &r.UpdatedAt,
+		&r.Description, &r.ContactInfo, &r.Status, &r.Lat, &r.Lng, &r.CreatedAt, &r.UpdatedAt,
 	)
 	if err != nil {
 		return nil, err
