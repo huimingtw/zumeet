@@ -26,24 +26,27 @@ export function Dropdown({
   useEffect(() => {
     if (!open) return;
     function handler(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+        setActiveIdx(-1);
+      }
     }
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, [open]);
 
-  // Reset active index when list closes
-  useEffect(() => {
-    if (!open) setActiveIdx(-1);
-  }, [open]);
+  const close = useCallback(() => {
+    setOpen(false);
+    setActiveIdx(-1);
+    triggerRef.current?.focus();
+  }, []);
 
   const select = useCallback(
     (val: string) => {
       onChange(val);
-      setOpen(false);
-      triggerRef.current?.focus();
+      close();
     },
-    [onChange]
+    [onChange, close]
   );
 
   function onKeyDown(e: React.KeyboardEvent) {
@@ -58,8 +61,7 @@ export function Dropdown({
     }
     if (e.key === "Escape") {
       e.preventDefault();
-      setOpen(false);
-      triggerRef.current?.focus();
+      close();
     } else if (e.key === "ArrowDown") {
       e.preventDefault();
       setActiveIdx((i) => Math.min(i + 1, options.length - 1));
@@ -92,8 +94,7 @@ export function Dropdown({
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-controls={listId}
-        aria-activedescendant={activeOptionId}
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => (open ? close() : setOpen(true))}
         className={`input flex w-full items-center justify-between text-left ${
           disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer"
         } ${value ? "text-gray-900" : "text-gray-400"}`}
@@ -113,6 +114,7 @@ export function Dropdown({
           id={listId}
           role="listbox"
           aria-label={placeholder}
+          aria-activedescendant={activeOptionId}
           className="absolute z-30 mt-1 max-h-56 w-full overflow-y-auto rounded-xl border border-gray-200 bg-white py-1 shadow-lg"
         >
           {options.map((opt, idx) => (

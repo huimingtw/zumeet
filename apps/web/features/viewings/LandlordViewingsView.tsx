@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { X } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Dropdown } from "@/components/ui/Dropdown";
 import { ViewingList } from "@/components/ViewingList";
@@ -242,9 +243,10 @@ function AvailabilityEditor() {
                       <button
                         type="button"
                         onClick={() => setExceptions((p) => p.filter((x) => x !== ex))}
+                        aria-label="移除例外日期"
                         className="text-gray-400 hover:text-red-500"
                       >
-                        ✕
+                        <X size={12} />
                       </button>
                     </span>
                   ))}

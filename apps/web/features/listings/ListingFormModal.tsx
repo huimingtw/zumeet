@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import Image from "next/image";
@@ -160,10 +161,11 @@ function PhotoSection({
             <button
               type="button"
               onClick={() => deletePhoto.mutate(p.id)}
-              className="absolute top-1 right-1 flex items-center justify-center rounded-full bg-black/70 text-xs leading-none text-white"
+              aria-label="刪除照片"
+              className="absolute top-1 right-1 flex items-center justify-center rounded-full bg-black/70 text-white"
               style={{ width: "22px", height: "22px" }}
             >
-              ✕
+              <X size={12} />
             </button>
           </div>
         ))}
@@ -537,7 +539,7 @@ export function ListingFormModal({
           className="text-gray-400 hover:text-gray-700"
           aria-label="關閉"
         >
-          ✕
+          <X size={18} />
         </button>
       </div>
 

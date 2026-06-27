@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import type { ViewingSlot } from "@/types";
 import { dateKey, formatSlot } from "@/lib/viewings";
+import { groupBy } from "@/lib/groupBy";
 import { qk } from "@/features/queryKeys";
 
 // SlotPicker shows a listing's open 帶看 slots grouped by date and lets the user pick one.
@@ -23,14 +24,10 @@ export function SlotPicker({
     queryFn: () => api.get(`/listings/${listingId}/viewing-slots`).then((r) => r.data),
   });
 
-  const grouped = useMemo(() => {
-    const map = new Map<string, ViewingSlot[]>();
-    for (const s of data?.slots ?? []) {
-      const k = dateKey(s.start);
-      (map.get(k) ?? map.set(k, []).get(k)!).push(s);
-    }
-    return [...map.entries()];
-  }, [data]);
+  const grouped = useMemo(
+    () => groupBy(data?.slots ?? [], (s) => dateKey(s.start)),
+    [data]
+  );
 
   if (isLoading) return <p className="text-sm text-gray-400">載入可預約時段…</p>;
   if (!data?.enabled) return null;

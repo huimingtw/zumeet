@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import type { Viewing } from "@/types";
 import { dateKey, formatSlot, VIEWING_STATUS_BADGE } from "@/lib/viewings";
+import { groupBy } from "@/lib/groupBy";
 import { SlotPicker } from "@/components/SlotPicker";
 import { Modal } from "@/components/ui/Modal";
 import { Loading } from "@/components/ui/Loading";
@@ -54,14 +55,10 @@ export function ViewingList({ role }: { role: "tenant" | "landlord" }) {
   } | null>(null);
   const [pickedSlot, setPickedSlot] = useState("");
 
-  const grouped = useMemo(() => {
-    const map = new Map<string, Viewing[]>();
-    for (const v of data?.items ?? []) {
-      const k = dateKey(v.starts_at);
-      (map.get(k) ?? map.set(k, []).get(k)!).push(v);
-    }
-    return [...map.entries()];
-  }, [data]);
+  const grouped = useMemo(
+    () => groupBy(data?.items ?? [], (v) => dateKey(v.starts_at)),
+    [data]
+  );
 
   if (isLoading) return <Loading />;
   if (grouped.length === 0)

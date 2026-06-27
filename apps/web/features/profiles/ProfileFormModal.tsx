@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { X } from "lucide-react";
 import {
   useForm,
   Controller,
@@ -122,9 +123,10 @@ function LocationField({
                     <button
                       type="button"
                       onClick={() => field.onChange(field.value.filter((l) => l !== id))}
+                      aria-label="移除地區"
                       className="ml-0.5 text-orange-400 hover:text-orange-600"
                     >
-                      ×
+                      <X size={10} />
                     </button>
                   </span>
                 ))}
@@ -313,7 +315,7 @@ export function ProfileFormModal({
           className="text-gray-400 hover:text-gray-700"
           aria-label="關閉"
         >
-          ✕
+          <X size={18} />
         </button>
       </div>
 

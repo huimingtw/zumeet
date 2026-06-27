@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { X } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { LOCATION_GROUPS, RECOMMENDED_LOCATION_IDS, type LocationCity } from "@/types";
 
@@ -161,7 +162,7 @@ export function LocationPicker({ open, value, onChange, onClose }: Props) {
             className="ml-2 text-gray-400 hover:text-gray-600"
             aria-label="關閉"
           >
-            ✕
+            <X size={16} />
           </button>
         </div>
 
