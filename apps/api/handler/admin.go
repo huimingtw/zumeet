@@ -66,18 +66,18 @@ func (h *Handler) AdminLogin(c *Context) {
 		return
 	}
 
-	// build callback URL — use request host to support local dev
-	scheme := "https"
-	if c.Request.TLS == nil {
-		scheme = "http"
-	}
-	callbackURL := fmt.Sprintf("%s://%s/auth/callback?token=%s", scheme, c.Request.Host, plainToken)
+	// build callback URL pointing to the admin frontend's proxy route
+	callbackURL := fmt.Sprintf("%s/admin-api/auth/callback?token=%s", h.cfg.AdminFrontendURL, plainToken)
 
 	// send magic link (token plain-text only in email, not logged)
 	subject := "Zumeet 管理員登入連結"
 	body := fmt.Sprintf(`<p>點擊以下連結登入（15 分鐘內有效，僅可使用一次）：</p><p><a href="%s">%s</a></p>`, callbackURL, callbackURL)
 	_ = h.email.Send(c.Request.Context(), req.Email, subject, body)
 
+	// in development, expose the link so local dev doesn't need a real email service
+	if h.cfg.AppEnv == "development" {
+		msg["dev_magic_link"] = callbackURL
+	}
 	c.JSON(http.StatusOK, msg)
 }
 

@@ -32,6 +32,11 @@ type AppConfig struct {
 	// reverse proxy / tunnel.
 	FrontendURL string
 
+	// AdminFrontendURL is the base URL of the React admin console. Used to
+	// construct the magic-link callback URL so the browser lands on the admin
+	// frontend rather than the backend host.
+	AdminFrontendURL string
+
 	StorageEndpoint  string
 	StoragePublicURL string
 	StorageBucket    string
@@ -67,6 +72,8 @@ func Load() *AppConfig {
 			}
 			return "http://localhost:3000"
 		}(),
+
+		AdminFrontendURL: getEnv("ADMIN_FRONTEND_URL", "http://localhost:3001"),
 
 		StorageEndpoint:  getEnv("STORAGE_ENDPOINT", "localhost:9000"),
 		StoragePublicURL: getEnv("STORAGE_PUBLIC_URL", ""),

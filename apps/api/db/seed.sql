@@ -417,3 +417,8 @@ INSERT INTO locations (id, city, district, slug) VALUES
 ('91-9102', '連江縣', '北竿鄉', '91-9102'),
 ('91-9103', '連江縣', '莒光鄉', '91-9103'),
 ('91-9104', '連江縣', '東引鄉', '91-9104');
+
+-- Dev admin user
+INSERT INTO admins (id, email, level) VALUES
+  ('01JZDEV0000000000000000001', 'hero19931012@gmail.com', 'super_admin')
+ON CONFLICT (email) DO NOTHING;

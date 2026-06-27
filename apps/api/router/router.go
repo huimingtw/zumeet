@@ -19,9 +19,9 @@ func New(h *handler.Handler, cfg *config.AppConfig, logger *zap.Logger) *gin.Eng
 	r.Use(middleware.Logger(logger))
 	t := handler.NewContextTransformer()
 
-	allowedOrigins := []string{"http://localhost:3000"}
+	allowedOrigins := []string{"http://localhost:3000", "http://localhost:3001"}
 	if cfg.AppEnv == "production" {
-		allowedOrigins = []string{"https://app.zumeet.tw"}
+		allowedOrigins = []string{"https://app.zumeet.tw", "https://admin.zumeet.tw"}
 	}
 	r.Use(cors.New(cors.Config{
 		AllowOrigins:     allowedOrigins,

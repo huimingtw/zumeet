@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/resend/resend-go/v2"
 )
@@ -45,5 +46,6 @@ type SentEmail struct {
 
 func (s *NoopEmailService) Send(_ context.Context, to, subject, htmlBody string) error {
 	s.Sent = append(s.Sent, SentEmail{To: to, Subject: subject, Body: htmlBody})
+	fmt.Fprintf(os.Stderr, "\n[DEV EMAIL] to=%s subject=%s\n%s\n\n", to, subject, htmlBody)
 	return nil
 }

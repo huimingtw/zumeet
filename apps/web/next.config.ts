@@ -13,7 +13,7 @@ const nextConfig: NextConfig = {
   async rewrites() {
     return [
       { source: "/api/:path*", destination: `${apiUpstream}/api/:path*` },
-      { source: "/storage/:path*", destination: `${storageUpstream}/:path*` },
+{ source: "/storage/:path*", destination: `${storageUpstream}/:path*` },
     ];
   },
 };
