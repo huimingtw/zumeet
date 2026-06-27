@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import Image from "next/image";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Building2,
   CalendarClock,
@@ -36,6 +36,15 @@ import { LOCATION_CITY_DISTRICT, LOCATION_GROUPS, ROOM_TYPE_LABELS } from "@/typ
 import { WEEKDAY_LABELS } from "@/lib/viewings";
 import { ViewingList } from "@/components/ViewingList";
 import { qk } from "@/features/queryKeys";
+import {
+  useListings,
+  useListingDetail,
+  useListingEdit,
+  useProfilesBrowse,
+  useIncomingListing,
+  useViewingAvailability,
+} from "@/features/listings/useListings";
+import { useOutgoing, useMatched } from "@/features/matches/useMatches";
 
 type MainTab = "listings" | "browse" | "matches" | "viewings";
 type MatchesSubTab = "incoming" | "outgoing" | "matched";
@@ -177,10 +186,7 @@ function ExpandableText({ text, className = "" }: { text: string; className?: st
 
 function ListingsTab({ onSelectListing }: { onSelectListing: (id: string) => void }) {
   const qc = useQueryClient();
-  const { data: listings = [], isLoading } = useQuery<Listing[]>({
-    queryKey: qk.listings(),
-    queryFn: () => api.get("/listings").then((r) => r.data),
-  });
+  const { data: listings = [], isLoading } = useListings();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [filter, setFilter] = useState<"all" | "active" | "rented">("all");
@@ -505,10 +511,7 @@ function BrowseTab({
   onSelectListing: (id: string) => void;
   onGoToListings: () => void;
 }) {
-  const { data: listings = [] } = useQuery<Listing[]>({
-    queryKey: qk.listings(),
-    queryFn: () => api.get("/listings").then((r) => r.data),
-  });
+  const { data: listings = [] } = useListings();
 
   const activeListings = listings.filter((l) => l.status === "active");
   const currentId =
@@ -517,12 +520,7 @@ function BrowseTab({
     null;
 
   const qc = useQueryClient();
-  const { data, isLoading } = useQuery<{ items: MatchedTenantProfileCard[] }>({
-    queryKey: qk.profilesBrowse(currentId),
-    queryFn: () =>
-      api.get(`/listings/${currentId}/tenant-profiles?limit=20`).then((r) => r.data),
-    enabled: !!currentId,
-  });
+  const { data, isLoading } = useProfilesBrowse(currentId ?? "");
 
   const expressInterest = useMutation({
     mutationFn: (profileId: string) =>
@@ -698,10 +696,7 @@ function MatchesView({
 // ---- Incoming (accordion per listing) ----
 
 function IncomingTab() {
-  const { data: listings = [], isLoading } = useQuery<Listing[]>({
-    queryKey: qk.listings(),
-    queryFn: () => api.get("/listings").then((r) => r.data),
-  });
+  const { data: listings = [], isLoading } = useListings();
   const qc = useQueryClient();
   const [expandedSet, setExpandedSet] = useState<Set<string>>(new Set());
 
@@ -757,12 +752,7 @@ function ListingIncoming({
   onMatched: () => void;
 }) {
   const qc = useQueryClient();
-  const { data, isLoading } = useQuery<{ items: MatchedTenantProfileCard[] }>({
-    queryKey: qk.incomingListing(listing.id),
-    queryFn: () =>
-      api.get(`/listings/${listing.id}/tenant-profiles?limit=50`).then((r) => r.data),
-    enabled: expanded,
-  });
+  const { data, isLoading } = useIncomingListing(listing.id, { enabled: expanded });
 
   const expressInterest = useMutation({
     mutationFn: (profileId: string) =>
@@ -877,10 +867,7 @@ function tenantHeader(p: {
 function OutgoingTab() {
   const qc = useQueryClient();
   const [confirmEl, confirm] = useConfirm();
-  const { data, isLoading } = useQuery<{ items: OutgoingItem[] }>({
-    queryKey: qk.outgoing(),
-    queryFn: () => api.get("/matches/outgoing?limit=50").then((r) => r.data),
-  });
+  const { data, isLoading } = useOutgoing<OutgoingItem>();
 
   const withdraw = useMutation({
     mutationFn: (i: OutgoingItem) =>
@@ -959,10 +946,7 @@ type MatchItem = {
 };
 
 function MatchedTab() {
-  const { data, isLoading } = useQuery<{ items: MutualMatch[] }>({
-    queryKey: qk.matched(),
-    queryFn: () => api.get("/matches/mutual?limit=50").then((r) => r.data),
-  });
+  const { data, isLoading } = useMatched<MutualMatch>();
 
   if (isLoading) return <Loading />;
 
@@ -1033,13 +1017,7 @@ function PhotoSection({
   } | null>(null);
   const [uploadError, setUploadError] = useState("");
 
-  const { data: listing } = useQuery({
-    queryKey: qk.listingDetail(listingId),
-    queryFn: () =>
-      api
-        .get(`/listings/${listingId}`)
-        .then((r) => r.data as { photo_list: PhotoRecord[] }),
-  });
+  const { data: listing } = useListingDetail(listingId);
 
   async function upload(e: React.ChangeEvent<HTMLInputElement>) {
     const remaining = 10 - photos.length;
@@ -1206,11 +1184,7 @@ function ListingFormModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
-  const { data: existing } = useQuery<Listing>({
-    queryKey: qk.listingEdit(editingId!),
-    queryFn: () => api.get(`/listings/${editingId}`).then((r) => r.data),
-    enabled: !!editingId,
-  });
+  const { data: existing } = useListingEdit(editingId ?? "");
 
   const [form, setForm] = useState({
     city: "",
@@ -1814,18 +1788,10 @@ const EMPTY_WEEK: DayForm[] = Array.from({ length: 7 }, () => ({
 
 function AvailabilityEditor() {
   const qc = useQueryClient();
-  const { data: listings = [] } = useQuery<Listing[]>({
-    queryKey: qk.listings(),
-    queryFn: () => api.get("/listings").then((r) => r.data),
-  });
+  const { data: listings = [] } = useListings();
   const [listingId, setListingId] = useState("");
 
-  const { data: avail } = useQuery<ViewingAvailability>({
-    queryKey: qk.viewingAvailability(listingId),
-    queryFn: () =>
-      api.get(`/listings/${listingId}/viewing-availability`).then((r) => r.data),
-    enabled: !!listingId,
-  });
+  const { data: avail } = useViewingAvailability(listingId);
 
   const [enabled, setEnabled] = useState(false);
   const [slotMinutes, setSlotMinutes] = useState(30);

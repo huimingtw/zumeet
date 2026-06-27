@@ -43,6 +43,12 @@ import { formatSlot } from "@/lib/viewings";
 import type { MatchedListingCard, TenantProfile, Viewing } from "@/types";
 import { LOCATION_CITY_DISTRICT, LOCATION_LABELS, ROOM_TYPE_LABELS } from "@/types";
 import { qk } from "@/features/queryKeys";
+import {
+  useTenantProfiles,
+  useListingsBrowse,
+  useIncoming,
+} from "@/features/profiles/useTenantProfiles";
+import { useOutgoing, useMatched } from "@/features/matches/useMatches";
 
 type MainTab = "requirements" | "listings" | "matches" | "viewings";
 type MatchesSubTab = "incoming" | "outgoing" | "matched";
@@ -163,10 +169,7 @@ export default function TenantDashboard() {
 
 function ProfilesTab({ onSelectProfile }: { onSelectProfile: (id: string) => void }) {
   const qc = useQueryClient();
-  const { data: profiles = [], isLoading } = useQuery<TenantProfile[]>({
-    queryKey: qk.tenantProfiles(),
-    queryFn: () => api.get("/tenant-profiles").then((r) => r.data),
-  });
+  const { data: profiles = [], isLoading } = useTenantProfiles();
   const [editingProfile, setEditingProfile] = useState<TenantProfile | null>(null);
   const [showForm, setShowForm] = useState(false);
 
@@ -414,10 +417,7 @@ function BrowseTab({
   onSelectProfile: (id: string) => void;
   onGoToProfiles: () => void;
 }) {
-  const { data: profiles = [] } = useQuery<TenantProfile[]>({
-    queryKey: qk.tenantProfiles(),
-    queryFn: () => api.get("/tenant-profiles").then((r) => r.data),
-  });
+  const { data: profiles = [] } = useTenantProfiles();
 
   const activeProfiles = profiles.filter((p) => p.is_active);
   const currentId =
@@ -426,12 +426,7 @@ function BrowseTab({
     null;
 
   const qc = useQueryClient();
-  const { data, isLoading } = useQuery<{ items: MatchedListingCard[] }>({
-    queryKey: qk.listingsBrowse(currentId),
-    queryFn: () =>
-      api.get(`/tenant-profiles/${currentId}/listings?limit=20`).then((r) => r.data),
-    enabled: !!currentId,
-  });
+  const { data, isLoading } = useListingsBrowse(currentId ?? "");
 
   const expressInterest = useMutation({
     mutationFn: (listingId: string) =>
@@ -1138,10 +1133,7 @@ function toListingCard(
 // ---- Incoming (accordion per profile, all expanded by default) ----
 
 function IncomingTab() {
-  const { data: profiles = [], isLoading } = useQuery<TenantProfile[]>({
-    queryKey: qk.tenantProfiles(),
-    queryFn: () => api.get("/tenant-profiles").then((r) => r.data),
-  });
+  const { data: profiles = [], isLoading } = useTenantProfiles();
   const qc = useQueryClient();
   const [expandedSet, setExpandedSet] = useState<Set<string>>(new Set());
 
@@ -1197,14 +1189,7 @@ function ProfileIncoming({
   onMatched: () => void;
 }) {
   const qc = useQueryClient();
-  const { data, isLoading } = useQuery<{ items: IncomingListingItem[] }>({
-    queryKey: qk.incoming(profile.id),
-    queryFn: () =>
-      api
-        .get(`/tenant-profiles/${profile.id}/interests/incoming?limit=50`)
-        .then((r) => r.data),
-    enabled: expanded,
-  });
+  const { data, isLoading } = useIncoming<IncomingListingItem>(profile.id, { enabled: expanded });
   const [detail, setDetail] = useState<MatchedListingCard | null>(null);
 
   const expressInterest = useMutation({
@@ -1309,10 +1294,7 @@ function ProfileIncoming({
 
 function OutgoingTab() {
   const qc = useQueryClient();
-  const { data, isLoading } = useQuery<{ items: OutgoingItem[] }>({
-    queryKey: qk.outgoing(),
-    queryFn: () => api.get("/matches/outgoing?limit=50").then((r) => r.data),
-  });
+  const { data, isLoading } = useOutgoing<OutgoingItem>();
   const [detail, setDetail] = useState<OutgoingItem | null>(null);
   const [confirmEl, confirm] = useConfirm();
 
@@ -1407,10 +1389,7 @@ function OutgoingTab() {
 
 function MatchedTab() {
   const qc = useQueryClient();
-  const { data, isLoading } = useQuery<{ items: MatchItem[] }>({
-    queryKey: qk.matched(),
-    queryFn: () => api.get("/matches/mutual?limit=50").then((r) => r.data),
-  });
+  const { data, isLoading } = useMatched<MatchItem>();
   // Cross-reference existing viewings so each matched listing shows 預約/已預約 state.
   const { data: viewingsData } = useQuery<{ items: Viewing[] }>({
     queryKey: qk.viewings("tenant"),
