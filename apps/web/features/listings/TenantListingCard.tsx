@@ -11,6 +11,7 @@ import {
   pricePerPing,
   totalMonthly,
 } from "@/lib/listingTags";
+import { CardMenu } from "@/components/ui/CardMenu";
 import type { MatchedListingCard } from "@/types";
 import { LOCATION_LABELS, ROOM_TYPE_LABELS } from "@/types";
 
@@ -45,6 +46,7 @@ export type IncomingListingItem = ListingFields & {
   area_ping: number;
   location_id?: string;
   interest_sent?: boolean;
+  landlord_id?: string;
 };
 
 export type OutgoingItem = ListingFields & {
@@ -56,6 +58,7 @@ export type OutgoingItem = ListingFields & {
   location_id?: string;
   tenant_profile_id: string;
   tenant_profile_name: string;
+  landlord_id?: string;
 };
 
 export type MatchItem = ListingFields & {
@@ -70,6 +73,7 @@ export type MatchItem = ListingFields & {
   location_id?: string;
   profile_name?: string;
   status?: string;
+  landlord_id?: string;
 };
 
 export function toListingCard(
@@ -117,11 +121,13 @@ export function ListingCard({
   action,
   onClick,
   contactInfo,
+  onReport,
 }: {
   listing: MatchedListingCard;
   action?: React.ReactNode;
   onClick: () => void;
   contactInfo?: string;
+  onReport?: () => void;
 }) {
   const [photoIdx, setPhotoIdx] = useState(0);
   const tags = getListingTags(listing);
@@ -130,10 +136,10 @@ export function ListingCard({
   const perPing = pricePerPing(listing);
 
   return (
-    <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition hover:shadow-md">
+    <div className="rounded-xl border border-gray-200 bg-white shadow-sm transition hover:shadow-md">
       <div className="sm:flex sm:items-stretch sm:gap-3 sm:p-3">
         {/* Photo */}
-        <div className="relative aspect-video w-full overflow-hidden bg-gray-200 sm:aspect-[4/3] sm:w-44 sm:flex-shrink-0 sm:rounded-lg">
+        <div className="relative aspect-video w-full overflow-hidden rounded-t-xl bg-gray-200 sm:aspect-[4/3] sm:w-44 sm:flex-shrink-0 sm:rounded-t-none sm:rounded-lg">
           {listing.photos.length > 0 && (
             <Image
               src={listing.photos[photoIdx]}
@@ -242,15 +248,27 @@ export function ListingCard({
         </button>
 
         {/* Desktop CTA */}
-        {action && (
-          <div className="hidden sm:flex sm:flex-shrink-0 sm:items-center">{action}</div>
+        {(action || onReport) && (
+          <div className={`hidden sm:flex sm:flex-shrink-0 ${onReport ? "sm:flex-col sm:items-end sm:justify-between sm:py-1 sm:pr-1" : "sm:items-center"}`}>
+            {onReport && (
+              <CardMenu items={[{ label: "檢舉此房東", onClick: onReport, danger: true }]} />
+            )}
+            {action && <div className="flex items-center">{action}</div>}
+          </div>
         )}
       </div>
 
       {/* Mobile CTA */}
-      {action && (
-        <div className="border-t border-gray-100 px-4 pt-3 pb-4 text-center sm:hidden [&>button]:w-full [&>button]:py-2.5 [&>button]:text-sm">
-          {action}
+      {(action || onReport) && (
+        <div className="flex items-center gap-2 border-t border-gray-100 px-4 pt-3 pb-4 sm:hidden">
+          {action && (
+            <div className="min-w-0 flex-1 text-center [&>button]:w-full [&>button]:py-2.5 [&>button]:text-sm">
+              {action}
+            </div>
+          )}
+          {onReport && (
+            <CardMenu items={[{ label: "檢舉", onClick: onReport, danger: true }]} />
+          )}
         </div>
       )}
     </div>

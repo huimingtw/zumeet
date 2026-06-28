@@ -20,6 +20,8 @@ apps/api/*.exe
 apps/web/node_modules/
 apps/web/.next/
 apps/web/out/
+apps/admin/node_modules/
+apps/admin/out/
 apps/e2e/node_modules/
 apps/e2e/test-results/
 apps/e2e/playwright-report/

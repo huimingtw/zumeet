@@ -1,7 +1,0 @@
-# Local-only override for UX screenshot work. Not committed.
-# Enables APP_ENV=test on the api service so /test/seed-user and mock OAuth
-# routes become available for headless screenshot scripts.
-services:
-  api:
-    environment:
-      APP_ENV: test

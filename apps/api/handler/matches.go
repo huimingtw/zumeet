@@ -46,6 +46,8 @@ type MutualMatchResponse struct {
 	TenantHasPets              bool      `json:"tenant_has_pets" db:"tenant_has_pets"`
 	TenantDescription          string    `json:"tenant_description,omitempty" db:"tenant_description"`
 	Photos                     []string  `json:"photos" db:"-"`
+	LandlordID                 string    `json:"landlord_id" db:"landlord_id"`
+	TenantID                   string    `json:"tenant_id" db:"tenant_id"`
 }
 
 type IncomingInterestResponse struct {
@@ -80,6 +82,8 @@ type IncomingInterestResponse struct {
 	TenantDescription          string    `json:"tenant_description,omitempty" db:"tenant_description"`
 	Photos                     []string  `json:"photos" db:"-"`
 	InterestSent               bool      `json:"interest_sent" db:"interest_sent"`
+	LandlordID                 string    `json:"landlord_id" db:"landlord_id"`
+	TenantID                   string    `json:"tenant_id" db:"tenant_id"`
 }
 
 type OutgoingInterestResponse struct {
@@ -114,6 +118,8 @@ type OutgoingInterestResponse struct {
 	TenantHasPets              bool      `json:"tenant_has_pets" db:"tenant_has_pets"`
 	TenantDescription          string    `json:"tenant_description,omitempty" db:"tenant_description"`
 	Photos                     []string  `json:"photos" db:"-"`
+	LandlordID                 string    `json:"landlord_id" db:"landlord_id"`
+	TenantID                   string    `json:"tenant_id" db:"tenant_id"`
 }
 
 // ---- profile-level endpoints ----
@@ -144,7 +150,8 @@ func (h *Handler) GetProfileMatches(c *Context) {
 		       COALESCE(tp.occupation, '') AS tenant_occupation,
 		       tp.age AS tenant_age,
 		       tp.has_pets AS tenant_has_pets,
-		       COALESCE(tp.description, '') AS tenant_description
+		       COALESCE(tp.description, '') AS tenant_description,
+		       m.landlord_id, m.tenant_id
 		FROM matches m
 		JOIN listings l ON l.id = m.listing_id
 		JOIN tenant_profiles tp ON tp.id = m.tenant_profile_id
@@ -204,7 +211,8 @@ func (h *Handler) GetProfileIncomingInterests(c *Context) {
 		       tp.has_pets AS tenant_has_pets,
 		       COALESCE(tp.description, '') AS tenant_description,
 		       '' AS address,
-		       false AS interest_sent
+		       false AS interest_sent,
+		       l.landlord_id, tp.tenant_id
 		FROM interests i
 		JOIN listings l ON l.id = i.listing_id
 		JOIN tenant_profiles tp ON tp.id = i.tenant_profile_id
@@ -272,7 +280,8 @@ func (h *Handler) GetProfileOutgoingInterests(c *Context) {
 		       tp.age AS tenant_age,
 		       tp.has_pets AS tenant_has_pets,
 		       COALESCE(tp.description, '') AS tenant_description,
-		       '' AS address
+		       '' AS address,
+		       l.landlord_id, tp.tenant_id
 		FROM interests i
 		JOIN listings l ON l.id = i.listing_id
 		JOIN tenant_profiles tp ON tp.id = i.tenant_profile_id
@@ -337,7 +346,8 @@ func (h *Handler) GetAllMutualMatches(c *Context) {
 		       COALESCE(tp.occupation, '') AS tenant_occupation,
 		       tp.age AS tenant_age,
 		       tp.has_pets AS tenant_has_pets,
-		       COALESCE(tp.description, '') AS tenant_description
+		       COALESCE(tp.description, '') AS tenant_description,
+		       m.landlord_id, m.tenant_id
 		FROM matches m
 		JOIN listings l ON l.id = m.listing_id
 		JOIN tenant_profiles tp ON tp.id = m.tenant_profile_id
@@ -388,7 +398,8 @@ func (h *Handler) GetAllIncomingInterests(c *Context) {
 		       tp.has_pets AS tenant_has_pets,
 		       COALESCE(tp.description, '') AS tenant_description,
 		       '' AS address,
-		       false AS interest_sent
+		       false AS interest_sent,
+		       l.landlord_id, tp.tenant_id
 		FROM interests i
 		JOIN listings l ON l.id = i.listing_id
 		JOIN tenant_profiles tp ON tp.id = i.tenant_profile_id
@@ -450,7 +461,8 @@ func (h *Handler) GetAllOutgoingInterests(c *Context) {
 		       tp.age AS tenant_age,
 		       tp.has_pets AS tenant_has_pets,
 		       COALESCE(tp.description, '') AS tenant_description,
-		       '' AS address
+		       '' AS address,
+		       l.landlord_id, tp.tenant_id
 		FROM interests i
 		JOIN listings l ON l.id = i.listing_id
 		JOIN tenant_profiles tp ON tp.id = i.tenant_profile_id

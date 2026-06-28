@@ -14,6 +14,8 @@ import { useOutgoing, useMatched } from "@/features/matches/useMatches";
 import { qk } from "@/features/queryKeys";
 import type { Listing, MatchedTenantProfileCard, MutualMatch } from "@/types";
 import { ROOM_TYPE_LABELS } from "@/types";
+import { ReportModal } from "@/features/reports/ReportModal";
+import { CardMenu } from "@/components/ui/CardMenu";
 
 // ---- Shared tenant helpers ----
 
@@ -53,6 +55,7 @@ type LandlordOutgoingItem = {
   tenant_age?: number;
   tenant_has_pets?: boolean;
   tenant_description?: string;
+  tenant_id?: string;
 };
 
 type LandlordMatchItem = {
@@ -67,6 +70,7 @@ type LandlordMatchItem = {
   tenant_age?: number;
   tenant_has_pets?: boolean;
   tenant_description?: string;
+  tenant_id?: string;
 };
 
 export function LandlordIncomingTab() {
@@ -127,6 +131,7 @@ function ListingIncoming({
 }) {
   const qc = useQueryClient();
   const { data, isLoading } = useIncomingListing(listing.id, { enabled: expanded });
+  const [reportTarget, setReportTarget] = useState<string | null>(null);
 
   const expressInterest = useMutation({
     mutationFn: (profileId: string) =>
@@ -187,21 +192,29 @@ function ListingIncoming({
                     />
                   )}
                 </div>
-                {profile.interest_sent ? (
-                  <Badge tone="brand">已送出</Badge>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => expressInterest.mutate(profile.id)}
-                    className="bg-primary-600 hover:bg-primary-500 rounded-lg px-3 py-1 text-xs font-medium text-white transition"
-                  >
-                    回應興趣
-                  </button>
-                )}
+                <div className="flex flex-col items-end gap-1.5">
+                  {profile.tenant_id && (
+                    <CardMenu items={[{ label: "檢舉此租客", onClick: () => setReportTarget(profile.tenant_id!), danger: true }]} />
+                  )}
+                  {profile.interest_sent ? (
+                    <Badge tone="brand">已送出</Badge>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => expressInterest.mutate(profile.id)}
+                      className="bg-primary-600 hover:bg-primary-500 rounded-lg px-3 py-1 text-xs font-medium text-white transition"
+                    >
+                      回應興趣
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
           </div>
         </div>
+      )}
+      {reportTarget && (
+        <ReportModal open onClose={() => setReportTarget(null)} reportedId={reportTarget} />
       )}
     </div>
   );
@@ -213,6 +226,7 @@ export function LandlordOutgoingTab() {
   const qc = useQueryClient();
   const [confirmEl, confirm] = useConfirm();
   const { data, isLoading } = useOutgoing<LandlordOutgoingItem>();
+  const [reportTarget, setReportTarget] = useState<string | null>(null);
 
   const withdraw = useMutation({
     mutationFn: (i: LandlordOutgoingItem) =>
@@ -250,26 +264,34 @@ export function LandlordOutgoingTab() {
               />
             )}
           </div>
-          <button
-            type="button"
-            disabled={withdraw.isPending}
-            onClick={async () => {
-              if (
-                await confirm({
-                  message: "確定收回對這張需求卡的興趣？",
-                  confirmText: "收回",
-                  danger: true,
-                })
-              )
-                withdraw.mutate(i);
-            }}
-            className="flex-shrink-0 rounded-full border border-gray-200 px-2.5 py-0.5 text-xs font-medium text-gray-500 transition hover:bg-gray-50 disabled:opacity-50"
-          >
-            收回
-          </button>
+          <div className="flex flex-shrink-0 flex-col items-end gap-1.5">
+            {i.tenant_id && (
+              <CardMenu items={[{ label: "檢舉此租客", onClick: () => setReportTarget(i.tenant_id!), danger: true }]} />
+            )}
+            <button
+              type="button"
+              disabled={withdraw.isPending}
+              onClick={async () => {
+                if (
+                  await confirm({
+                    message: "確定收回對這張需求卡的興趣？",
+                    confirmText: "收回",
+                    danger: true,
+                  })
+                )
+                  withdraw.mutate(i);
+              }}
+              className="rounded-full border border-gray-200 px-2.5 py-0.5 text-xs font-medium text-gray-500 transition hover:bg-gray-50 disabled:opacity-50"
+            >
+              收回
+            </button>
+          </div>
         </div>
       ))}
       {confirmEl}
+      {reportTarget && (
+        <ReportModal open onClose={() => setReportTarget(null)} reportedId={reportTarget} />
+      )}
     </div>
   );
 }
@@ -278,6 +300,7 @@ export function LandlordOutgoingTab() {
 
 export function LandlordMatchedTab() {
   const { data, isLoading } = useMatched<MutualMatch>();
+  const [reportTarget, setReportTarget] = useState<string | null>(null);
 
   if (isLoading) return <Loading />;
 
@@ -300,10 +323,15 @@ export function LandlordMatchedTab() {
             key={match.match_id}
             className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
           >
-            <div className="flex flex-wrap items-center gap-2 text-xs text-gray-400">
-              <Badge tone="success">媒合成功</Badge>
-              <span>{new Date(match.matched_at).toLocaleDateString("zh-TW")}</span>
-              {match.listing_name && <span>房源：{match.listing_name}</span>}
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex flex-wrap items-center gap-2 text-xs text-gray-400">
+                <Badge tone="success">媒合成功</Badge>
+                <span>{new Date(match.matched_at).toLocaleDateString("zh-TW")}</span>
+                {match.listing_name && <span>房源：{match.listing_name}</span>}
+              </div>
+              {match.tenant_id && (
+                <CardMenu items={[{ label: "檢舉此租客", onClick: () => setReportTarget(match.tenant_id!), danger: true }]} />
+              )}
             </div>
             <div className="mt-3">
               <div className="text-sm font-medium text-gray-950">
@@ -325,6 +353,9 @@ export function LandlordMatchedTab() {
           </div>
         );
       })}
+      {reportTarget && (
+        <ReportModal open onClose={() => setReportTarget(null)} reportedId={reportTarget} />
+      )}
     </div>
   );
 }

@@ -2,6 +2,7 @@
 
 import { ExpandableText } from "@/components/ui/ExpandableText";
 import { Badge } from "@/components/ui/Badge";
+import { CardMenu } from "@/components/ui/CardMenu";
 import { getProfileTags } from "@/lib/listingTags";
 import { profileHeader } from "@/features/matches/LandlordMatches";
 import type { MatchedTenantProfileCard } from "@/types";
@@ -9,9 +10,11 @@ import type { MatchedTenantProfileCard } from "@/types";
 export function TenantProfileCard({
   profile,
   onInterest,
+  onReport,
 }: {
   profile: MatchedTenantProfileCard;
   onInterest: () => void;
+  onReport?: () => void;
 }) {
   const tags = getProfileTags(profile);
 
@@ -40,7 +43,10 @@ export function TenantProfileCard({
             </div>
           )}
         </div>
-        <div className="flex flex-shrink-0 items-center">
+        <div className="flex flex-shrink-0 flex-col items-end gap-2">
+          {onReport && (
+            <CardMenu items={[{ label: "檢舉此租客", onClick: onReport, danger: true }]} />
+          )}
           {profile.interest_sent ? (
             <Badge tone="brand">已送出</Badge>
           ) : (

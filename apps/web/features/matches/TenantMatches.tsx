@@ -22,6 +22,7 @@ import { useOutgoing, useMatched } from "@/features/matches/useMatches";
 import { qk } from "@/features/queryKeys";
 import { formatSlot } from "@/lib/viewings";
 import type { MatchedListingCard, TenantProfile, Viewing } from "@/types";
+import { ReportModal } from "@/features/reports/ReportModal";
 
 // ---- Incoming tab ----
 
@@ -86,6 +87,7 @@ function ProfileIncoming({
     enabled: expanded,
   });
   const [detail, setDetail] = useState<MatchedListingCard | null>(null);
+  const [reportTarget, setReportTarget] = useState<{ reportedId: string; listingId: string } | null>(null);
 
   const expressInterest = useMutation({
     mutationFn: (listingId: string) =>
@@ -135,6 +137,7 @@ function ProfileIncoming({
                     key={item.listing_id}
                     listing={card}
                     onClick={() => setDetail(card)}
+                    onReport={item.landlord_id ? () => setReportTarget({ reportedId: item.landlord_id!, listingId: item.listing_id }) : undefined}
                     action={
                       item.interest_sent ? (
                         <Badge tone="brand">已送出</Badge>
@@ -179,6 +182,14 @@ function ProfileIncoming({
           }
         />
       )}
+      {reportTarget && (
+        <ReportModal
+          open
+          onClose={() => setReportTarget(null)}
+          reportedId={reportTarget.reportedId}
+          listingId={reportTarget.listingId}
+        />
+      )}
     </>
   );
 }
@@ -190,6 +201,7 @@ export function TenantOutgoingTab() {
   const { data, isLoading } = useOutgoing<OutgoingItem>();
   const [detail, setDetail] = useState<OutgoingItem | null>(null);
   const [confirmEl, confirm] = useConfirm();
+  const [reportTarget, setReportTarget] = useState<{ reportedId: string; listingId: string } | null>(null);
 
   const withdraw = useMutation({
     mutationFn: (i: OutgoingItem) =>
@@ -224,6 +236,7 @@ export function TenantOutgoingTab() {
               key={i.listing_id}
               listing={card}
               onClick={() => setDetail(i)}
+              onReport={i.landlord_id ? () => setReportTarget({ reportedId: i.landlord_id!, listingId: i.listing_id }) : undefined}
               action={
                 <button
                   type="button"
@@ -274,6 +287,14 @@ export function TenantOutgoingTab() {
         />
       )}
       {confirmEl}
+      {reportTarget && (
+        <ReportModal
+          open
+          onClose={() => setReportTarget(null)}
+          reportedId={reportTarget.reportedId}
+          listingId={reportTarget.listingId}
+        />
+      )}
     </>
   );
 }
@@ -298,6 +319,7 @@ export function TenantMatchedTab() {
     contactInfo: string;
   } | null>(null);
   const [bookFor, setBookFor] = useState<MatchItem | null>(null);
+  const [reportTarget, setReportTarget] = useState<{ reportedId: string; listingId: string } | null>(null);
 
   const book = useMutation({
     mutationFn: (p: { matchId: string; startsAt: string }) =>
@@ -352,6 +374,7 @@ export function TenantMatchedTab() {
               listing={card}
               onClick={() => setDetail({ card, contactInfo: m.contact_info })}
               contactInfo={m.contact_info}
+              onReport={m.landlord_id ? () => setReportTarget({ reportedId: m.landlord_id!, listingId: m.listing_id }) : undefined}
               action={
                 rented ? (
                   <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-500">
@@ -396,6 +419,14 @@ export function TenantMatchedTab() {
               { onSuccess: () => setBookFor(null) }
             )
           }
+        />
+      )}
+      {reportTarget && (
+        <ReportModal
+          open
+          onClose={() => setReportTarget(null)}
+          reportedId={reportTarget.reportedId}
+          listingId={reportTarget.listingId}
         />
       )}
     </>

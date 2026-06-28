@@ -140,6 +140,7 @@ export interface MatchedListingCard {
   description?: string;
   lat?: number | null;
   lng?: number | null;
+  landlord_id?: string;
 }
 
 export interface MatchedTenantProfileCard {
@@ -159,6 +160,7 @@ export interface MatchedTenantProfileCard {
   age?: number;
   description?: string;
   interest_sent: boolean;
+  tenant_id?: string;
 }
 
 export interface MutualMatch {
@@ -172,6 +174,8 @@ export interface MutualMatch {
   tenant_age?: number;
   tenant_has_pets?: boolean;
   tenant_description?: string;
+  landlord_id?: string;
+  tenant_id?: string;
 }
 
 export interface Interest {

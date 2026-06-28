@@ -39,6 +39,7 @@ type MatchedListingCard struct {
 	Lng                        *float64  `json:"lng" db:"lng"`
 	Photos                     []string  `json:"photos" db:"-"`
 	InterestSent               bool      `json:"interest_sent" db:"interest_sent"` // tenant already expressed interest
+	LandlordID                 string    `json:"landlord_id" db:"landlord_id"`
 }
 
 // MatchedTenantProfileCard is what a landlord sees when browsing tenant profiles.
@@ -58,6 +59,7 @@ type MatchedTenantProfileCard struct {
 	Age                *int      `json:"age,omitempty"`
 	Description        string    `json:"description"`
 	InterestSent       bool      `json:"interest_sent"` // landlord already expressed interest
+	TenantID           string    `json:"tenant_id"`
 }
 
 const defaultPageSize = 20
@@ -101,7 +103,7 @@ func (h *Handler) BrowseListingsForProfile(c *Context) {
 
 	query := `
 		SELECT
-			l.id, l.location_id, COALESCE(l.name, '') AS name, l.rent, l.management_fee, l.room_type::text AS room_type, l.area_ping,
+			l.id, l.landlord_id, l.location_id, COALESCE(l.name, '') AS name, l.rent, l.management_fee, l.room_type::text AS room_type, l.area_ping,
 			l.num_bedrooms, l.num_living_rooms, l.num_bathrooms, l.num_balconies,
 			l.available_from,
 			l.allow_pets, l.allow_subsidy, l.allow_tax_receipt,
@@ -234,7 +236,7 @@ func (h *Handler) BrowseTenantProfilesForListing(c *Context) {
 
 	query := `
 		SELECT
-			tp.id, tp.name,
+			tp.id, tp.tenant_id, tp.name,
 			array_to_string(tp.preferred_room_types::text[], ',') AS preferred_room_types,
 			tp.available_from, tp.min_lease_months,
 			tp.has_pets, tp.needs_subsidy, tp.needs_tax_receipt,
@@ -302,6 +304,7 @@ func (h *Handler) BrowseTenantProfilesForListing(c *Context) {
 
 	type matchedTenantProfileRow struct {
 		ID                 string    `db:"id"`
+		TenantID           string    `db:"tenant_id"`
 		Name               string    `db:"name"`
 		PreferredRoomTypes string    `db:"preferred_room_types"`
 		AvailableFrom      time.Time `db:"available_from"`
@@ -330,6 +333,7 @@ func (h *Handler) BrowseTenantProfilesForListing(c *Context) {
 	for _, row := range rows {
 		cards = append(cards, MatchedTenantProfileCard{
 			ID:                 row.ID,
+			TenantID:           row.TenantID,
 			Name:               row.Name,
 			PreferredRoomTypes: splitStringList(row.PreferredRoomTypes),
 			AvailableFrom:      row.AvailableFrom,

@@ -15,6 +15,7 @@ import {
   useListingsBrowse,
 } from "@/features/profiles/useTenantProfiles";
 import { ListingCard, ListingDetailDialog } from "@/features/listings/TenantListingCard";
+import { ReportModal } from "@/features/reports/ReportModal";
 
 export function TenantBrowseTab({
   selectedProfileId,
@@ -47,6 +48,7 @@ export function TenantBrowseTab({
 
   const [detailListing, setDetailListing] = useState<MatchedListingCard | null>(null);
   const [filter, setFilter] = useState<"all" | "sent" | "open">("all");
+  const [reportTarget, setReportTarget] = useState<{ reportedId: string; listingId: string } | null>(null);
 
   const allItems = data?.items ?? [];
   const items =
@@ -127,6 +129,7 @@ export function TenantBrowseTab({
             key={listing.id}
             listing={listing}
             onClick={() => setDetailListing(listing)}
+            onReport={listing.landlord_id ? () => setReportTarget({ reportedId: listing.landlord_id!, listingId: listing.id }) : undefined}
             action={
               listing.interest_sent ? (
                 <Badge tone="brand">已送出</Badge>
@@ -167,6 +170,14 @@ export function TenantBrowseTab({
               </button>
             )
           }
+        />
+      )}
+      {reportTarget && (
+        <ReportModal
+          open
+          onClose={() => setReportTarget(null)}
+          reportedId={reportTarget.reportedId}
+          listingId={reportTarget.listingId}
         />
       )}
     </div>

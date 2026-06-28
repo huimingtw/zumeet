@@ -16,6 +16,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 
@@ -99,4 +100,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "open Chrome failed (%v); visit manually: %s\n", err, loginURL)
 	}
 	<-done
+	// ponytail: let the redirect+Set-Cookie response flush to Chrome before we exit
+	// and kill the listener, or Chrome gets ERR_CONNECTION_REFUSED on this port.
+	time.Sleep(300 * time.Millisecond)
 }

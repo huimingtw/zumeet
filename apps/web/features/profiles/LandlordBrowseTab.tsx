@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Search, SearchX } from "lucide-react";
 import { Dropdown } from "@/components/ui/Dropdown";
@@ -10,6 +11,7 @@ import { ROOM_TYPE_LABELS } from "@/types";
 import { qk } from "@/features/queryKeys";
 import { useListings, useProfilesBrowse } from "@/features/listings/useListings";
 import { TenantProfileCard } from "@/features/profiles/TenantProfileCard";
+import { ReportModal } from "@/features/reports/ReportModal";
 
 export function LandlordBrowseTab({
   selectedListingId,
@@ -30,6 +32,7 @@ export function LandlordBrowseTab({
 
   const qc = useQueryClient();
   const { data, isLoading } = useProfilesBrowse(currentId ?? "");
+  const [reportTarget, setReportTarget] = useState<string | null>(null);
 
   const expressInterest = useMutation({
     mutationFn: (profileId: string) =>
@@ -87,9 +90,17 @@ export function LandlordBrowseTab({
             key={profile.id}
             profile={profile}
             onInterest={() => expressInterest.mutate(profile.id)}
+            onReport={profile.tenant_id ? () => setReportTarget(profile.tenant_id!) : undefined}
           />
         ))}
       </div>
+      {reportTarget && (
+        <ReportModal
+          open
+          onClose={() => setReportTarget(null)}
+          reportedId={reportTarget}
+        />
+      )}
     </div>
   );
 }
