@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { X } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Dropdown } from "@/components/ui/Dropdown";
@@ -23,7 +24,9 @@ const EMPTY_WEEK: DayForm[] = Array.from({ length: 7 }, () => ({
 }));
 
 export function LandlordViewingsView() {
-  const [subTab, setSubTab] = useState<ViewingsSubTab>("schedule");
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const subTab = (searchParams.get("subtab") as ViewingsSubTab) ?? "schedule";
   return (
     <div>
       <div className="mb-4 flex gap-1 rounded-xl border border-gray-200 bg-white p-1 shadow-sm">
@@ -36,7 +39,7 @@ export function LandlordViewingsView() {
           <button
             key={t}
             type="button"
-            onClick={() => setSubTab(t)}
+            onClick={() => router.push(`?tab=viewings&subtab=${t}`)}
             className={`flex-1 rounded-lg py-2 text-sm font-medium transition ${
               subTab === t
                 ? "bg-primary-600 text-white"
