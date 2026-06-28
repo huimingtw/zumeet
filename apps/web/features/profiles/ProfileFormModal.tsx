@@ -461,7 +461,7 @@ export function ProfileFormModal({
               htmlFor="min-area"
               className="mb-1 block text-sm font-medium text-gray-700"
             >
-              最小坪數（可不填）
+              最小坪數（選填）
             </label>
             <input
               id="min-area"
