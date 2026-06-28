@@ -38,3 +38,4 @@ infra/.terraform.lock.hcl
 # OS
 .DS_Store
 Thumbs.db
+apps/api/devlogin
