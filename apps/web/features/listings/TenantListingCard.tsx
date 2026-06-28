@@ -336,16 +336,16 @@ function ListingMiniMap({
   );
 }
 
-export function ListingDetailDialog({
+export function ListingDetailContent({
   listing,
-  onClose,
   action,
   contactInfo,
+  titleId,
 }: {
   listing: MatchedListingCard;
-  onClose: () => void;
   action?: React.ReactNode;
   contactInfo?: string;
+  titleId?: string;
 }) {
   const [photoIdx, setPhotoIdx] = useState(0);
   const tags = getListingTags(listing);
@@ -370,21 +370,7 @@ export function ListingDetailDialog({
   }, [photoCount]);
 
   return (
-    <Modal
-      open
-      onClose={onClose}
-      labelledBy="listing-detail-title"
-      className="flex w-screen flex-col !overflow-hidden sm:min-h-[520px] sm:max-w-[min(80vw,1280px)] sm:flex-row"
-    >
-      <button
-        type="button"
-        onClick={onClose}
-        className="absolute top-3 right-3 z-20 rounded-full bg-black/50 p-1.5 text-white backdrop-blur-sm hover:bg-black/70"
-        aria-label="關閉"
-      >
-        <X size={16} strokeWidth={2} />
-      </button>
-
+    <>
       {/* Photo panel */}
       <div className="relative flex-shrink-0 bg-gray-100 sm:w-[62%] sm:self-stretch">
         {listing.photos.length > 0 ? (
@@ -435,7 +421,7 @@ export function ListingDetailDialog({
         <div className="min-h-0 overflow-y-auto p-6">
           {listing.name && (
             <p
-              id="listing-detail-title"
+              id={titleId}
               className="mb-1 text-base font-semibold text-gray-950"
             >
               {listing.name}
@@ -521,6 +507,42 @@ export function ListingDetailDialog({
           </div>
         )}
       </div>
+    </>
+  );
+}
+
+export function ListingDetailDialog({
+  listing,
+  onClose,
+  action,
+  contactInfo,
+}: {
+  listing: MatchedListingCard;
+  onClose: () => void;
+  action?: React.ReactNode;
+  contactInfo?: string;
+}) {
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      labelledBy="listing-detail-title"
+      className="flex w-screen flex-col !overflow-hidden sm:min-h-[520px] sm:max-w-[min(80vw,1280px)] sm:flex-row"
+    >
+      <button
+        type="button"
+        onClick={onClose}
+        className="absolute top-3 right-3 z-20 rounded-full bg-black/50 p-1.5 text-white backdrop-blur-sm hover:bg-black/70"
+        aria-label="關閉"
+      >
+        <X size={16} strokeWidth={2} />
+      </button>
+      <ListingDetailContent
+        listing={listing}
+        action={action}
+        contactInfo={contactInfo}
+        titleId="listing-detail-title"
+      />
     </Modal>
   );
 }

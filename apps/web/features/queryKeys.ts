@@ -10,6 +10,7 @@ export const qk = {
 
   incoming: (profileId: string) => ["incoming", profileId] as const,
   incomingListing: (listingId: string) => ["incoming-listing", listingId] as const,
+  allIncoming: () => ["all-incoming"] as const,
   outgoing: () => ["outgoing"] as const,
   matched: () => ["matched"] as const,
 

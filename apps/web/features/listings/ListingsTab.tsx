@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { Building2 } from "lucide-react";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -15,11 +16,13 @@ export function ListingsTab({
 }: {
   onSelectListing: (id: string) => void;
 }) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const qc = useQueryClient();
   const { data: listings = [], isLoading } = useListings();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
-  const [filter, setFilter] = useState<"all" | "active" | "rented">("all");
+  const filter = (searchParams.get("filter") as "all" | "active" | "rented") ?? "all";
 
   const filtered =
     filter === "all" ? listings : listings.filter((l) => l.status === filter);
@@ -89,7 +92,7 @@ export function ListingsTab({
           <button
             key={key}
             type="button"
-            onClick={() => setFilter(key)}
+            onClick={() => router.push(`?tab=listings&filter=${key}`)}
             className={`rounded-full px-3 py-1 text-xs font-medium transition ${
               filter === key
                 ? "bg-gray-900 text-white"

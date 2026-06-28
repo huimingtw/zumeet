@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Building2, CalendarClock, Heart, Search } from "lucide-react";
 import { DashboardHeader } from "@/components/layout/DashboardHeader";
 import { RoleGuard } from "@/components/RoleGuard";
@@ -14,22 +15,23 @@ import { LandlordViewingsView } from "@/features/viewings/LandlordViewingsView";
 type MainTab = "listings" | "browse" | "matches" | "viewings";
 type MatchesSubTab = "incoming" | "outgoing" | "matched";
 
-export default function LandlordDashboard() {
-  return (
-    <RoleGuard role="landlord">
-      <LandlordDashboardInner />
-    </RoleGuard>
-  );
-}
-
 function LandlordDashboardInner() {
-  const [tab, setTab] = useState<MainTab>("listings");
-  const [matchesSubTab, setMatchesSubTab] = useState<MatchesSubTab>("incoming");
-  const [selectedListingId, setSelectedListingId] = useState<string | null>(null);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const tab = (searchParams.get("tab") as MainTab) ?? "listings";
+  const matchesSubTab = (searchParams.get("subtab") as MatchesSubTab) ?? "incoming";
+  const selectedListingId = searchParams.get("listing");
+
+  function setTab(t: MainTab) {
+    router.push(`?tab=${t}`);
+  }
+
+  function setMatchesSubTab(st: MatchesSubTab) {
+    router.push(`?tab=matches&subtab=${st}`);
+  }
 
   function goToBrowse(id: string) {
-    setSelectedListingId(id);
-    setTab("browse");
+    router.push(`?tab=browse&listing=${id}`);
   }
 
   return (
@@ -68,7 +70,7 @@ function LandlordDashboardInner() {
         {tab === "browse" && (
           <LandlordBrowseTab
             selectedListingId={selectedListingId}
-            onSelectListing={setSelectedListingId}
+            onSelectListing={(id) => router.push(`?tab=browse&listing=${id}`)}
             onGoToListings={() => setTab("listings")}
           />
         )}
@@ -111,5 +113,15 @@ function LandlordDashboardInner() {
         </div>
       </nav>
     </div>
+  );
+}
+
+export default function LandlordDashboard() {
+  return (
+    <RoleGuard role="landlord">
+      <Suspense fallback={<div className="min-h-screen bg-gray-100" />}>
+        <LandlordDashboardInner />
+      </Suspense>
+    </RoleGuard>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ChevronDown, Heart, Inbox, SendHorizonal } from "lucide-react";
 import { useConfirm } from "@/components/ConfirmDialog";
@@ -9,11 +9,9 @@ import { Badge } from "@/components/ui/Badge";
 import { ExpandableText } from "@/components/ui/ExpandableText";
 import { Loading } from "@/components/ui/Loading";
 import { api } from "@/lib/api";
-import { useListings, useIncomingListing } from "@/features/listings/useListings";
-import { useOutgoing, useMatched } from "@/features/matches/useMatches";
+import { useOutgoing, useMatched, useAllIncoming } from "@/features/matches/useMatches";
 import { qk } from "@/features/queryKeys";
-import type { Listing, MatchedTenantProfileCard, MutualMatch } from "@/types";
-import { ROOM_TYPE_LABELS } from "@/types";
+import type { MatchedTenantProfileCard, MutualMatch } from "@/types";
 import { ReportModal } from "@/features/reports/ReportModal";
 import { CardMenu } from "@/components/ui/CardMenu";
 
@@ -45,6 +43,19 @@ function tenantHeader(p: {
 
 // ---- Incoming tab ----
 
+type LandlordIncomingItem = {
+  listing_id: string;
+  listing_name: string;
+  tenant_profile_id: string;
+  profile_name: string;
+  tenant_occupation?: string;
+  tenant_age?: number;
+  tenant_has_pets?: boolean;
+  tenant_description?: string;
+  tenant_id?: string;
+  interest_sent: boolean;
+};
+
 type LandlordOutgoingItem = {
   tenant_profile_id: string;
   listing_id: string;
@@ -74,22 +85,38 @@ type LandlordMatchItem = {
 };
 
 export function LandlordIncomingTab() {
-  const { data: listings = [], isLoading } = useListings();
+  const { data, isLoading } = useAllIncoming<LandlordIncomingItem>();
   const qc = useQueryClient();
   const [expandedSet, setExpandedSet] = useState<Set<string>>(new Set());
+  const [reportTarget, setReportTarget] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (listings.length > 0) setExpandedSet(new Set(listings.map((l) => l.id))); // eslint-disable-line react-hooks/set-state-in-effect
-  }, [listings]);
+  const grouped = useMemo(() => {
+    const map = new Map<string, { listing_name: string; items: LandlordIncomingItem[] }>();
+    for (const item of data?.items ?? []) {
+      if (!map.has(item.listing_id))
+        map.set(item.listing_id, { listing_name: item.listing_name, items: [] });
+      map.get(item.listing_id)!.items.push(item);
+    }
+    return [...map.entries()];
+  }, [data]);
+
+  const expressInterest = useMutation({
+    mutationFn: (item: LandlordIncomingItem) =>
+      api.post(`/listings/${item.listing_id}/tenant-profiles/${item.tenant_profile_id}/interest`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: qk.allIncoming() });
+      qc.invalidateQueries({ queryKey: qk.matched() });
+    },
+  });
 
   if (isLoading) return <Loading />;
 
-  if (listings.length === 0) {
+  if (grouped.length === 0) {
     return (
       <EmptyState
         icon={<Inbox size={32} strokeWidth={1.5} className="text-gray-300" />}
-        title="尚無房源"
-        description="建立並上架房源後，才能接收租客的媒合興趣"
+        title="尚無收到興趣"
+        description="租客對你的房源表示興趣後會顯示在這裡"
       />
     );
   }
@@ -105,114 +132,79 @@ export function LandlordIncomingTab() {
 
   return (
     <div className="space-y-3">
-      {listings.map((listing) => (
-        <ListingIncoming
-          key={listing.id}
-          listing={listing}
-          expanded={expandedSet.has(listing.id)}
-          onToggle={() => toggle(listing.id)}
-          onMatched={() => qc.invalidateQueries({ queryKey: qk.matched() })}
-        />
-      ))}
-    </div>
-  );
-}
-
-function ListingIncoming({
-  listing,
-  expanded,
-  onToggle,
-  onMatched,
-}: {
-  listing: Listing;
-  expanded: boolean;
-  onToggle: () => void;
-  onMatched: () => void;
-}) {
-  const qc = useQueryClient();
-  const { data, isLoading } = useIncomingListing(listing.id, { enabled: expanded });
-  const [reportTarget, setReportTarget] = useState<string | null>(null);
-
-  const expressInterest = useMutation({
-    mutationFn: (profileId: string) =>
-      api.post(`/listings/${listing.id}/tenant-profiles/${profileId}/interest`),
-    onSuccess: (res) => {
-      if (res.data.status === "matched") onMatched();
-      qc.invalidateQueries({ queryKey: qk.incomingListing(listing.id) });
-      qc.invalidateQueries({ queryKey: qk.matched() });
-    },
-  });
-
-  const pendingCount = (data?.items ?? []).filter((p) => !p.interest_sent).length;
-
-  return (
-    <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
-      <button
-        type="button"
-        onClick={onToggle}
-        className="flex w-full items-center justify-between px-4 py-3 text-left"
-      >
-        <span className="text-sm font-medium text-gray-700">
-          {listing.name ||
-            `$${listing.rent.toLocaleString()} ${ROOM_TYPE_LABELS[listing.room_type] ?? listing.room_type}`}
-        </span>
-        <div className="flex items-center gap-2">
-          {expanded && pendingCount > 0 && (
-            <span className="bg-primary-600 rounded-full px-2 py-0.5 text-xs font-medium text-white">
-              {pendingCount}
-            </span>
-          )}
-          <ChevronDown
-            size={16}
-            strokeWidth={1.5}
-            className={`text-gray-400 transition-transform ${expanded ? "rotate-180" : ""}`}
-          />
-        </div>
-      </button>
-      {expanded && (
-        <div className="border-t border-gray-100 px-4 py-3">
-          {isLoading && <Loading />}
-          {!isLoading && (data?.items ?? []).length === 0 && (
-            <p className="py-4 text-center text-sm text-gray-400">目前無符合條件的租客</p>
-          )}
-          <div className="space-y-2">
-            {(data?.items ?? []).map((profile) => (
-              <div
-                key={profile.id}
-                className="flex items-start justify-between gap-3 rounded-lg border border-gray-100 px-3 py-2.5"
-              >
-                <div className="min-w-0 flex-1 text-sm">
-                  <div className="font-medium text-gray-900">
-                    {profileHeader(profile)}
-                  </div>
-                  {profile.description && (
-                    <ExpandableText
-                      text={profile.description}
-                      className="mt-1 text-xs text-gray-600"
-                    />
-                  )}
-                </div>
-                <div className="flex flex-col items-end gap-1.5">
-                  {profile.tenant_id && (
-                    <CardMenu items={[{ label: "檢舉此租客", onClick: () => setReportTarget(profile.tenant_id!), danger: true }]} />
-                  )}
-                  {profile.interest_sent ? (
-                    <Badge tone="brand">已送出</Badge>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => expressInterest.mutate(profile.id)}
-                      className="bg-primary-600 hover:bg-primary-500 rounded-lg px-3 py-1 text-xs font-medium text-white transition"
+      {grouped.map(([listingId, { listing_name, items }]) => {
+        const expanded = !expandedSet.has(listingId); // ponytail: default open; toggle adds to collapsed set
+        return (
+          <div key={listingId} className="rounded-xl border border-gray-200 bg-white shadow-sm">
+            <button
+              type="button"
+              onClick={() => toggle(listingId)}
+              className="flex w-full items-center justify-between px-4 py-3 text-left"
+            >
+              <span className="text-sm font-medium text-gray-700">
+                {listing_name || listingId}
+              </span>
+              <div className="flex items-center gap-2">
+                <span className="bg-primary-600 rounded-full px-2 py-0.5 text-xs font-medium text-white">
+                  {items.length}
+                </span>
+                <ChevronDown
+                  size={16}
+                  strokeWidth={1.5}
+                  className={`text-gray-400 transition-transform ${expanded ? "rotate-180" : ""}`}
+                />
+              </div>
+            </button>
+            {expanded && (
+              <div className="border-t border-gray-100 px-4 py-3">
+                <div className="space-y-2">
+                  {items.map((item) => (
+                    <div
+                      key={item.tenant_profile_id}
+                      className="flex items-start justify-between gap-3 rounded-lg border border-gray-100 px-3 py-2.5"
                     >
-                      回應興趣
-                    </button>
-                  )}
+                      <div className="min-w-0 flex-1 text-sm">
+                        <div className="font-medium text-gray-900">
+                          {profileHeader({
+                            occupation: item.tenant_occupation,
+                            age: item.tenant_age,
+                            has_pets: item.tenant_has_pets ?? false,
+                          })}
+                        </div>
+                        {item.tenant_description && (
+                          <ExpandableText
+                            text={item.tenant_description}
+                            className="mt-1 text-xs text-gray-600"
+                          />
+                        )}
+                      </div>
+                      <div className="flex flex-col items-end gap-1.5">
+                        {item.tenant_id && (
+                          <CardMenu
+                            items={[{ label: "檢舉此租客", onClick: () => setReportTarget(item.tenant_id!), danger: true }]}
+                          />
+                        )}
+                        {item.interest_sent ? (
+                          <Badge tone="brand">已送出</Badge>
+                        ) : (
+                          <button
+                            type="button"
+                            disabled={expressInterest.isPending}
+                            onClick={() => expressInterest.mutate(item)}
+                            className="bg-primary-600 hover:bg-primary-500 rounded-lg px-3 py-1 text-xs font-medium text-white transition disabled:opacity-50"
+                          >
+                            回應興趣
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
-            ))}
+            )}
           </div>
-        </div>
-      )}
+        );
+      })}
       {reportTarget && (
         <ReportModal open onClose={() => setReportTarget(null)} reportedId={reportTarget} />
       )}

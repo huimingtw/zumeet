@@ -14,6 +14,7 @@ export function useListingDetail(listingId: string) {
   return useQuery({
     queryKey: qk.listingDetail(listingId),
     queryFn: () => api.get(`/listings/${listingId}`).then((r) => r.data),
+    enabled: !!listingId,
   });
 }
 

@@ -15,3 +15,10 @@ export function useMatched<T = unknown>() {
     queryFn: () => api.get("/matches/mutual?limit=50").then((r) => r.data),
   });
 }
+
+export function useAllIncoming<T = unknown>() {
+  return useQuery<{ items: T[] }>({
+    queryKey: qk.allIncoming(),
+    queryFn: () => api.get("/matches/incoming?limit=200").then((r) => r.data),
+  });
+}

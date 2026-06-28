@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Search, SearchX } from "lucide-react";
 import { Dropdown } from "@/components/ui/Dropdown";
@@ -8,13 +9,14 @@ import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SkeletonListingCard } from "@/components/ui/Skeletons";
 import { api } from "@/lib/api";
-import type { MatchedListingCard } from "@/types";
 import { qk } from "@/features/queryKeys";
 import {
   useTenantProfiles,
   useListingsBrowse,
 } from "@/features/profiles/useTenantProfiles";
+import { useListingDetail } from "@/features/listings/useListings";
 import { ListingCard, ListingDetailDialog } from "@/features/listings/TenantListingCard";
+import type { MatchedListingCard } from "@/types";
 import { ReportModal } from "@/features/reports/ReportModal";
 
 export function TenantBrowseTab({
@@ -46,11 +48,27 @@ export function TenantBrowseTab({
     },
   });
 
-  const [detailListing, setDetailListing] = useState<MatchedListingCard | null>(null);
-  const [filter, setFilter] = useState<"all" | "sent" | "open">("all");
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const detailListingId = searchParams.get("listingId");
+  const filter = (searchParams.get("filter") as "all" | "sent" | "open") ?? "all";
   const [reportTarget, setReportTarget] = useState<{ reportedId: string; listingId: string } | null>(null);
 
+  function buildParams(updates: Record<string, string | null>) {
+    const p = new URLSearchParams(searchParams.toString());
+    for (const [k, v] of Object.entries(updates)) {
+      if (v === null) p.delete(k);
+      else p.set(k, v);
+    }
+    return `?${p.toString()}`;
+  }
+
   const allItems = data?.items ?? [];
+  // ponytail: fallback for reload — browse list empty while loading, fetch directly
+  const { data: detailFull } = useListingDetail(detailListingId ?? "");
+  const detailListing: MatchedListingCard | null =
+    allItems.find((l) => l.id === detailListingId) ??
+    (detailFull ? ({ ...detailFull, interest_sent: false } as MatchedListingCard) : null);
   const items =
     filter === "sent"
       ? allItems.filter((l) => l.interest_sent)
@@ -94,7 +112,7 @@ export function TenantBrowseTab({
           <button
             key={key}
             type="button"
-            onClick={() => setFilter(key)}
+            onClick={() => router.push(buildParams({ filter: key, listingId: null }))}
             className={`rounded-full px-3 py-1 text-xs font-medium transition ${
               filter === key
                 ? "bg-gray-900 text-white"
@@ -128,7 +146,7 @@ export function TenantBrowseTab({
           <ListingCard
             key={listing.id}
             listing={listing}
-            onClick={() => setDetailListing(listing)}
+            onClick={() => router.push(buildParams({ listingId: listing.id }))}
             onReport={listing.landlord_id ? () => setReportTarget({ reportedId: listing.landlord_id!, listingId: listing.id }) : undefined}
             action={
               listing.interest_sent ? (
@@ -151,7 +169,7 @@ export function TenantBrowseTab({
       {detailListing && (
         <ListingDetailDialog
           listing={detailListing}
-          onClose={() => setDetailListing(null)}
+          onClose={() => router.push(buildParams({ listingId: null }))}
           action={
             detailListing.interest_sent ? (
               <p className="text-center text-sm text-gray-400">
@@ -162,7 +180,7 @@ export function TenantBrowseTab({
                 type="button"
                 onClick={() => {
                   expressInterest.mutate(detailListing.id);
-                  setDetailListing(null);
+                  router.push(buildParams({ listingId: null }));
                 }}
                 className="bg-primary-600 hover:bg-primary-500 w-full rounded-lg py-3 text-sm font-medium text-white transition"
               >
