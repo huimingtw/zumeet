@@ -58,3 +58,43 @@ func TestGetMe_ReturnsIdentityAndRoles(t *testing.T) {
 		t.Error("created_at should be populated")
 	}
 }
+
+// ---- PUT /api/v1/profile/me (UpdateMe) sets user-level contact_info ----
+
+func TestUpdateMe_SetsContactInfo(t *testing.T) {
+	truncate(t)
+	userID := seedUser(t, "upd@example.com", "tenant")
+	cookie := validAccessCookie(t, userID, "upd@example.com", []string{"tenant"})
+
+	w := jsonRequest(t, "PUT", "/api/v1/profile/me",
+		map[string]any{"contact_info": "  line:upd123  "}, cookie)
+	if w.Code != http.StatusOK {
+		t.Fatalf("PUT /profile/me: expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	// Echoed back trimmed.
+	var put struct {
+		ContactInfo string `json:"contact_info"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &put); err != nil {
+		t.Fatalf("decode put: %v", err)
+	}
+	if put.ContactInfo != "line:upd123" {
+		t.Errorf("contact_info should be trimmed: got %q", put.ContactInfo)
+	}
+
+	// GET /profile/me reflects the stored value.
+	req := httptest.NewRequest("GET", "/api/v1/profile/me", nil)
+	req.AddCookie(cookie)
+	g := httptest.NewRecorder()
+	testR.ServeHTTP(g, req)
+	var me struct {
+		ContactInfo string `json:"contact_info"`
+	}
+	if err := json.Unmarshal(g.Body.Bytes(), &me); err != nil {
+		t.Fatalf("decode get: %v", err)
+	}
+	if me.ContactInfo != "line:upd123" {
+		t.Errorf("GET /profile/me contact_info: got %q, want line:upd123", me.ContactInfo)
+	}
+}

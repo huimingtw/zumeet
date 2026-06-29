@@ -141,7 +141,7 @@ func (h *Handler) GetProfileMatches(c *Context) {
 	rows, err := h.db.Query(c.Request.Context(), `
 		SELECT m.id AS match_id, m.tenant_profile_id, m.listing_id,
 		       tp.name AS profile_name, COALESCE(l.name, '') AS listing_name,
-		       l.contact_info, COALESCE(l.address, '') AS address, m.matched_at,
+		       COALESCE(lu.contact_info, '') AS contact_info, COALESCE(l.address, '') AS address, m.matched_at,
 		       l.location_id, l.rent, l.management_fee, l.room_type::text AS room_type, l.area_ping,
 		       l.num_bedrooms, l.num_living_rooms, l.num_bathrooms, l.num_balconies,
 		       l.available_from, l.allow_pets, l.allow_subsidy, l.allow_tax_receipt,
@@ -155,6 +155,7 @@ func (h *Handler) GetProfileMatches(c *Context) {
 		FROM matches m
 		JOIN listings l ON l.id = m.listing_id
 		JOIN tenant_profiles tp ON tp.id = m.tenant_profile_id
+		JOIN users lu ON lu.id = m.landlord_id
 		WHERE m.tenant_profile_id = $1
 		  AND m.status = 'active'
 		  AND m.deleted_at IS NULL
@@ -332,8 +333,8 @@ func (h *Handler) GetAllMutualMatches(c *Context) {
 	rows, err := h.db.Query(c.Request.Context(), `
 		SELECT m.id AS match_id, m.tenant_profile_id, m.listing_id,
 		       tp.name AS profile_name, COALESCE(l.name, '') AS listing_name,
-		       CASE WHEN m.tenant_id = $1 THEN l.contact_info
-		            ELSE tp.contact_info END AS contact_info,
+		       CASE WHEN m.tenant_id = $1 THEN COALESCE(lu.contact_info, '')
+		            ELSE COALESCE(tu.contact_info, '') END AS contact_info,
 		       m.status::text AS status,
 		       COALESCE(l.address, '') AS address,
 		       l.lat, l.lng,
@@ -351,6 +352,8 @@ func (h *Handler) GetAllMutualMatches(c *Context) {
 		FROM matches m
 		JOIN listings l ON l.id = m.listing_id
 		JOIN tenant_profiles tp ON tp.id = m.tenant_profile_id
+		JOIN users lu ON lu.id = m.landlord_id
+		JOIN users tu ON tu.id = m.tenant_id
 		WHERE (m.tenant_id = $1 OR m.landlord_id = $1)
 		  AND m.status IN ('active', 'listing_rented')
 		  AND m.deleted_at IS NULL

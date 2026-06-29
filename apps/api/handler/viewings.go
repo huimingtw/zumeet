@@ -474,7 +474,7 @@ func (h *Handler) ListViewings(c *Context) {
 		       COALESCE(v.attendance::text, '') AS attendance,
 		       COALESCE(v.landlord_notes, '') AS landlord_notes,
 		       CASE WHEN m.status='active'
-		            THEN (CASE WHEN v.tenant_id=$1 THEN l.contact_info ELSE tp.contact_info END)
+		            THEN (CASE WHEN v.tenant_id=$1 THEN COALESCE(lu.contact_info, '') ELSE COALESCE(tu.contact_info, '') END)
 		            ELSE '' END AS contact_info,
 		       CASE WHEN m.status='active' THEN COALESCE(l.address, '') ELSE '' END AS address,
 		       l.location_id, l.rent, l.room_type::text AS room_type,
@@ -492,6 +492,8 @@ func (h *Handler) ListViewings(c *Context) {
 		FROM viewings v
 		JOIN listings l ON l.id = v.listing_id
 		JOIN tenant_profiles tp ON tp.id = v.tenant_profile_id
+		JOIN users lu ON lu.id = v.landlord_id
+		JOIN users tu ON tu.id = v.tenant_id
 		LEFT JOIN matches m ON m.id = v.match_id AND m.deleted_at IS NULL
 		WHERE `+sideClause+statusClause+`
 		  AND v.deleted_at IS NULL

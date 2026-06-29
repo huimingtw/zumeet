@@ -194,7 +194,7 @@ func (h *Handler) CreateListing(c *Context) {
 			available_from, min_lease_months,
 			allow_pets, allow_subsidy, allow_tax_receipt,
 			allow_household_registration, allow_cooking, has_parking, allow_smoking,
-			description, contact_info, lat, lng,
+			description, lat, lng,
 			compliance_confirmed_at, status, created_at, updated_at
 		) VALUES (
 			$1,$2,$3,$4,$5,$6,$7,$8::room_type,$9,
@@ -202,8 +202,8 @@ func (h *Handler) CreateListing(c *Context) {
 			$14,$15,
 			$16,$17,$18,
 			$19,$20,$21,$22,
-			$23,$24,$25,$26,
-			$27,'draft',$28,$28
+			$23,$24,$25,
+			$26,'draft',$27,$27
 		)`,
 		id, userID, locationID, strings.TrimSpace(req.Address), req.Name, req.Rent, req.ManagementFee, req.RoomType, req.AreaPing,
 		req.NumBedrooms, req.NumLivingRooms, req.NumBathrooms, req.NumBalconies,
@@ -211,11 +211,18 @@ func (h *Handler) CreateListing(c *Context) {
 		req.AllowPets, req.AllowSubsidy, req.AllowTaxReceipt,
 		req.AllowHouseholdRegistration, req.AllowCooking, req.HasParking, req.AllowSmoking,
 		req.Description,
-		// contact_info intentionally not logged
-		req.ContactInfo, latPtr, lngPtr, now, now,
+		latPtr, lngPtr, now, now,
 	)
 	if err != nil {
 		log.Printf("CreateListing db error: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create listing", "code": "internal"})
+		return
+	}
+
+	// contact_info is user-level (entered once, reused by all profiles/listings).
+	// ponytail: separate write, not in a tx with the insert — worst case the listing
+	// exists with the user's prior contact; re-saving fixes it. Wrap in a tx if this matters.
+	if err := setUserContactInfo(c.Request.Context(), h.db, userID, req.ContactInfo); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create listing", "code": "internal"})
 		return
 	}
@@ -321,36 +328,29 @@ func (h *Handler) UpdateListing(c *Context) {
 		}
 	}
 
-	// contact_info is optional on update: keep existing value when not provided.
-	var contactInfoExpr string
-	var args []any
-	args = append(args,
-		locationID, address, req.Name, req.Rent, req.ManagementFee, req.RoomType, req.AreaPing,
-		req.NumBedrooms, req.NumLivingRooms, req.NumBathrooms, req.NumBalconies,
-		req.AvailableFrom, req.MinLeaseMonths,
-		req.AllowPets, req.AllowSubsidy, req.AllowTaxReceipt,
-		req.AllowHouseholdRegistration, req.AllowCooking, req.HasParking, req.AllowSmoking,
-		req.Description, latPtr, lngPtr,
-	)
-	if req.ContactInfo != "" {
-		args = append(args, req.ContactInfo)
-		contactInfoExpr = fmt.Sprintf("contact_info=$%d,", len(args))
-	}
-	args = append(args, listingID)
-	idxLast := len(args)
-
-	_, err = h.db.Exec(c.Request.Context(), fmt.Sprintf(`
+	_, err = h.db.Exec(c.Request.Context(), `
 		UPDATE listings SET
 			location_id=$1, address=$2, name=$3, rent=$4, management_fee=$5, room_type=$6::room_type, area_ping=$7,
 			num_bedrooms=$8, num_living_rooms=$9, num_bathrooms=$10, num_balconies=$11,
 			available_from=$12, min_lease_months=$13,
 			allow_pets=$14, allow_subsidy=$15, allow_tax_receipt=$16,
 			allow_household_registration=$17, allow_cooking=$18, has_parking=$19, allow_smoking=$20,
-			description=$21, lat=$22, lng=$23, %s updated_at=NOW()
-		WHERE id=$%d AND deleted_at IS NULL`, contactInfoExpr, idxLast),
-		args...,
+			description=$21, lat=$22, lng=$23, updated_at=NOW()
+		WHERE id=$24 AND deleted_at IS NULL`,
+		locationID, address, req.Name, req.Rent, req.ManagementFee, req.RoomType, req.AreaPing,
+		req.NumBedrooms, req.NumLivingRooms, req.NumBathrooms, req.NumBalconies,
+		req.AvailableFrom, req.MinLeaseMonths,
+		req.AllowPets, req.AllowSubsidy, req.AllowTaxReceipt,
+		req.AllowHouseholdRegistration, req.AllowCooking, req.HasParking, req.AllowSmoking,
+		req.Description, latPtr, lngPtr, listingID,
 	)
 	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update listing", "code": "internal"})
+		return
+	}
+
+	// contact_info is user-level: keep existing when the request sends it empty.
+	if err := setUserContactInfo(c.Request.Context(), h.db, userID, req.ContactInfo); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update listing", "code": "internal"})
 		return
 	}
@@ -869,7 +869,7 @@ func (h *Handler) fetchListingResponse(c *Context, id string) (*ListingResponse,
 		       available_from, min_lease_months,
 		       allow_pets, allow_subsidy, allow_tax_receipt,
 		       allow_household_registration, allow_cooking, has_parking, allow_smoking,
-		       COALESCE(description, ''), COALESCE(contact_info, ''), status::text, lat, lng, created_at, updated_at
+		       COALESCE(description, ''), COALESCE((SELECT contact_info FROM users WHERE id = listings.landlord_id), ''), status::text, lat, lng, created_at, updated_at
 		FROM listings
 		WHERE id=$1 AND deleted_at IS NULL`,
 		id,

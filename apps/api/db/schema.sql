@@ -161,9 +161,9 @@ CREATE TABLE IF NOT EXISTS tenant_profiles (
   age                          INTEGER,
   description                  TEXT,
   preferences                  JSONB NOT NULL DEFAULT '{}'::jsonb,
-  contact_info                 TEXT NOT NULL,
   is_active                    BOOLEAN NOT NULL DEFAULT TRUE,
   notification_enabled         BOOLEAN NOT NULL DEFAULT FALSE,
+  -- contact_info moved to users.contact_info (entered once, reused by all profiles/listings)
   last_notified_at             TIMESTAMPTZ,
   created_at                   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at                   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -198,7 +198,6 @@ CREATE TABLE IF NOT EXISTS listings (
   allow_smoking                BOOLEAN NOT NULL,
   description                  TEXT,
   attributes                   JSONB NOT NULL DEFAULT '{}'::jsonb,
-  contact_info                 TEXT NOT NULL,
   lat                          DOUBLE PRECISION,
   lng                          DOUBLE PRECISION,
   compliance_confirmed_at      TIMESTAMPTZ NOT NULL,
@@ -370,6 +369,29 @@ ALTER TABLE listings ADD COLUMN IF NOT EXISTS num_balconies SMALLINT;
 ALTER TABLE listings  ADD COLUMN IF NOT EXISTS viewing_availability JSONB NOT NULL DEFAULT '{}'::jsonb;
 -- Viewings are now booked post-match by the tenant, not pre-proposed at interest time.
 ALTER TABLE interests DROP COLUMN IF EXISTS proposed_slot_start;
+
+-- contact_info is a user-level attribute (entered once, reused by every profile/listing).
+-- Backfill from the old per-entity columns (only when they still exist), then drop them.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS contact_info TEXT;
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns
+             WHERE table_name='tenant_profiles' AND column_name='contact_info') THEN
+    UPDATE users u SET contact_info = tp.contact_info
+    FROM tenant_profiles tp
+    WHERE u.id = tp.tenant_id AND tp.contact_info IS NOT NULL
+      AND (u.contact_info IS NULL OR u.contact_info = '');
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.columns
+             WHERE table_name='listings' AND column_name='contact_info') THEN
+    UPDATE users u SET contact_info = l.contact_info
+    FROM listings l
+    WHERE u.id = l.landlord_id AND l.contact_info IS NOT NULL
+      AND (u.contact_info IS NULL OR u.contact_info = '');
+  END IF;
+END $$;
+ALTER TABLE tenant_profiles DROP COLUMN IF EXISTS contact_info;
+ALTER TABLE listings DROP COLUMN IF EXISTS contact_info;
 
 CREATE TABLE IF NOT EXISTS geocode_cache (
   address    TEXT PRIMARY KEY,

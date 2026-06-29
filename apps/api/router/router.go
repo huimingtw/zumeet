@@ -137,6 +137,7 @@ func New(h *handler.Handler, cfg *config.AppConfig, logger *zap.Logger) *gin.Eng
 		}
 
 		protected.GET("/profile/me", t.Public(h.GetMe))
+		protected.PUT("/profile/me", t.Public(h.UpdateMe))
 
 		protected.POST("/reports", t.Public(h.CreateReport))
 		protected.POST("/blocks/:userId", t.Public(h.BlockUser))

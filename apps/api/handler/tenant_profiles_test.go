@@ -102,11 +102,11 @@ func TestTenantProfile_ListAndGetHandlesNullableOptionalText(t *testing.T) {
 		`INSERT INTO tenant_profiles (
 			id, tenant_id, name, budget_min, budget_max, preferred_room_types,
 			available_from, min_lease_months, has_pets, needs_subsidy,
-			needs_tax_receipt, smoking, contact_info
+			needs_tax_receipt, smoking
 		) VALUES (
 			$1, $2, 'Nullable Optional Text', 10000, 20000,
 			ARRAY['suite']::room_type[], NOW(), 6, false, false,
-			false, false, 'line:null'
+			false, false
 		)`,
 		profileID, userID,
 	)

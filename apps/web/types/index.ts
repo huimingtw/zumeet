@@ -6,6 +6,9 @@ export interface ApiFieldError {
 export interface MeResponse {
   id: string;
   email: string;
+  name: string;
+  avatar_url: string;
+  contact_info: string;
   roles: string[];
   created_at: string;
 }

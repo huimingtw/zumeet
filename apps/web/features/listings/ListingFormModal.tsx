@@ -17,6 +17,7 @@ import { api, extractFieldErrors } from "@/lib/api";
 import { qk } from "@/features/queryKeys";
 import { useListingDetail, useListingEdit } from "@/features/listings/useListings";
 import { LOCATION_CITY_DISTRICT, LOCATION_GROUPS, ROOM_TYPE_LABELS } from "@/types";
+import { ContactInfoField, useContactInfo } from "@/components/ContactInfoField";
 import { Dropdown } from "@/components/ui/Dropdown";
 import { CheckboxGroup } from "@/components/ui/CheckboxGroup";
 
@@ -399,6 +400,10 @@ export function ListingFormModal({
 }) {
   const { data: existing } = useListingEdit(editingId ?? "");
 
+  // Contact info is a user-level value set once at /account, reused by all listings.
+  const me = useContactInfo();
+  const contactMissing = !me?.contact_info;
+
   const {
     register,
     control,
@@ -488,6 +493,8 @@ export function ListingFormModal({
       : `${data.city}${data.district}`;
     const payload = {
       ...data,
+      // contact_info is user-level; always send the current /account value.
+      contact_info: me?.contact_info ?? "",
       address: fullAddress,
       rent: Number(data.rent),
       management_fee: Number(data.management_fee || 0),
@@ -748,28 +755,7 @@ export function ListingFormModal({
             />
           </div>
 
-          <div>
-            <label
-              htmlFor="contact_info"
-              className="mb-1 block text-sm font-medium text-gray-700"
-            >
-              聯絡方式（媒合成功後才對租客顯示）
-              <span className="ml-0.5 text-red-500">*</span>
-            </label>
-            <input
-              id="contact_info"
-              {...register("contact_info", { required: "請填寫聯絡方式" })}
-              className={`input ${errors.contact_info ? "border-red-500" : ""}`}
-              placeholder="例：Line ID: xxx 或 0912-345-678"
-            />
-            {errors.contact_info ? (
-              <p className="mt-1 text-xs text-red-600">{errors.contact_info.message}</p>
-            ) : (
-              <p className="mt-1 text-xs text-gray-400">
-                媒合成功後才會顯示給租客，請填真實聯絡方式
-              </p>
-            )}
-          </div>
+          <ContactInfoField audience="tenant" />
 
           <ComplianceBox register={register} errors={errors} editingId={editingId} />
 
@@ -782,7 +768,12 @@ export function ListingFormModal({
 
           {globalError && <p className="text-sm text-red-600">{globalError}</p>}
 
-          <Button type="submit" size="lg" fullWidth disabled={isSubmitting}>
+          <Button
+            type="submit"
+            size="lg"
+            fullWidth
+            disabled={isSubmitting || contactMissing}
+          >
             {isSubmitting ? "儲存中…" : editingId ? "儲存並關閉" : "建立房源"}
           </Button>
           {editingId && (

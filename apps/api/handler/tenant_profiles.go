@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"time"
@@ -12,6 +13,16 @@ import (
 )
 
 const maxTenantProfiles = 3
+
+// setUserContactInfo stores the user-level contact_info (entered once, reused by
+// every profile/listing). Empty input is a no-op so it never wipes an existing value.
+func setUserContactInfo(ctx context.Context, db dbConn, userID, contact string) error {
+	if contact == "" {
+		return nil
+	}
+	_, err := db.Exec(ctx, `UPDATE users SET contact_info=$1 WHERE id=$2`, contact, userID)
+	return err
+}
 
 // TenantProfileRequest is used for both POST and PUT.
 type TenantProfileRequest struct {
@@ -109,7 +120,7 @@ func (h *Handler) ListTenantProfiles(c *Context) {
 		        has_pets, COALESCE(pet_description, '') AS pet_description, needs_subsidy, needs_tax_receipt,
 		        needs_household_registration, needs_cooking, needs_parking, smoking,
 		        COALESCE(occupation, '') AS occupation, age, COALESCE(description, '') AS description,
-		        is_active, COALESCE(contact_info, '') AS contact_info, created_at, updated_at
+		        is_active, COALESCE((SELECT contact_info FROM users WHERE id = tenant_profiles.tenant_id), '') AS contact_info, created_at, updated_at
 		 FROM tenant_profiles
 		 WHERE tenant_id = $1 AND deleted_at IS NULL
 		 ORDER BY created_at DESC`,
@@ -211,15 +222,21 @@ func (h *Handler) CreateTenantProfile(c *Context) {
 			available_from, min_lease_months, min_area_ping,
 			has_pets, pet_description, needs_subsidy, needs_tax_receipt,
 			needs_household_registration, needs_cooking, needs_parking, smoking,
-			occupation, age, description, contact_info, is_active
-		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22)`,
+			occupation, age, description, is_active
+		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21)`,
 		profileID, userID, req.Name, req.BudgetMin, req.BudgetMax, req.PreferredRoomTypes,
 		req.AvailableFrom, req.MinLeaseMonths, req.MinAreaPing,
 		req.HasPets, req.PetDescription, req.NeedsSubsidy, req.NeedsTaxReceipt,
 		req.NeedsHouseholdRegistration, req.NeedsCooking, req.NeedsParking, req.Smoking,
-		req.Occupation, req.Age, req.Description, req.ContactInfo, isActive,
+		req.Occupation, req.Age, req.Description, isActive,
 	)
 	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "INTERNAL_ERROR"})
+		return
+	}
+
+	// contact_info is user-level: store on the user (entered once, reused by all profiles/listings).
+	if err := setUserContactInfo(c.Request.Context(), tx, userID, req.ContactInfo); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "INTERNAL_ERROR"})
 		return
 	}
@@ -297,18 +314,22 @@ func (h *Handler) UpdateTenantProfile(c *Context) {
 			available_from=$5, min_lease_months=$6, min_area_ping=$7,
 			has_pets=$8, pet_description=$9, needs_subsidy=$10, needs_tax_receipt=$11,
 			needs_household_registration=$12, needs_cooking=$13, needs_parking=$14,
-			smoking=$15, occupation=$16, age=$17, description=$18,
-			-- preserve existing contact_info when the request sends it empty
-			contact_info=COALESCE(NULLIF($19, ''), contact_info), updated_at=NOW()
-		 WHERE id=$20 AND tenant_id=$21 AND deleted_at IS NULL`,
+			smoking=$15, occupation=$16, age=$17, description=$18, updated_at=NOW()
+		 WHERE id=$19 AND tenant_id=$20 AND deleted_at IS NULL`,
 		req.Name, req.BudgetMin, req.BudgetMax, req.PreferredRoomTypes,
 		req.AvailableFrom, req.MinLeaseMonths, req.MinAreaPing,
 		req.HasPets, req.PetDescription, req.NeedsSubsidy, req.NeedsTaxReceipt,
 		req.NeedsHouseholdRegistration, req.NeedsCooking, req.NeedsParking,
-		req.Smoking, req.Occupation, req.Age, req.Description, req.ContactInfo,
+		req.Smoking, req.Occupation, req.Age, req.Description,
 		profileID, userID,
 	)
 	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "INTERNAL_ERROR"})
+		return
+	}
+
+	// contact_info is user-level: keep existing when the request sends it empty.
+	if err := setUserContactInfo(c.Request.Context(), tx, userID, req.ContactInfo); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "INTERNAL_ERROR"})
 		return
 	}
@@ -424,7 +445,7 @@ func (h *Handler) loadProfile(c *Context, profileID, tenantID string) (TenantPro
 		        has_pets, COALESCE(pet_description, ''), needs_subsidy, needs_tax_receipt,
 		        needs_household_registration, needs_cooking, needs_parking, smoking,
 		        COALESCE(occupation, ''), age, COALESCE(description, ''), is_active,
-		        COALESCE(contact_info, ''), created_at, updated_at
+		        COALESCE((SELECT contact_info FROM users WHERE id = tenant_profiles.tenant_id), ''), created_at, updated_at
 		 FROM tenant_profiles
 		 WHERE id=$1 AND tenant_id=$2 AND deleted_at IS NULL`,
 		profileID, tenantID,

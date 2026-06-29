@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { CheckboxGroup } from "@/components/ui/CheckboxGroup";
 import { LocationPicker } from "@/components/LocationPicker";
+import { ContactInfoField, useContactInfo } from "@/components/ContactInfoField";
 import { api, extractFieldErrors } from "@/lib/api";
 import type { TenantProfile } from "@/types";
 import { LOCATION_CITY_DISTRICT, LOCATION_LABELS, ROOM_TYPE_LABELS } from "@/types";
@@ -202,6 +203,10 @@ export function ProfileFormModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  // Contact info is a user-level value set once at /account, reused by all profiles.
+  const me = useContactInfo();
+  const contactMissing = !me?.contact_info;
+
   const {
     register,
     control,
@@ -236,7 +241,7 @@ export function ProfileFormModal({
       occupation: editingProfile?.occupation ?? "",
       age: editingProfile?.age ? String(editingProfile.age) : "",
       description: editingProfile?.description ?? "",
-      contact_info: editingProfile?.contact_info ?? "",
+      contact_info: editingProfile?.contact_info ?? me?.contact_info ?? "",
     },
   });
 
@@ -262,6 +267,8 @@ export function ProfileFormModal({
     setGlobalError("");
     const payload = {
       ...data,
+      // contact_info is user-level; always send the current /account value.
+      contact_info: me?.contact_info ?? "",
       locations: data.locations.map((id) => LOCATION_CITY_DISTRICT[id]).filter(Boolean),
       budget_min: Number(data.budget_min),
       budget_max: Number(data.budget_max),
@@ -559,34 +566,18 @@ export function ProfileFormModal({
             />
           </div>
 
-          <div>
-            <label
-              htmlFor="contact-info"
-              className="mb-1 block text-sm font-medium text-gray-700"
-            >
-              聯絡方式（媒合成功後才對房東顯示）
-              <span className="ml-0.5 text-red-500">*</span>
-            </label>
-            <input
-              id="contact-info"
-              {...register("contact_info", { required: "請填寫聯絡方式" })}
-              className={`input ${errors.contact_info ? "border-red-500" : ""}`}
-              placeholder="例：Line ID: xxx 或 0912-345-678"
-            />
-            {errors.contact_info ? (
-              <p className="mt-1 text-xs text-red-600">{errors.contact_info.message}</p>
-            ) : (
-              <p className="mt-1 text-xs text-gray-400">
-                媒合成功後才會顯示給對方，請填真實聯絡方式
-              </p>
-            )}
-          </div>
+          <ContactInfoField audience="landlord" />
 
           {globalError && <p className="text-sm text-red-600">{globalError}</p>}
         </div>
 
         <div className="flex-shrink-0 space-y-2 border-t border-gray-100 bg-white px-6 pt-3 pb-[max(16px,env(safe-area-inset-bottom))]">
-          <Button type="submit" size="lg" fullWidth disabled={isSubmitting || formSaved}>
+          <Button
+            type="submit"
+            size="lg"
+            fullWidth
+            disabled={isSubmitting || formSaved || contactMissing}
+          >
             {isSubmitting
               ? "儲存中…"
               : editingProfile

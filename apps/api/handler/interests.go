@@ -201,20 +201,15 @@ func (h *Handler) expressInterest(c *Context, userID, profileID, listingID, acto
 
 	// 帶看 is booked by the tenant after the match, from the matched page — not here.
 
-	// Fetch the other side's contact info.
-	var contactInfo string
-	if actorRole == "tenant" {
-		// tenant just matched → show landlord contact
-		err = tx.QueryRow(ctx,
-			`SELECT contact_info FROM listings WHERE id=$1`, listingID,
-		).Scan(&contactInfo)
-	} else {
-		// landlord just matched → show tenant contact
-		err = tx.QueryRow(ctx,
-			`SELECT contact_info FROM tenant_profiles WHERE id=$1`, profileID,
-		).Scan(&contactInfo)
+	// Fetch the other side's contact info from users (user-level contact_info).
+	otherUserID := landlordOwnerID // tenant just matched → show landlord contact
+	if actorRole != "tenant" {
+		otherUserID = tenantOwnerID // landlord just matched → show tenant contact
 	}
-	if err != nil {
+	var contactInfo string
+	if err = tx.QueryRow(ctx,
+		`SELECT COALESCE(contact_info, '') FROM users WHERE id=$1`, otherUserID,
+	).Scan(&contactInfo); err != nil {
 		return nil, err
 	}
 
