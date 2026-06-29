@@ -1,0 +1,39 @@
+# Dev hot-reload overrides, auto-merged by `docker compose up` (not used in prod/CI).
+# api: air rebuilds on .go save. web/admin: framework dev servers with HMR.
+# Source is mounted, so code changes never need an image rebuild.
+services:
+  api:
+    image: ghcr.io/air-verse/air:latest
+    build: !reset null
+    working_dir: /app
+    command: []
+    volumes:
+      - ./apps/api:/app
+      - go_mod_cache:/go/pkg/mod
+      - go_build_cache:/root/.cache/go-build
+
+  web:
+    image: node:20-alpine
+    build: !reset null
+    working_dir: /app
+    environment:
+      DEV_ORIGIN: ${DEV_ORIGIN:-}
+    command: sh -c "npm install && npm run dev"
+    volumes:
+      - ./apps/web:/app
+      - web_node_modules:/app/node_modules
+
+  admin:
+    image: node:20-alpine
+    build: !reset null
+    working_dir: /app
+    command: sh -c "npm install && npm run dev -- --host"
+    volumes:
+      - ./apps/admin:/app
+      - admin_node_modules:/app/node_modules
+
+volumes:
+  go_mod_cache:
+  go_build_cache:
+  web_node_modules:
+  admin_node_modules:

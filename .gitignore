@@ -15,6 +15,7 @@ SPEC.md
 apps/api/api
 apps/api/signtoken
 apps/api/*.exe
+apps/api/tmp/
 
 # Node / Next.js
 apps/web/node_modules/
