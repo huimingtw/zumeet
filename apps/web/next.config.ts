@@ -6,6 +6,8 @@ const storageUpstream = process.env.STORAGE_UPSTREAM ?? "http://storage:9000";
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  // Dev-only: allow the tunnel host to load Next dev resources (HMR, fonts).
+  allowedDevOrigins: process.env.DEV_ORIGIN ? [process.env.DEV_ORIGIN] : [],
   images: {
     unoptimized,
     remotePatterns: [{ protocol: "https", hostname: "**" }],
