@@ -424,6 +424,25 @@ type ViewingResponse struct {
 	LocationID      string    `json:"location_id" db:"location_id"`
 	Rent            int       `json:"rent" db:"rent"`
 	RoomType        string    `json:"room_type" db:"room_type"`
+	// Listing detail fields (tenant-facing; no contact_info here)
+	AreaPing                   float64  `json:"area_ping" db:"area_ping"`
+	ManagementFee              int      `json:"management_fee" db:"management_fee"`
+	AvailableFrom              time.Time `json:"available_from" db:"available_from"`
+	AllowPets                  bool     `json:"allow_pets" db:"allow_pets"`
+	AllowSubsidy               bool     `json:"allow_subsidy" db:"allow_subsidy"`
+	AllowTaxReceipt            bool     `json:"allow_tax_receipt" db:"allow_tax_receipt"`
+	AllowHouseholdRegistration bool     `json:"allow_household_registration" db:"allow_household_registration"`
+	AllowCooking               bool     `json:"allow_cooking" db:"allow_cooking"`
+	HasParking                 bool     `json:"has_parking" db:"has_parking"`
+	AllowSmoking               bool     `json:"allow_smoking" db:"allow_smoking"`
+	NumBedrooms                *int16   `json:"num_bedrooms" db:"num_bedrooms"`
+	NumLivingRooms             *int16   `json:"num_living_rooms" db:"num_living_rooms"`
+	NumBathrooms               *int16   `json:"num_bathrooms" db:"num_bathrooms"`
+	NumBalconies               *int16   `json:"num_balconies" db:"num_balconies"`
+	Description                string   `json:"description" db:"description"`
+	Lat                        *float64 `json:"lat" db:"lat"`
+	Lng                        *float64 `json:"lng" db:"lng"`
+	Photos                     []string `json:"photos" db:"photos"`
 }
 
 // ListViewings handles GET /api/v1/viewings?role=&status=
@@ -458,7 +477,18 @@ func (h *Handler) ListViewings(c *Context) {
 		            THEN (CASE WHEN v.tenant_id=$1 THEN l.contact_info ELSE tp.contact_info END)
 		            ELSE '' END AS contact_info,
 		       CASE WHEN m.status='active' THEN COALESCE(l.address, '') ELSE '' END AS address,
-		       l.location_id, l.rent, l.room_type::text AS room_type
+		       l.location_id, l.rent, l.room_type::text AS room_type,
+		       l.area_ping, l.management_fee, l.available_from,
+		       l.allow_pets, l.allow_subsidy, l.allow_tax_receipt,
+		       l.allow_household_registration, l.allow_cooking, l.has_parking, l.allow_smoking,
+		       l.num_bedrooms, l.num_living_rooms, l.num_bathrooms, l.num_balconies,
+		       COALESCE(l.description, '') AS description,
+		       l.lat, l.lng,
+		       COALESCE((
+		           SELECT array_agg(lp.public_url ORDER BY lp.position)
+		           FROM listing_photos lp
+		           WHERE lp.listing_id = l.id AND lp.deleted_at IS NULL
+		       ), '{}') AS photos
 		FROM viewings v
 		JOIN listings l ON l.id = v.listing_id
 		JOIN tenant_profiles tp ON tp.id = v.tenant_profile_id

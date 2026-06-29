@@ -437,7 +437,6 @@ export function ListingFormModal({
   });
 
   const [savedId, setSavedId] = useState<string | null>(null);
-  const [formSaved, setFormSaved] = useState(false);
   const [globalError, setGlobalError] = useState("");
 
   const city = watch("city");
@@ -450,7 +449,12 @@ export function ListingFormModal({
     reset({
       city: LOCATION_CITY_DISTRICT[existing.location_id]?.city ?? "",
       district: LOCATION_CITY_DISTRICT[existing.location_id]?.district ?? "",
-      address: existing.address ?? "",
+      address: (() => {
+        const cd = LOCATION_CITY_DISTRICT[existing.location_id];
+        const prefix = cd ? `${cd.city}${cd.district}` : "";
+        const full = existing.address ?? "";
+        return prefix && full.startsWith(prefix) ? full.slice(prefix.length) : full;
+      })(),
       name: existing.name ?? "",
       rent: existing.rent,
       management_fee: existing.management_fee ?? 0,
@@ -479,8 +483,12 @@ export function ListingFormModal({
   async function onSubmit(data: FormValues) {
     setGlobalError("");
     const isWholeFloor = data.room_type === "whole_floor";
+    const fullAddress = data.address.trim()
+      ? `${data.city}${data.district}${data.address.trim()}`
+      : `${data.city}${data.district}`;
     const payload = {
       ...data,
+      address: fullAddress,
       rent: Number(data.rent),
       management_fee: Number(data.management_fee || 0),
       area_ping: Number(data.area_ping),
@@ -500,8 +508,7 @@ export function ListingFormModal({
     try {
       if (editingId) {
         await api.put(`/listings/${editingId}`, payload);
-        setFormSaved(true);
-        setTimeout(() => setFormSaved(false), 2000);
+        onSaved();
       } else {
         const res = await api.post("/listings", payload);
         setSavedId((res.data as { id: string }).id);
@@ -581,10 +588,10 @@ export function ListingFormModal({
               id="address"
               {...register("address")}
               className="input"
-              placeholder="例：台北市大安區忠孝東路四段 100 號 5 樓"
+              placeholder="例：忠孝東路四段 100 號 5 樓"
             />
             <p className="mt-1 text-xs text-gray-400">
-              媒合成功後才會顯示給租客。系統將自動定位經緯度。
+              不需重複填寫縣市與地區，系統會自動加上。媒合成功後才會顯示給租客。
             </p>
           </div>
 
@@ -775,14 +782,8 @@ export function ListingFormModal({
 
           {globalError && <p className="text-sm text-red-600">{globalError}</p>}
 
-          <Button type="submit" size="lg" fullWidth disabled={isSubmitting || formSaved}>
-            {isSubmitting
-              ? "儲存中…"
-              : editingId
-                ? formSaved
-                  ? "已儲存 ✓"
-                  : "儲存"
-                : "建立房源"}
+          <Button type="submit" size="lg" fullWidth disabled={isSubmitting}>
+            {isSubmitting ? "儲存中…" : editingId ? "儲存並關閉" : "建立房源"}
           </Button>
           {editingId && (
             <Button
@@ -792,7 +793,7 @@ export function ListingFormModal({
               variant="secondary"
               onClick={onSaved}
             >
-              關閉
+              取消
             </Button>
           )}
         </form>

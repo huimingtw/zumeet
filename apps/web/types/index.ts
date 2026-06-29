@@ -79,6 +79,25 @@ export interface Viewing {
   location_id: string;
   rent: number;
   room_type: string;
+  // Listing detail fields
+  area_ping: number;
+  management_fee: number;
+  available_from: string;
+  allow_pets: boolean;
+  allow_subsidy: boolean;
+  allow_tax_receipt: boolean;
+  allow_household_registration: boolean;
+  allow_cooking: boolean;
+  has_parking: boolean;
+  allow_smoking: boolean;
+  num_bedrooms: number | null;
+  num_living_rooms: number | null;
+  num_bathrooms: number | null;
+  num_balconies: number | null;
+  description: string;
+  lat: number | null;
+  lng: number | null;
+  photos: string[];
 }
 
 export interface Listing {

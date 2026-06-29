@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import { ChevronLeft, ChevronRight, MapPin, X } from "lucide-react";
+import { MapPin, X } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
+import { CarouselArrows } from "@/components/ui/CarouselArrows";
 import { SlotPicker } from "@/components/SlotPicker";
 import {
   formatLayout,
@@ -151,26 +152,14 @@ export function ListingCard({
           )}
           {listing.photos.length > 1 && (
             <>
-              <button
-                type="button"
-                onClick={() =>
+              <CarouselArrows
+                onPrev={() =>
                   setPhotoIdx(
                     (i) => (i - 1 + listing.photos.length) % listing.photos.length
                   )
                 }
-                aria-label="上一張"
-                className="absolute top-1/2 left-1 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-black/40 text-white"
-              >
-                <ChevronLeft size={18} />
-              </button>
-              <button
-                type="button"
-                onClick={() => setPhotoIdx((i) => (i + 1) % listing.photos.length)}
-                aria-label="下一張"
-                className="absolute top-1/2 right-1 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-black/40 text-white"
-              >
-                <ChevronRight size={18} />
-              </button>
+                onNext={() => setPhotoIdx((i) => (i + 1) % listing.photos.length)}
+              />
               <div className="absolute right-0 bottom-1 left-0 flex justify-center gap-1">
                 {listing.photos.map((url, i) => (
                   <span
@@ -369,6 +358,17 @@ export function ListingDetailContent({
     return () => window.removeEventListener("keydown", onKey);
   }, [photoCount]);
 
+  // Preload adjacent photos to reduce switching latency
+  useEffect(() => {
+    if (photoCount <= 1) return;
+    const prev = (photoIdx - 1 + photoCount) % photoCount;
+    const next = (photoIdx + 1) % photoCount;
+    [prev, next].forEach((i) => {
+      const img = new window.Image();
+      img.src = listing.photos[i];
+    });
+  }, [photoIdx, photoCount, listing.photos]);
+
   return (
     <>
       {/* Photo panel */}
@@ -389,26 +389,14 @@ export function ListingDetailContent({
         )}
         {listing.photos.length > 1 && (
           <>
-            <button
-              type="button"
-              onClick={() =>
+            <CarouselArrows
+              onPrev={() =>
                 setPhotoIdx(
                   (i) => (i - 1 + listing.photos.length) % listing.photos.length
                 )
               }
-              aria-label="上一張"
-              className="absolute top-1/2 left-3 flex -translate-y-1/2 items-center justify-center rounded-full bg-black/50 p-1.5 text-white backdrop-blur-sm"
-            >
-              <ChevronLeft size={18} />
-            </button>
-            <button
-              type="button"
-              onClick={() => setPhotoIdx((i) => (i + 1) % listing.photos.length)}
-              aria-label="下一張"
-              className="absolute top-1/2 right-3 flex -translate-y-1/2 items-center justify-center rounded-full bg-black/50 p-1.5 text-white backdrop-blur-sm"
-            >
-              <ChevronRight size={18} />
-            </button>
+              onNext={() => setPhotoIdx((i) => (i + 1) % listing.photos.length)}
+            />
             <span className="absolute right-3 bottom-3 rounded-full bg-black/50 px-2.5 py-1 text-xs text-white backdrop-blur-sm">
               {photoIdx + 1} / {listing.photos.length}
             </span>

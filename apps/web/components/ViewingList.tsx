@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Image from "next/image";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import type { Viewing } from "@/types";
@@ -10,6 +11,10 @@ import { SlotPicker } from "@/components/SlotPicker";
 import { Modal } from "@/components/ui/Modal";
 import { Loading } from "@/components/ui/Loading";
 import { qk } from "@/features/queryKeys";
+import {
+  ListingDetailDialog,
+  toListingCard,
+} from "@/features/listings/TenantListingCard";
 
 // ViewingList renders 帶看 grouped by date for either side.
 // Landlord: marks attendance + cancel. Tenant: sees revealed contact/address + reschedule/cancel.
@@ -54,6 +59,7 @@ export function ViewingList({ role }: { role: "tenant" | "landlord" }) {
     mode: "reschedule" | "rebook";
   } | null>(null);
   const [pickedSlot, setPickedSlot] = useState("");
+  const [detailViewing, setDetailViewing] = useState<Viewing | null>(null);
 
   const grouped = useMemo(
     () => groupBy(data?.items ?? [], (v) => dateKey(v.starts_at)),
@@ -81,18 +87,32 @@ export function ViewingList({ role }: { role: "tenant" | "landlord" }) {
               return (
                 <div
                   key={v.id}
-                  className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
+                  className={`rounded-xl border border-gray-200 bg-white p-4 shadow-sm${role === "tenant" ? " cursor-pointer hover:shadow-md transition" : ""}`}
+                  onClick={role === "tenant" ? () => setDetailViewing(v) : undefined}
                 >
                   <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-gray-900">
-                        {formatSlot(v.starts_at, v.ends_at)}
-                      </p>
-                      <p className="mt-0.5 truncate text-xs text-gray-500">
-                        {role === "landlord"
-                          ? v.profile_name
-                          : v.listing_name || `$${v.rent.toLocaleString()}`}
-                      </p>
+                    <div className="flex min-w-0 items-start gap-3">
+                      {role === "tenant" && v.photos?.[0] && (
+                        <div className="relative h-12 w-12 flex-shrink-0 overflow-hidden rounded-lg bg-gray-200">
+                          <Image
+                            src={v.photos[0]}
+                            alt=""
+                            fill
+                            className="object-cover"
+                            sizes="48px"
+                          />
+                        </div>
+                      )}
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-gray-900">
+                          {formatSlot(v.starts_at, v.ends_at)}
+                        </p>
+                        <p className="mt-0.5 truncate text-xs text-gray-500">
+                          {role === "landlord"
+                            ? v.profile_name
+                            : v.listing_name || `$${v.rent.toLocaleString()}`}
+                        </p>
+                      </div>
                     </div>
                     <span
                       className={`flex-shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${badge.cls}`}
@@ -148,7 +168,7 @@ export function ViewingList({ role }: { role: "tenant" | "landlord" }) {
 
                   {/* Tenant actions on confirmed viewings */}
                   {role === "tenant" && v.status === "confirmed" && (
-                    <div className="mt-3 flex gap-3 text-xs">
+                    <div className="mt-3 flex gap-3 text-xs" onClick={(e) => e.stopPropagation()}>
                       <button
                         type="button"
                         onClick={() => {
@@ -173,7 +193,7 @@ export function ViewingList({ role }: { role: "tenant" | "landlord" }) {
                   {role === "tenant" &&
                     (v.status === "cancelled" || v.status === "cancelled_landlord") &&
                     v.match_active && (
-                      <div className="mt-3 text-xs">
+                      <div className="mt-3 text-xs" onClick={(e) => e.stopPropagation()}>
                         <button
                           type="button"
                           onClick={() => {
@@ -192,6 +212,21 @@ export function ViewingList({ role }: { role: "tenant" | "landlord" }) {
           </div>
         </div>
       ))}
+
+      {detailViewing && (
+        <ListingDetailDialog
+          listing={toListingCard({
+            ...detailViewing,
+            photos: detailViewing.photos ?? [],
+          })}
+          contactInfo={
+            detailViewing.status === "confirmed" && detailViewing.contact_info
+              ? detailViewing.contact_info
+              : undefined
+          }
+          onClose={() => setDetailViewing(null)}
+        />
+      )}
 
       <Modal
         open={!!slotModal}
