@@ -68,40 +68,39 @@ export function ListingsTab({
 
   return (
     <div>
-      <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-base font-semibold text-gray-950">我的房源</h2>
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <div className="flex gap-1.5">
+          {(
+            [
+              ["all", "全部"],
+              ["active", "刊登中"],
+              ["rented", "已出租"],
+            ] as const
+          ).map(([key, label]) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => router.push(`?tab=listings&filter=${key}`)}
+              className={`rounded-full px-3 py-1 text-xs font-medium transition ${
+                filter === key
+                  ? "bg-gray-900 text-white"
+                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
         <button
           type="button"
           onClick={() => {
             setEditingId(null);
             setShowForm(true);
           }}
-          className="bg-primary-600 hover:bg-primary-500 rounded-lg px-3 py-1.5 text-sm font-medium text-white transition"
+          className="bg-primary-600 hover:bg-primary-500 shrink-0 rounded-lg px-3 py-1.5 text-sm font-medium text-white transition"
         >
           + 新增房源
         </button>
-      </div>
-      <div className="mb-4 flex gap-1.5">
-        {(
-          [
-            ["all", "全部"],
-            ["active", "刊登中"],
-            ["rented", "已出租"],
-          ] as const
-        ).map(([key, label]) => (
-          <button
-            key={key}
-            type="button"
-            onClick={() => router.push(`?tab=listings&filter=${key}`)}
-            className={`rounded-full px-3 py-1 text-xs font-medium transition ${
-              filter === key
-                ? "bg-gray-900 text-white"
-                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-            }`}
-          >
-            {label}
-          </button>
-        ))}
       </div>
       {filtered.length === 0 && (
         <p className="py-8 text-center text-sm text-gray-400">此分類沒有房源</p>
