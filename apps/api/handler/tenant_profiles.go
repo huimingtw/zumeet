@@ -26,27 +26,27 @@ func setUserContactInfo(ctx context.Context, db dbConn, userID, contact string) 
 
 // TenantProfileRequest is used for both POST and PUT.
 type TenantProfileRequest struct {
-	Name                       string    `json:"name" binding:"required"`
-	BudgetMin                  int       `json:"budget_min" binding:"required,min=1"`
-	BudgetMax                  int       `json:"budget_max" binding:"required,min=1"`
+	Name                       string          `json:"name" binding:"required"`
+	BudgetMin                  int             `json:"budget_min" binding:"required,min=1"`
+	BudgetMax                  int             `json:"budget_max" binding:"required,min=1"`
 	Locations                  []LocationInput `json:"locations" binding:"required,min=1"`
-	PreferredRoomTypes         []string  `json:"preferred_room_types" binding:"required,min=1"`
-	AvailableFrom              time.Time `json:"available_from" binding:"required"`
-	MinLeaseMonths             int       `json:"min_lease_months" binding:"required,min=1"`
-	MinAreaPing                *float64  `json:"min_area_ping"`
-	HasPets                    bool      `json:"has_pets"`
-	PetDescription             string    `json:"pet_description"`
-	NeedsSubsidy               bool      `json:"needs_subsidy"`
-	NeedsTaxReceipt            bool      `json:"needs_tax_receipt"`
-	NeedsHouseholdRegistration bool      `json:"needs_household_registration"`
-	NeedsCooking               bool      `json:"needs_cooking"`
-	NeedsParking               bool      `json:"needs_parking"`
-	Smoking                    bool      `json:"smoking"`
-	Occupation                 string    `json:"occupation"`
-	Age                        *int      `json:"age"`
-	Description                string    `json:"description"`
-	ContactInfo                string    `json:"contact_info" binding:"required"`
-	IsActive                   *bool     `json:"is_active"`
+	PreferredRoomTypes         []string        `json:"preferred_room_types" binding:"required,min=1"`
+	AvailableFrom              time.Time       `json:"available_from" binding:"required"`
+	MinLeaseMonths             int             `json:"min_lease_months" binding:"required,min=1"`
+	MinAreaPing                *float64        `json:"min_area_ping"`
+	HasPets                    bool            `json:"has_pets"`
+	PetDescription             string          `json:"pet_description"`
+	NeedsSubsidy               bool            `json:"needs_subsidy"`
+	NeedsTaxReceipt            bool            `json:"needs_tax_receipt"`
+	NeedsHouseholdRegistration bool            `json:"needs_household_registration"`
+	NeedsCooking               bool            `json:"needs_cooking"`
+	NeedsParking               bool            `json:"needs_parking"`
+	Smoking                    bool            `json:"smoking"`
+	Occupation                 string          `json:"occupation"`
+	Age                        *int            `json:"age"`
+	Description                string          `json:"description"`
+	ContactInfo                string          `json:"contact_info" binding:"required"`
+	IsActive                   *bool           `json:"is_active"`
 }
 
 type TenantProfileResponse struct {
@@ -83,8 +83,7 @@ type TenantProfileResponse struct {
 // ListTenantProfiles GET /api/v1/tenant-profiles
 func (h *Handler) ListTenantProfiles(c *Context) {
 	userID := middleware.MustUserID(c)
-	if err := h.RequireRole(c.Request.Context(), userID, "tenant"); err != nil {
-		respondForbidden(c, err)
+	if !h.requireRole(c, userID, "tenant") {
 		return
 	}
 
@@ -127,12 +126,12 @@ func (h *Handler) ListTenantProfiles(c *Context) {
 		userID,
 	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "INTERNAL_ERROR"})
+		respondInternal(c)
 		return
 	}
 	rows, err := pgx.CollectRows(queryRows, pgx.RowToStructByNameLax[tenantProfileListRow])
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "INTERNAL_ERROR"})
+		respondInternal(c)
 		return
 	}
 
@@ -172,8 +171,7 @@ func (h *Handler) ListTenantProfiles(c *Context) {
 // CreateTenantProfile POST /api/v1/tenant-profiles
 func (h *Handler) CreateTenantProfile(c *Context) {
 	userID := middleware.MustUserID(c)
-	if err := h.RequireRole(c.Request.Context(), userID, "tenant"); err != nil {
-		respondForbidden(c, err)
+	if !h.requireRole(c, userID, "tenant") {
 		return
 	}
 
@@ -205,7 +203,7 @@ func (h *Handler) CreateTenantProfile(c *Context) {
 
 	tx, err := h.db.Begin(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "INTERNAL_ERROR"})
+		respondInternal(c)
 		return
 	}
 	defer tx.Rollback(c.Request.Context())
@@ -231,13 +229,13 @@ func (h *Handler) CreateTenantProfile(c *Context) {
 		req.Occupation, req.Age, req.Description, isActive,
 	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "INTERNAL_ERROR"})
+		respondInternal(c)
 		return
 	}
 
 	// contact_info is user-level: store on the user (entered once, reused by all profiles/listings).
 	if err := setUserContactInfo(c.Request.Context(), tx, userID, req.ContactInfo); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "INTERNAL_ERROR"})
+		respondInternal(c)
 		return
 	}
 
@@ -247,14 +245,14 @@ func (h *Handler) CreateTenantProfile(c *Context) {
 	}
 
 	if err := tx.Commit(c.Request.Context()); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "INTERNAL_ERROR"})
+		respondInternal(c)
 		return
 	}
 
 	// Return created profile
 	p, err := h.loadProfile(c, profileID, userID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "INTERNAL_ERROR"})
+		respondInternal(c)
 		return
 	}
 	c.JSON(http.StatusCreated, p)
@@ -268,9 +266,9 @@ func (h *Handler) GetTenantProfile(c *Context) {
 	p, err := h.loadProfile(c, profileID, userID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "profile not found", "code": "NOT_FOUND"})
+			respondNotFound(c, "profile not found")
 		} else {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "INTERNAL_ERROR"})
+			respondInternal(c)
 		}
 		return
 	}
@@ -303,7 +301,7 @@ func (h *Handler) UpdateTenantProfile(c *Context) {
 
 	tx, err := h.db.Begin(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "INTERNAL_ERROR"})
+		respondInternal(c)
 		return
 	}
 	defer tx.Rollback(c.Request.Context())
@@ -324,13 +322,13 @@ func (h *Handler) UpdateTenantProfile(c *Context) {
 		profileID, userID,
 	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "INTERNAL_ERROR"})
+		respondInternal(c)
 		return
 	}
 
 	// contact_info is user-level: keep existing when the request sends it empty.
 	if err := setUserContactInfo(c.Request.Context(), tx, userID, req.ContactInfo); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "INTERNAL_ERROR"})
+		respondInternal(c)
 		return
 	}
 
@@ -339,7 +337,7 @@ func (h *Handler) UpdateTenantProfile(c *Context) {
 		`UPDATE tenant_profile_locations SET deleted_at=NOW()
 		 WHERE tenant_profile_id=$1 AND deleted_at IS NULL`, profileID,
 	); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "INTERNAL_ERROR"})
+		respondInternal(c)
 		return
 	}
 	if err := insertProfileLocations(c, tx, profileID, locationIDs); err != nil {
@@ -348,13 +346,13 @@ func (h *Handler) UpdateTenantProfile(c *Context) {
 	}
 
 	if err := tx.Commit(c.Request.Context()); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "INTERNAL_ERROR"})
+		respondInternal(c)
 		return
 	}
 
 	p, err := h.loadProfile(c, profileID, userID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "INTERNAL_ERROR"})
+		respondInternal(c)
 		return
 	}
 	c.JSON(http.StatusOK, p)
@@ -375,7 +373,7 @@ func (h *Handler) DeleteTenantProfile(c *Context) {
 		profileID, userID,
 	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "INTERNAL_ERROR"})
+		respondInternal(c)
 		return
 	}
 	c.JSON(http.StatusNoContent, nil)
@@ -403,7 +401,7 @@ func (h *Handler) ToggleTenantProfileStatus(c *Context) {
 		body.IsActive, profileID, userID,
 	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "INTERNAL_ERROR"})
+		respondInternal(c)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"is_active": body.IsActive})
@@ -494,7 +492,7 @@ func (h *Handler) assertProfileOwner(c *Context, profileID, userID string) error
 		profileID,
 	).Scan(&ownerID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "profile not found", "code": "NOT_FOUND"})
+		respondNotFound(c, "profile not found")
 		return err
 	}
 	if ownerID != userID {
@@ -508,6 +506,6 @@ func respondForbidden(c *Context, err error) {
 	if errors.Is(err, ErrForbidden) {
 		c.JSON(http.StatusForbidden, gin.H{"error": "forbidden", "code": "FORBIDDEN"})
 	} else {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "INTERNAL_ERROR"})
+		respondInternal(c)
 	}
 }
