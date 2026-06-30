@@ -12,114 +12,144 @@ import (
 // ---- response types ----
 
 type MutualMatchResponse struct {
-	MatchID                    string    `json:"match_id" db:"match_id"`
-	TenantProfileID            string    `json:"tenant_profile_id" db:"tenant_profile_id"`
-	ProfileName                string    `json:"profile_name,omitempty" db:"profile_name"` // tenant-side
-	ListingID                  string    `json:"listing_id" db:"listing_id"`
-	ListingName                string    `json:"listing_name,omitempty" db:"listing_name"`
-	ContactInfo                string    `json:"contact_info" db:"contact_info"`
-	Status                     string    `json:"status" db:"status"`
-	Address                    string    `json:"address,omitempty" db:"address"`
-	Lat                        *float64  `json:"lat" db:"lat"`
-	Lng                        *float64  `json:"lng" db:"lng"`
-	MatchedAt                  time.Time `json:"matched_at" db:"matched_at"`
-	LocationID                 string    `json:"location_id,omitempty" db:"location_id"`
-	Rent                       int       `json:"rent,omitempty" db:"rent"`
-	ManagementFee              int       `json:"management_fee" db:"management_fee"`
-	RoomType                   string    `json:"room_type,omitempty" db:"room_type"`
-	AreaPing                   float64   `json:"area_ping,omitempty" db:"area_ping"`
-	NumBedrooms                *int      `json:"num_bedrooms,omitempty" db:"num_bedrooms"`
-	NumLivingRooms             *int      `json:"num_living_rooms,omitempty" db:"num_living_rooms"`
-	NumBathrooms               *int      `json:"num_bathrooms,omitempty" db:"num_bathrooms"`
-	NumBalconies               *int      `json:"num_balconies,omitempty" db:"num_balconies"`
-	AvailableFrom              time.Time `json:"available_from" db:"available_from"`
-	AllowPets                  bool      `json:"allow_pets" db:"allow_pets"`
-	AllowSubsidy               bool      `json:"allow_subsidy" db:"allow_subsidy"`
-	AllowTaxReceipt            bool      `json:"allow_tax_receipt" db:"allow_tax_receipt"`
-	AllowHouseholdRegistration bool      `json:"allow_household_registration" db:"allow_household_registration"`
-	AllowCooking               bool      `json:"allow_cooking" db:"allow_cooking"`
-	HasParking                 bool      `json:"has_parking" db:"has_parking"`
-	AllowSmoking               bool      `json:"allow_smoking" db:"allow_smoking"`
-	Description                string    `json:"description,omitempty" db:"description"`
-	TenantOccupation           string    `json:"tenant_occupation,omitempty" db:"tenant_occupation"`
-	TenantAge                  *int      `json:"tenant_age,omitempty" db:"tenant_age"`
-	TenantHasPets              bool      `json:"tenant_has_pets" db:"tenant_has_pets"`
-	TenantDescription          string    `json:"tenant_description,omitempty" db:"tenant_description"`
-	Photos                     []string  `json:"photos" db:"-"`
-	LandlordID                 string    `json:"landlord_id" db:"landlord_id"`
-	TenantID                   string    `json:"tenant_id" db:"tenant_id"`
+	MatchID                          string     `json:"match_id" db:"match_id"`
+	TenantProfileID                  string     `json:"tenant_profile_id" db:"tenant_profile_id"`
+	ProfileName                      string     `json:"profile_name,omitempty" db:"profile_name"` // tenant-side
+	ListingID                        string     `json:"listing_id" db:"listing_id"`
+	ListingName                      string     `json:"listing_name,omitempty" db:"listing_name"`
+	ContactInfo                      string     `json:"contact_info" db:"contact_info"`
+	Status                           string     `json:"status" db:"status"`
+	Address                          string     `json:"address,omitempty" db:"address"`
+	Lat                              *float64   `json:"lat" db:"lat"`
+	Lng                              *float64   `json:"lng" db:"lng"`
+	MatchedAt                        time.Time  `json:"matched_at" db:"matched_at"`
+	LocationID                       string     `json:"location_id,omitempty" db:"location_id"`
+	Rent                             int        `json:"rent,omitempty" db:"rent"`
+	ManagementFee                    int        `json:"management_fee" db:"management_fee"`
+	RoomType                         string     `json:"room_type,omitempty" db:"room_type"`
+	AreaPing                         float64    `json:"area_ping,omitempty" db:"area_ping"`
+	NumBedrooms                      *int       `json:"num_bedrooms,omitempty" db:"num_bedrooms"`
+	NumLivingRooms                   *int       `json:"num_living_rooms,omitempty" db:"num_living_rooms"`
+	NumBathrooms                     *int       `json:"num_bathrooms,omitempty" db:"num_bathrooms"`
+	NumBalconies                     *int       `json:"num_balconies,omitempty" db:"num_balconies"`
+	AvailableFrom                    time.Time  `json:"available_from" db:"available_from"`
+	AllowPets                        bool       `json:"allow_pets" db:"allow_pets"`
+	AllowSubsidy                     bool       `json:"allow_subsidy" db:"allow_subsidy"`
+	AllowTaxReceipt                  bool       `json:"allow_tax_receipt" db:"allow_tax_receipt"`
+	AllowHouseholdRegistration       bool       `json:"allow_household_registration" db:"allow_household_registration"`
+	AllowCooking                     bool       `json:"allow_cooking" db:"allow_cooking"`
+	HasParking                       bool       `json:"has_parking" db:"has_parking"`
+	AllowSmoking                     bool       `json:"allow_smoking" db:"allow_smoking"`
+	Description                      string     `json:"description,omitempty" db:"description"`
+	TenantAccountName                string     `json:"tenant_account_name,omitempty" db:"tenant_account_name"`
+	TenantOccupation                 string     `json:"tenant_occupation,omitempty" db:"tenant_occupation"`
+	TenantAge                        *int       `json:"tenant_age,omitempty" db:"tenant_age"`
+	TenantHasPets                    bool       `json:"tenant_has_pets" db:"tenant_has_pets"`
+	TenantSmoking                    bool       `json:"tenant_smoking" db:"tenant_smoking"`
+	TenantPreferredRoomTypes         []string   `json:"tenant_preferred_room_types,omitempty" db:"tenant_preferred_room_types"`
+	TenantAvailableFrom              *time.Time `json:"tenant_available_from,omitempty" db:"tenant_available_from"`
+	TenantMinLeaseMonths             *int       `json:"tenant_min_lease_months,omitempty" db:"tenant_min_lease_months"`
+	TenantNeedsSubsidy               bool       `json:"tenant_needs_subsidy" db:"tenant_needs_subsidy"`
+	TenantNeedsTaxReceipt            bool       `json:"tenant_needs_tax_receipt" db:"tenant_needs_tax_receipt"`
+	TenantNeedsHouseholdRegistration bool       `json:"tenant_needs_household_registration" db:"tenant_needs_household_registration"`
+	TenantNeedsCooking               bool       `json:"tenant_needs_cooking" db:"tenant_needs_cooking"`
+	TenantNeedsParking               bool       `json:"tenant_needs_parking" db:"tenant_needs_parking"`
+	TenantDescription                string     `json:"tenant_description,omitempty" db:"tenant_description"`
+	Photos                           []string   `json:"photos" db:"-"`
+	LandlordID                       string     `json:"landlord_id" db:"landlord_id"`
+	TenantID                         string     `json:"tenant_id" db:"tenant_id"`
 }
 
 type IncomingInterestResponse struct {
-	ID                         string    `json:"id,omitempty" db:"id"`
-	TenantProfileID            string    `json:"tenant_profile_id" db:"tenant_profile_id"`
-	ProfileName                string    `json:"profile_name,omitempty" db:"profile_name"`
-	ListingID                  string    `json:"listing_id" db:"listing_id"`
-	ListingName                string    `json:"listing_name,omitempty" db:"listing_name"`
-	CreatedAt                  time.Time `json:"created_at" db:"created_at"`
-	LocationID                 string    `json:"location_id,omitempty" db:"location_id"`
-	Rent                       int       `json:"rent,omitempty" db:"rent"`
-	ManagementFee              int       `json:"management_fee" db:"management_fee"`
-	RoomType                   string    `json:"room_type,omitempty" db:"room_type"`
-	AreaPing                   float64   `json:"area_ping,omitempty" db:"area_ping"`
-	NumBedrooms                *int      `json:"num_bedrooms,omitempty" db:"num_bedrooms"`
-	NumLivingRooms             *int      `json:"num_living_rooms,omitempty" db:"num_living_rooms"`
-	NumBathrooms               *int      `json:"num_bathrooms,omitempty" db:"num_bathrooms"`
-	NumBalconies               *int      `json:"num_balconies,omitempty" db:"num_balconies"`
-	AvailableFrom              time.Time `json:"available_from" db:"available_from"`
-	AllowPets                  bool      `json:"allow_pets" db:"allow_pets"`
-	AllowSubsidy               bool      `json:"allow_subsidy" db:"allow_subsidy"`
-	AllowTaxReceipt            bool      `json:"allow_tax_receipt" db:"allow_tax_receipt"`
-	AllowHouseholdRegistration bool      `json:"allow_household_registration" db:"allow_household_registration"`
-	AllowCooking               bool      `json:"allow_cooking" db:"allow_cooking"`
-	HasParking                 bool      `json:"has_parking" db:"has_parking"`
-	AllowSmoking               bool      `json:"allow_smoking" db:"allow_smoking"`
-	Description                string    `json:"description,omitempty" db:"description"`
-	Address                    string    `json:"address,omitempty" db:"address"`
-	TenantOccupation           string    `json:"tenant_occupation,omitempty" db:"tenant_occupation"`
-	TenantAge                  *int      `json:"tenant_age,omitempty" db:"tenant_age"`
-	TenantHasPets              bool      `json:"tenant_has_pets" db:"tenant_has_pets"`
-	TenantDescription          string    `json:"tenant_description,omitempty" db:"tenant_description"`
-	Photos                     []string  `json:"photos" db:"-"`
-	InterestSent               bool      `json:"interest_sent" db:"interest_sent"`
-	LandlordID                 string    `json:"landlord_id" db:"landlord_id"`
-	TenantID                   string    `json:"tenant_id" db:"tenant_id"`
+	ID                               string     `json:"id,omitempty" db:"id"`
+	TenantProfileID                  string     `json:"tenant_profile_id" db:"tenant_profile_id"`
+	ProfileName                      string     `json:"profile_name,omitempty" db:"profile_name"`
+	ListingID                        string     `json:"listing_id" db:"listing_id"`
+	ListingName                      string     `json:"listing_name,omitempty" db:"listing_name"`
+	CreatedAt                        time.Time  `json:"created_at" db:"created_at"`
+	LocationID                       string     `json:"location_id,omitempty" db:"location_id"`
+	Rent                             int        `json:"rent,omitempty" db:"rent"`
+	ManagementFee                    int        `json:"management_fee" db:"management_fee"`
+	RoomType                         string     `json:"room_type,omitempty" db:"room_type"`
+	AreaPing                         float64    `json:"area_ping,omitempty" db:"area_ping"`
+	NumBedrooms                      *int       `json:"num_bedrooms,omitempty" db:"num_bedrooms"`
+	NumLivingRooms                   *int       `json:"num_living_rooms,omitempty" db:"num_living_rooms"`
+	NumBathrooms                     *int       `json:"num_bathrooms,omitempty" db:"num_bathrooms"`
+	NumBalconies                     *int       `json:"num_balconies,omitempty" db:"num_balconies"`
+	AvailableFrom                    time.Time  `json:"available_from" db:"available_from"`
+	AllowPets                        bool       `json:"allow_pets" db:"allow_pets"`
+	AllowSubsidy                     bool       `json:"allow_subsidy" db:"allow_subsidy"`
+	AllowTaxReceipt                  bool       `json:"allow_tax_receipt" db:"allow_tax_receipt"`
+	AllowHouseholdRegistration       bool       `json:"allow_household_registration" db:"allow_household_registration"`
+	AllowCooking                     bool       `json:"allow_cooking" db:"allow_cooking"`
+	HasParking                       bool       `json:"has_parking" db:"has_parking"`
+	AllowSmoking                     bool       `json:"allow_smoking" db:"allow_smoking"`
+	Description                      string     `json:"description,omitempty" db:"description"`
+	Address                          string     `json:"address,omitempty" db:"address"`
+	TenantAccountName                string     `json:"tenant_account_name,omitempty" db:"tenant_account_name"`
+	TenantOccupation                 string     `json:"tenant_occupation,omitempty" db:"tenant_occupation"`
+	TenantAge                        *int       `json:"tenant_age,omitempty" db:"tenant_age"`
+	TenantHasPets                    bool       `json:"tenant_has_pets" db:"tenant_has_pets"`
+	TenantSmoking                    bool       `json:"tenant_smoking" db:"tenant_smoking"`
+	TenantPreferredRoomTypes         []string   `json:"tenant_preferred_room_types,omitempty" db:"tenant_preferred_room_types"`
+	TenantAvailableFrom              *time.Time `json:"tenant_available_from,omitempty" db:"tenant_available_from"`
+	TenantMinLeaseMonths             *int       `json:"tenant_min_lease_months,omitempty" db:"tenant_min_lease_months"`
+	TenantNeedsSubsidy               bool       `json:"tenant_needs_subsidy" db:"tenant_needs_subsidy"`
+	TenantNeedsTaxReceipt            bool       `json:"tenant_needs_tax_receipt" db:"tenant_needs_tax_receipt"`
+	TenantNeedsHouseholdRegistration bool       `json:"tenant_needs_household_registration" db:"tenant_needs_household_registration"`
+	TenantNeedsCooking               bool       `json:"tenant_needs_cooking" db:"tenant_needs_cooking"`
+	TenantNeedsParking               bool       `json:"tenant_needs_parking" db:"tenant_needs_parking"`
+	TenantDescription                string     `json:"tenant_description,omitempty" db:"tenant_description"`
+	Photos                           []string   `json:"photos" db:"-"`
+	InterestSent                     bool       `json:"interest_sent" db:"interest_sent"`
+	LandlordID                       string     `json:"landlord_id" db:"landlord_id"`
+	TenantID                         string     `json:"tenant_id" db:"tenant_id"`
 }
 
 type OutgoingInterestResponse struct {
-	ID                         string    `json:"id,omitempty" db:"id"`
-	TenantProfileID            string    `json:"tenant_profile_id" db:"tenant_profile_id"`
-	ProfileName                string    `json:"profile_name,omitempty" db:"profile_name"`
-	TenantProfileName          string    `json:"tenant_profile_name,omitempty" db:"tenant_profile_name"`
-	ListingID                  string    `json:"listing_id" db:"listing_id"`
-	ListingName                string    `json:"listing_name,omitempty" db:"listing_name"`
-	CreatedAt                  time.Time `json:"created_at" db:"created_at"`
-	LocationID                 string    `json:"location_id,omitempty" db:"location_id"`
-	Rent                       int       `json:"rent,omitempty" db:"rent"`
-	ManagementFee              int       `json:"management_fee" db:"management_fee"`
-	RoomType                   string    `json:"room_type,omitempty" db:"room_type"`
-	AreaPing                   float64   `json:"area_ping,omitempty" db:"area_ping"`
-	NumBedrooms                *int      `json:"num_bedrooms,omitempty" db:"num_bedrooms"`
-	NumLivingRooms             *int      `json:"num_living_rooms,omitempty" db:"num_living_rooms"`
-	NumBathrooms               *int      `json:"num_bathrooms,omitempty" db:"num_bathrooms"`
-	NumBalconies               *int      `json:"num_balconies,omitempty" db:"num_balconies"`
-	AvailableFrom              time.Time `json:"available_from" db:"available_from"`
-	AllowPets                  bool      `json:"allow_pets" db:"allow_pets"`
-	AllowSubsidy               bool      `json:"allow_subsidy" db:"allow_subsidy"`
-	AllowTaxReceipt            bool      `json:"allow_tax_receipt" db:"allow_tax_receipt"`
-	AllowHouseholdRegistration bool      `json:"allow_household_registration" db:"allow_household_registration"`
-	AllowCooking               bool      `json:"allow_cooking" db:"allow_cooking"`
-	HasParking                 bool      `json:"has_parking" db:"has_parking"`
-	AllowSmoking               bool      `json:"allow_smoking" db:"allow_smoking"`
-	Description                string    `json:"description,omitempty" db:"description"`
-	Address                    string    `json:"address,omitempty" db:"address"`
-	TenantOccupation           string    `json:"tenant_occupation,omitempty" db:"tenant_occupation"`
-	TenantAge                  *int      `json:"tenant_age,omitempty" db:"tenant_age"`
-	TenantHasPets              bool      `json:"tenant_has_pets" db:"tenant_has_pets"`
-	TenantDescription          string    `json:"tenant_description,omitempty" db:"tenant_description"`
-	Photos                     []string  `json:"photos" db:"-"`
-	LandlordID                 string    `json:"landlord_id" db:"landlord_id"`
-	TenantID                   string    `json:"tenant_id" db:"tenant_id"`
+	ID                               string     `json:"id,omitempty" db:"id"`
+	TenantProfileID                  string     `json:"tenant_profile_id" db:"tenant_profile_id"`
+	ProfileName                      string     `json:"profile_name,omitempty" db:"profile_name"`
+	TenantProfileName                string     `json:"tenant_profile_name,omitempty" db:"tenant_profile_name"`
+	ListingID                        string     `json:"listing_id" db:"listing_id"`
+	ListingName                      string     `json:"listing_name,omitempty" db:"listing_name"`
+	CreatedAt                        time.Time  `json:"created_at" db:"created_at"`
+	LocationID                       string     `json:"location_id,omitempty" db:"location_id"`
+	Rent                             int        `json:"rent,omitempty" db:"rent"`
+	ManagementFee                    int        `json:"management_fee" db:"management_fee"`
+	RoomType                         string     `json:"room_type,omitempty" db:"room_type"`
+	AreaPing                         float64    `json:"area_ping,omitempty" db:"area_ping"`
+	NumBedrooms                      *int       `json:"num_bedrooms,omitempty" db:"num_bedrooms"`
+	NumLivingRooms                   *int       `json:"num_living_rooms,omitempty" db:"num_living_rooms"`
+	NumBathrooms                     *int       `json:"num_bathrooms,omitempty" db:"num_bathrooms"`
+	NumBalconies                     *int       `json:"num_balconies,omitempty" db:"num_balconies"`
+	AvailableFrom                    time.Time  `json:"available_from" db:"available_from"`
+	AllowPets                        bool       `json:"allow_pets" db:"allow_pets"`
+	AllowSubsidy                     bool       `json:"allow_subsidy" db:"allow_subsidy"`
+	AllowTaxReceipt                  bool       `json:"allow_tax_receipt" db:"allow_tax_receipt"`
+	AllowHouseholdRegistration       bool       `json:"allow_household_registration" db:"allow_household_registration"`
+	AllowCooking                     bool       `json:"allow_cooking" db:"allow_cooking"`
+	HasParking                       bool       `json:"has_parking" db:"has_parking"`
+	AllowSmoking                     bool       `json:"allow_smoking" db:"allow_smoking"`
+	Description                      string     `json:"description,omitempty" db:"description"`
+	Address                          string     `json:"address,omitempty" db:"address"`
+	TenantAccountName                string     `json:"tenant_account_name,omitempty" db:"tenant_account_name"`
+	TenantOccupation                 string     `json:"tenant_occupation,omitempty" db:"tenant_occupation"`
+	TenantAge                        *int       `json:"tenant_age,omitempty" db:"tenant_age"`
+	TenantHasPets                    bool       `json:"tenant_has_pets" db:"tenant_has_pets"`
+	TenantSmoking                    bool       `json:"tenant_smoking" db:"tenant_smoking"`
+	TenantPreferredRoomTypes         []string   `json:"tenant_preferred_room_types,omitempty" db:"tenant_preferred_room_types"`
+	TenantAvailableFrom              *time.Time `json:"tenant_available_from,omitempty" db:"tenant_available_from"`
+	TenantMinLeaseMonths             *int       `json:"tenant_min_lease_months,omitempty" db:"tenant_min_lease_months"`
+	TenantNeedsSubsidy               bool       `json:"tenant_needs_subsidy" db:"tenant_needs_subsidy"`
+	TenantNeedsTaxReceipt            bool       `json:"tenant_needs_tax_receipt" db:"tenant_needs_tax_receipt"`
+	TenantNeedsHouseholdRegistration bool       `json:"tenant_needs_household_registration" db:"tenant_needs_household_registration"`
+	TenantNeedsCooking               bool       `json:"tenant_needs_cooking" db:"tenant_needs_cooking"`
+	TenantNeedsParking               bool       `json:"tenant_needs_parking" db:"tenant_needs_parking"`
+	TenantDescription                string     `json:"tenant_description,omitempty" db:"tenant_description"`
+	Photos                           []string   `json:"photos" db:"-"`
+	LandlordID                       string     `json:"landlord_id" db:"landlord_id"`
+	TenantID                         string     `json:"tenant_id" db:"tenant_id"`
 }
 
 // ---- profile-level endpoints ----
@@ -150,6 +180,17 @@ func (h *Handler) GetProfileMatches(c *Context) {
 		       tp.age AS tenant_age,
 		       tp.has_pets AS tenant_has_pets,
 		       COALESCE(tp.description, '') AS tenant_description,
+		       tp.smoking AS tenant_smoking,
+		       tp.preferred_room_types::text[] AS tenant_preferred_room_types,
+		       tp.available_from AS tenant_available_from,
+		       tp.min_lease_months AS tenant_min_lease_months,
+		       tp.needs_subsidy AS tenant_needs_subsidy,
+		       tp.needs_tax_receipt AS tenant_needs_tax_receipt,
+		       tp.needs_household_registration AS tenant_needs_household_registration,
+		       tp.needs_cooking AS tenant_needs_cooking,
+		       tp.needs_parking AS tenant_needs_parking,
+		       -- ponytail: correlated subquery, fine for ≤200-row match lists; join if it ever grows
+		       COALESCE((SELECT name FROM users WHERE id = tp.tenant_id), '') AS tenant_account_name,
 		       m.landlord_id, m.tenant_id
 		FROM matches m
 		JOIN listings l ON l.id = m.listing_id
@@ -209,6 +250,17 @@ func (h *Handler) GetProfileIncomingInterests(c *Context) {
 		       tp.age AS tenant_age,
 		       tp.has_pets AS tenant_has_pets,
 		       COALESCE(tp.description, '') AS tenant_description,
+		       tp.smoking AS tenant_smoking,
+		       tp.preferred_room_types::text[] AS tenant_preferred_room_types,
+		       tp.available_from AS tenant_available_from,
+		       tp.min_lease_months AS tenant_min_lease_months,
+		       tp.needs_subsidy AS tenant_needs_subsidy,
+		       tp.needs_tax_receipt AS tenant_needs_tax_receipt,
+		       tp.needs_household_registration AS tenant_needs_household_registration,
+		       tp.needs_cooking AS tenant_needs_cooking,
+		       tp.needs_parking AS tenant_needs_parking,
+		       -- ponytail: correlated subquery, fine for ≤200-row match lists; join if it ever grows
+		       COALESCE((SELECT name FROM users WHERE id = tp.tenant_id), '') AS tenant_account_name,
 		       '' AS address,
 		       false AS interest_sent,
 		       l.landlord_id, tp.tenant_id
@@ -278,6 +330,17 @@ func (h *Handler) GetProfileOutgoingInterests(c *Context) {
 		       tp.age AS tenant_age,
 		       tp.has_pets AS tenant_has_pets,
 		       COALESCE(tp.description, '') AS tenant_description,
+		       tp.smoking AS tenant_smoking,
+		       tp.preferred_room_types::text[] AS tenant_preferred_room_types,
+		       tp.available_from AS tenant_available_from,
+		       tp.min_lease_months AS tenant_min_lease_months,
+		       tp.needs_subsidy AS tenant_needs_subsidy,
+		       tp.needs_tax_receipt AS tenant_needs_tax_receipt,
+		       tp.needs_household_registration AS tenant_needs_household_registration,
+		       tp.needs_cooking AS tenant_needs_cooking,
+		       tp.needs_parking AS tenant_needs_parking,
+		       -- ponytail: correlated subquery, fine for ≤200-row match lists; join if it ever grows
+		       COALESCE((SELECT name FROM users WHERE id = tp.tenant_id), '') AS tenant_account_name,
 		       '' AS address,
 		       l.landlord_id, tp.tenant_id
 		FROM interests i
@@ -345,6 +408,17 @@ func (h *Handler) GetAllMutualMatches(c *Context) {
 		       tp.age AS tenant_age,
 		       tp.has_pets AS tenant_has_pets,
 		       COALESCE(tp.description, '') AS tenant_description,
+		       tp.smoking AS tenant_smoking,
+		       tp.preferred_room_types::text[] AS tenant_preferred_room_types,
+		       tp.available_from AS tenant_available_from,
+		       tp.min_lease_months AS tenant_min_lease_months,
+		       tp.needs_subsidy AS tenant_needs_subsidy,
+		       tp.needs_tax_receipt AS tenant_needs_tax_receipt,
+		       tp.needs_household_registration AS tenant_needs_household_registration,
+		       tp.needs_cooking AS tenant_needs_cooking,
+		       tp.needs_parking AS tenant_needs_parking,
+		       -- ponytail: correlated subquery, fine for ≤200-row match lists; join if it ever grows
+		       COALESCE((SELECT name FROM users WHERE id = tp.tenant_id), '') AS tenant_account_name,
 		       m.landlord_id, m.tenant_id
 		FROM matches m
 		JOIN listings l ON l.id = m.listing_id
@@ -397,6 +471,17 @@ func (h *Handler) GetAllIncomingInterests(c *Context) {
 		       tp.age AS tenant_age,
 		       tp.has_pets AS tenant_has_pets,
 		       COALESCE(tp.description, '') AS tenant_description,
+		       tp.smoking AS tenant_smoking,
+		       tp.preferred_room_types::text[] AS tenant_preferred_room_types,
+		       tp.available_from AS tenant_available_from,
+		       tp.min_lease_months AS tenant_min_lease_months,
+		       tp.needs_subsidy AS tenant_needs_subsidy,
+		       tp.needs_tax_receipt AS tenant_needs_tax_receipt,
+		       tp.needs_household_registration AS tenant_needs_household_registration,
+		       tp.needs_cooking AS tenant_needs_cooking,
+		       tp.needs_parking AS tenant_needs_parking,
+		       -- ponytail: correlated subquery, fine for ≤200-row match lists; join if it ever grows
+		       COALESCE((SELECT name FROM users WHERE id = tp.tenant_id), '') AS tenant_account_name,
 		       '' AS address,
 		       false AS interest_sent,
 		       l.landlord_id, tp.tenant_id
@@ -461,6 +546,17 @@ func (h *Handler) GetAllOutgoingInterests(c *Context) {
 		       tp.age AS tenant_age,
 		       tp.has_pets AS tenant_has_pets,
 		       COALESCE(tp.description, '') AS tenant_description,
+		       tp.smoking AS tenant_smoking,
+		       tp.preferred_room_types::text[] AS tenant_preferred_room_types,
+		       tp.available_from AS tenant_available_from,
+		       tp.min_lease_months AS tenant_min_lease_months,
+		       tp.needs_subsidy AS tenant_needs_subsidy,
+		       tp.needs_tax_receipt AS tenant_needs_tax_receipt,
+		       tp.needs_household_registration AS tenant_needs_household_registration,
+		       tp.needs_cooking AS tenant_needs_cooking,
+		       tp.needs_parking AS tenant_needs_parking,
+		       -- ponytail: correlated subquery, fine for ≤200-row match lists; join if it ever grows
+		       COALESCE((SELECT name FROM users WHERE id = tp.tenant_id), '') AS tenant_account_name,
 		       '' AS address,
 		       l.landlord_id, tp.tenant_id
 		FROM interests i

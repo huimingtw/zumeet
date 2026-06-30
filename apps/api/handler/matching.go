@@ -45,21 +45,24 @@ type MatchedListingCard struct {
 // MatchedTenantProfileCard is what a landlord sees when browsing tenant profiles.
 // Budget is intentionally omitted — landlords must not see tenants' budgets.
 type MatchedTenantProfileCard struct {
-	ID                 string    `json:"id"`
-	Name               string    `json:"name"`
-	PreferredRoomTypes []string  `json:"preferred_room_types"`
-	AvailableFrom      time.Time `json:"available_from"`
-	MinLeaseMonths     int       `json:"min_lease_months"`
-	HasPets            bool      `json:"has_pets"`
-	NeedsSubsidy       bool      `json:"needs_subsidy"`
-	NeedsTaxReceipt    bool      `json:"needs_tax_receipt"`
-	NeedsParking       bool      `json:"needs_parking"`
-	Smoking            bool      `json:"smoking"`
-	Occupation         string    `json:"occupation"`
-	Age                *int      `json:"age,omitempty"`
-	Description        string    `json:"description"`
-	InterestSent       bool      `json:"interest_sent"` // landlord already expressed interest
-	TenantID           string    `json:"tenant_id"`
+	ID                         string    `json:"id"`
+	Name                       string    `json:"name"`
+	AccountName                string    `json:"account_name"` // users.name (帳號稱謂) — deliberately exposed pre-match (product decision)
+	PreferredRoomTypes         []string  `json:"preferred_room_types"`
+	AvailableFrom              time.Time `json:"available_from"`
+	MinLeaseMonths             int       `json:"min_lease_months"`
+	HasPets                    bool      `json:"has_pets"`
+	NeedsSubsidy               bool      `json:"needs_subsidy"`
+	NeedsTaxReceipt            bool      `json:"needs_tax_receipt"`
+	NeedsHouseholdRegistration bool      `json:"needs_household_registration"`
+	NeedsCooking               bool      `json:"needs_cooking"`
+	NeedsParking               bool      `json:"needs_parking"`
+	Smoking                    bool      `json:"smoking"`
+	Occupation                 string    `json:"occupation"`
+	Age                        *int      `json:"age,omitempty"`
+	Description                string    `json:"description"`
+	InterestSent               bool      `json:"interest_sent"` // landlord already expressed interest
+	TenantID                   string    `json:"tenant_id"`
 }
 
 const defaultPageSize = 20
@@ -241,10 +244,11 @@ func (h *Handler) BrowseTenantProfilesForListing(c *Context) {
 
 	query := `
 		SELECT
-			tp.id, tp.tenant_id, tp.name,
+			tp.id, tp.tenant_id, tp.name, COALESCE(tu.name, '') AS account_name,
 			array_to_string(tp.preferred_room_types::text[], ',') AS preferred_room_types,
 			tp.available_from, tp.min_lease_months,
 			tp.has_pets, tp.needs_subsidy, tp.needs_tax_receipt,
+			tp.needs_household_registration, tp.needs_cooking,
 			tp.needs_parking, tp.smoking, COALESCE(tp.occupation, '') AS occupation,
 			tp.age, COALESCE(tp.description, '') AS description,
 			EXISTS(
@@ -257,6 +261,7 @@ func (h *Handler) BrowseTenantProfilesForListing(c *Context) {
 			) AS interest_sent
 		FROM tenant_profiles tp
 		JOIN listings l ON l.id = $1
+		JOIN users tu ON tu.id = tp.tenant_id
 		WHERE` + matchPredicateSQL + `
 			-- cursor pagination
 			AND ($2::text = '' OR tp.id < $2)
@@ -264,21 +269,24 @@ func (h *Handler) BrowseTenantProfilesForListing(c *Context) {
 		LIMIT $3`
 
 	type matchedTenantProfileRow struct {
-		ID                 string    `db:"id"`
-		TenantID           string    `db:"tenant_id"`
-		Name               string    `db:"name"`
-		PreferredRoomTypes string    `db:"preferred_room_types"`
-		AvailableFrom      time.Time `db:"available_from"`
-		MinLeaseMonths     int       `db:"min_lease_months"`
-		HasPets            bool      `db:"has_pets"`
-		NeedsSubsidy       bool      `db:"needs_subsidy"`
-		NeedsTaxReceipt    bool      `db:"needs_tax_receipt"`
-		NeedsParking       bool      `db:"needs_parking"`
-		Smoking            bool      `db:"smoking"`
-		Occupation         string    `db:"occupation"`
-		Age                *int      `db:"age"`
-		Description        string    `db:"description"`
-		InterestSent       bool      `db:"interest_sent"`
+		ID                         string    `db:"id"`
+		TenantID                   string    `db:"tenant_id"`
+		Name                       string    `db:"name"`
+		AccountName                string    `db:"account_name"`
+		PreferredRoomTypes         string    `db:"preferred_room_types"`
+		AvailableFrom              time.Time `db:"available_from"`
+		MinLeaseMonths             int       `db:"min_lease_months"`
+		HasPets                    bool      `db:"has_pets"`
+		NeedsSubsidy               bool      `db:"needs_subsidy"`
+		NeedsTaxReceipt            bool      `db:"needs_tax_receipt"`
+		NeedsHouseholdRegistration bool      `db:"needs_household_registration"`
+		NeedsCooking               bool      `db:"needs_cooking"`
+		NeedsParking               bool      `db:"needs_parking"`
+		Smoking                    bool      `db:"smoking"`
+		Occupation                 string    `db:"occupation"`
+		Age                        *int      `db:"age"`
+		Description                string    `db:"description"`
+		InterestSent               bool      `db:"interest_sent"`
 	}
 	queryRows, err := h.db.Query(c.Request.Context(), query, listingID, cursor, limit+1)
 	if err != nil {
@@ -293,21 +301,24 @@ func (h *Handler) BrowseTenantProfilesForListing(c *Context) {
 	cards := make([]MatchedTenantProfileCard, 0, len(rows))
 	for _, row := range rows {
 		cards = append(cards, MatchedTenantProfileCard{
-			ID:                 row.ID,
-			TenantID:           row.TenantID,
-			Name:               row.Name,
-			PreferredRoomTypes: splitStringList(row.PreferredRoomTypes),
-			AvailableFrom:      row.AvailableFrom,
-			MinLeaseMonths:     row.MinLeaseMonths,
-			HasPets:            row.HasPets,
-			NeedsSubsidy:       row.NeedsSubsidy,
-			NeedsTaxReceipt:    row.NeedsTaxReceipt,
-			NeedsParking:       row.NeedsParking,
-			Smoking:            row.Smoking,
-			Occupation:         row.Occupation,
-			Age:                row.Age,
-			Description:        row.Description,
-			InterestSent:       row.InterestSent,
+			ID:                         row.ID,
+			TenantID:                   row.TenantID,
+			Name:                       row.Name,
+			AccountName:                row.AccountName,
+			PreferredRoomTypes:         splitStringList(row.PreferredRoomTypes),
+			AvailableFrom:              row.AvailableFrom,
+			MinLeaseMonths:             row.MinLeaseMonths,
+			HasPets:                    row.HasPets,
+			NeedsSubsidy:               row.NeedsSubsidy,
+			NeedsTaxReceipt:            row.NeedsTaxReceipt,
+			NeedsHouseholdRegistration: row.NeedsHouseholdRegistration,
+			NeedsCooking:               row.NeedsCooking,
+			NeedsParking:               row.NeedsParking,
+			Smoking:                    row.Smoking,
+			Occupation:                 row.Occupation,
+			Age:                        row.Age,
+			Description:                row.Description,
+			InterestSent:               row.InterestSent,
 		})
 	}
 

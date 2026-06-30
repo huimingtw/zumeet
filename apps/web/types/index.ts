@@ -168,14 +168,17 @@ export interface MatchedListingCard {
 export interface MatchedTenantProfileCard {
   id: string;
   name: string;
-  budget_min: number;
-  budget_max: number;
+  account_name: string; // 帳號稱謂 (users.name) — exposed pre-match by product decision
+
+  // budget intentionally omitted — landlords must not see tenants' budgets (see api matching.go)
   preferred_room_types: string[];
   available_from: string;
   min_lease_months: number;
   has_pets: boolean;
   needs_subsidy: boolean;
   needs_tax_receipt: boolean;
+  needs_household_registration: boolean;
+  needs_cooking: boolean;
   needs_parking: boolean;
   smoking: boolean;
   occupation?: string;

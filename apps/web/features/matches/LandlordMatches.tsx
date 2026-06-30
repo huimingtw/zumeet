@@ -6,81 +6,42 @@ import { ChevronDown, Heart, Inbox, SendHorizonal } from "lucide-react";
 import { useConfirm } from "@/components/ConfirmDialog";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Badge } from "@/components/ui/Badge";
-import { ExpandableText } from "@/components/ui/ExpandableText";
 import { Loading } from "@/components/ui/Loading";
 import { api } from "@/lib/api";
 import { useOutgoing, useMatched, useAllIncoming } from "@/features/matches/useMatches";
 import { qk } from "@/features/queryKeys";
-import type { MatchedTenantProfileCard, MutualMatch } from "@/types";
+import type { MutualMatch } from "@/types";
 import { ReportModal } from "@/features/reports/ReportModal";
 import { CardMenu } from "@/components/ui/CardMenu";
-
-// ---- Shared tenant helpers ----
-
-export function profileHeader(
-  profile: Pick<MatchedTenantProfileCard, "occupation" | "age" | "has_pets">
-) {
-  const parts = [
-    profile.occupation,
-    profile.age != null ? `${profile.age} 歲` : null,
-    profile.has_pets ? "養寵物" : null,
-  ].filter(Boolean) as string[];
-  return parts.length > 0 ? `[${parts.join("，")}]` : "租客";
-}
-
-function tenantHeader(p: {
-  tenant_occupation?: string;
-  tenant_age?: number;
-  tenant_has_pets?: boolean;
-}) {
-  const parts = [
-    p.tenant_occupation,
-    p.tenant_age != null ? `${p.tenant_age} 歲` : null,
-    p.tenant_has_pets ? "養寵物" : null,
-  ].filter(Boolean) as string[];
-  return parts.length > 0 ? `[${parts.join("，")}]` : "租客";
-}
+import {
+  TenantSummary,
+  tenantInfoFromTab,
+  type TenantTabItem,
+} from "@/features/profiles/TenantSummary";
 
 // ---- Incoming tab ----
 
-type LandlordIncomingItem = {
+type LandlordIncomingItem = TenantTabItem & {
   listing_id: string;
   listing_name: string;
   tenant_profile_id: string;
-  profile_name: string;
-  tenant_occupation?: string;
-  tenant_age?: number;
-  tenant_has_pets?: boolean;
-  tenant_description?: string;
   tenant_id?: string;
   interest_sent: boolean;
 };
 
-type LandlordOutgoingItem = {
+type LandlordOutgoingItem = TenantTabItem & {
   tenant_profile_id: string;
   listing_id: string;
-  profile_name: string;
-  budget_min: number;
-  budget_max: number;
-  tenant_occupation?: string;
-  tenant_age?: number;
-  tenant_has_pets?: boolean;
-  tenant_description?: string;
   tenant_id?: string;
 };
 
-type LandlordMatchItem = {
+type LandlordMatchItem = TenantTabItem & {
   match_id: string;
   tenant_profile_id: string;
   listing_id: string;
   listing_name?: string;
   contact_info: string;
   matched_at: string;
-  profile_name?: string;
-  tenant_occupation?: string;
-  tenant_age?: number;
-  tenant_has_pets?: boolean;
-  tenant_description?: string;
   tenant_id?: string;
 };
 
@@ -163,21 +124,7 @@ export function LandlordIncomingTab() {
                       key={item.tenant_profile_id}
                       className="flex items-start justify-between gap-3 rounded-lg border border-gray-100 px-3 py-2.5"
                     >
-                      <div className="min-w-0 flex-1 text-sm">
-                        <div className="font-medium text-gray-900">
-                          {profileHeader({
-                            occupation: item.tenant_occupation,
-                            age: item.tenant_age,
-                            has_pets: item.tenant_has_pets ?? false,
-                          })}
-                        </div>
-                        {item.tenant_description && (
-                          <ExpandableText
-                            text={item.tenant_description}
-                            className="mt-1 text-xs text-gray-600"
-                          />
-                        )}
-                      </div>
+                      <TenantSummary info={tenantInfoFromTab(item)} />
                       <div className="flex flex-col items-end gap-1.5">
                         {item.tenant_id && (
                           <CardMenu
@@ -244,18 +191,10 @@ export function LandlordOutgoingTab() {
     <div className="space-y-2">
       {(data?.items ?? []).map((i) => (
         <div
-          key={i.tenant_profile_id}
+          key={`${i.listing_id}:${i.tenant_profile_id}`}
           className="flex items-start justify-between gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm"
         >
-          <div className="min-w-0 flex-1 text-sm">
-            <div className="font-medium text-gray-900">{tenantHeader(i)}</div>
-            {i.tenant_description && (
-              <ExpandableText
-                text={i.tenant_description}
-                className="mt-1 text-xs text-gray-600"
-              />
-            )}
-          </div>
+          <TenantSummary info={tenantInfoFromTab(i)} />
           <div className="flex flex-shrink-0 flex-col items-end gap-1.5">
             {i.tenant_id && (
               <CardMenu items={[{ label: "檢舉此租客", onClick: () => setReportTarget(i.tenant_id!), danger: true }]} />
@@ -325,16 +264,8 @@ export function LandlordMatchedTab() {
                 <CardMenu items={[{ label: "檢舉此租客", onClick: () => setReportTarget(match.tenant_id!), danger: true }]} />
               )}
             </div>
-            <div className="mt-3">
-              <div className="text-sm font-medium text-gray-950">
-                {tenantHeader(match)}
-              </div>
-              {match.tenant_description && (
-                <ExpandableText
-                  text={match.tenant_description}
-                  className="mt-1 text-sm text-gray-600"
-                />
-              )}
+            <div className="mt-3 flex">
+              <TenantSummary info={tenantInfoFromTab(match)} />
             </div>
             <div className="mt-3 rounded-lg border border-gray-200 bg-gray-50 p-3">
               <p className="mb-1 text-xs text-gray-400">
