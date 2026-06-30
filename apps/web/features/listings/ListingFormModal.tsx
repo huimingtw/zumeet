@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from "react";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
-import Image from "next/image";
 import {
   useForm,
   Controller,
@@ -152,12 +151,11 @@ function PhotoSection({
               dragId === p.id ? "opacity-50" : ""
             } active:cursor-grabbing`}
           >
-            <Image
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
               src={p.public_url}
               alt=""
-              fill
-              className="object-cover"
-              sizes="120px"
+              className="absolute inset-0 h-full w-full object-cover"
             />
             <button
               type="button"
@@ -559,8 +557,8 @@ export function ListingFormModal({
 
       {savedId ? (
         <div className="space-y-4">
-          <p className="text-sm text-gray-500">房源已建立，可以上傳照片（選填）。</p>
-          <PhotoSection listingId={savedId} onChanged={onSaved} />
+          <p className="text-sm text-gray-500">房源已建立，可以上傳照片（選填）。確認後再按下方關閉。</p>
+          <PhotoSection listingId={savedId} onChanged={() => {}} />
           <Button type="button" size="lg" fullWidth onClick={onSaved}>
             關閉
           </Button>
@@ -598,7 +596,7 @@ export function ListingFormModal({
               placeholder="例：忠孝東路四段 100 號 5 樓"
             />
             <p className="mt-1 text-xs text-gray-400">
-              不需重複填寫縣市與地區，系統會自動加上。媒合成功後才會顯示給租客。
+              媒合成功後才會顯示給租客。
             </p>
           </div>
 
