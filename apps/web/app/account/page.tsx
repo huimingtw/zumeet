@@ -20,18 +20,21 @@ export default function AccountPage() {
     register,
     handleSubmit,
     formState: { isSubmitting, errors },
-  } = useForm<{ contact_info: string }>({
-    values: { contact_info: me?.contact_info ?? "" },
+  } = useForm<{ name: string; contact_info: string }>({
+    values: { name: me?.name ?? "", contact_info: me?.contact_info ?? "" },
   });
 
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
 
-  async function onSubmit(data: { contact_info: string }) {
+  async function onSubmit(data: { name: string; contact_info: string }) {
     setError("");
     setSaved(false);
     try {
-      await api.put("/profile/me", { contact_info: data.contact_info.trim() });
+      await api.put("/profile/me", {
+        name: data.name.trim(),
+        contact_info: data.contact_info.trim(),
+      });
       qc.invalidateQueries({ queryKey: qk.me() });
       setSaved(true);
     } catch {
@@ -49,6 +52,24 @@ export default function AccountPage() {
         </p>
 
         <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
+          <div>
+            <label
+              htmlFor="name"
+              className="mb-1 block text-sm font-medium text-gray-700"
+            >
+              稱謂<span className="ml-0.5 text-red-500">*</span>
+            </label>
+            <input
+              id="name"
+              {...register("name", { required: "請填寫稱謂" })}
+              className={`input ${errors.name ? "border-red-500" : ""}`}
+              placeholder="例：王先生"
+            />
+            {errors.name && (
+              <p className="mt-1 text-xs text-red-600">{errors.name.message}</p>
+            )}
+          </div>
+
           <div>
             <label
               htmlFor="contact_info"

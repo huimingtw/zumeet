@@ -67,32 +67,40 @@ func TestUpdateMe_SetsContactInfo(t *testing.T) {
 	cookie := validAccessCookie(t, userID, "upd@example.com", []string{"tenant"})
 
 	w := jsonRequest(t, "PUT", "/api/v1/profile/me",
-		map[string]any{"contact_info": "  line:upd123  "}, cookie)
+		map[string]any{"name": "  New Name  ", "contact_info": "  line:upd123  "}, cookie)
 	if w.Code != http.StatusOK {
 		t.Fatalf("PUT /profile/me: expected 200, got %d: %s", w.Code, w.Body.String())
 	}
 
 	// Echoed back trimmed.
 	var put struct {
+		Name        string `json:"name"`
 		ContactInfo string `json:"contact_info"`
 	}
 	if err := json.Unmarshal(w.Body.Bytes(), &put); err != nil {
 		t.Fatalf("decode put: %v", err)
 	}
+	if put.Name != "New Name" {
+		t.Errorf("name should be trimmed: got %q", put.Name)
+	}
 	if put.ContactInfo != "line:upd123" {
 		t.Errorf("contact_info should be trimmed: got %q", put.ContactInfo)
 	}
 
-	// GET /profile/me reflects the stored value.
+	// GET /profile/me reflects the stored values.
 	req := httptest.NewRequest("GET", "/api/v1/profile/me", nil)
 	req.AddCookie(cookie)
 	g := httptest.NewRecorder()
 	testR.ServeHTTP(g, req)
 	var me struct {
+		Name        string `json:"name"`
 		ContactInfo string `json:"contact_info"`
 	}
 	if err := json.Unmarshal(g.Body.Bytes(), &me); err != nil {
 		t.Fatalf("decode get: %v", err)
+	}
+	if me.Name != "New Name" {
+		t.Errorf("GET /profile/me name: got %q, want New Name", me.Name)
 	}
 	if me.ContactInfo != "line:upd123" {
 		t.Errorf("GET /profile/me contact_info: got %q, want line:upd123", me.ContactInfo)
