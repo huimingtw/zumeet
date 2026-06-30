@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Image from "next/image";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import type { Viewing } from "@/types";
@@ -94,12 +93,11 @@ export function ViewingList({ role }: { role: "tenant" | "landlord" }) {
                     <div className="flex min-w-0 items-start gap-3">
                       {role === "tenant" && v.photos?.[0] && (
                         <div className="relative h-12 w-12 flex-shrink-0 overflow-hidden rounded-lg bg-gray-200">
-                          <Image
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
                             src={v.photos[0]}
                             alt=""
-                            fill
-                            className="object-cover"
-                            sizes="48px"
+                            className="absolute inset-0 h-full w-full object-cover"
                           />
                         </div>
                       )}

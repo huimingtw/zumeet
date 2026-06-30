@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Image from "next/image";
 import { MapPin, X } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { CarouselArrows } from "@/components/ui/CarouselArrows";
@@ -142,12 +141,13 @@ export function ListingCard({
         {/* Photo */}
         <div className="relative aspect-video w-full overflow-hidden rounded-t-xl bg-gray-200 sm:aspect-[4/3] sm:w-44 sm:flex-shrink-0 sm:rounded-t-none sm:rounded-lg">
           {listing.photos.length > 0 && (
-            <Image
+            // Plain <img>: photo URLs come from arbitrary storage hosts (MinIO/
+            // Supabase), not whitelistable in next.config — matches avatar usage.
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
               src={listing.photos[photoIdx]}
               alt=""
-              fill
-              className="object-cover"
-              sizes="(min-width: 640px) 176px, 100vw"
+              className="absolute inset-0 h-full w-full object-cover"
             />
           )}
           {listing.photos.length > 1 && (
