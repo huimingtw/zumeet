@@ -129,12 +129,11 @@ func (h *Handler) GetProfileMatches(c *Context) {
 	userID := middleware.MustUserID(c)
 	profileID := c.Param("profileId")
 
-	if err := h.RequireRole(c.Request.Context(), userID, "tenant"); err != nil {
-		respondForbidden(c, err)
+	if !h.requireRole(c, userID, "tenant") {
 		return
 	}
 	if err := h.assertProfileOwner(c, profileID, userID); err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "profile not found", "code": "not_found"})
+		respondNotFound(c, "profile not found")
 		return
 	}
 
@@ -170,12 +169,12 @@ func (h *Handler) GetProfileMatches(c *Context) {
 		profileID,
 	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
+		respondInternal(c)
 		return
 	}
 	result, err := pgx.CollectRows(rows, pgx.RowToStructByNameLax[MutualMatchResponse])
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
+		respondInternal(c)
 		return
 	}
 	for i := range result {
@@ -189,12 +188,11 @@ func (h *Handler) GetProfileIncomingInterests(c *Context) {
 	userID := middleware.MustUserID(c)
 	profileID := c.Param("profileId")
 
-	if err := h.RequireRole(c.Request.Context(), userID, "tenant"); err != nil {
-		respondForbidden(c, err)
+	if !h.requireRole(c, userID, "tenant") {
 		return
 	}
 	if err := h.assertProfileOwner(c, profileID, userID); err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "profile not found", "code": "not_found"})
+		respondNotFound(c, "profile not found")
 		return
 	}
 
@@ -240,12 +238,12 @@ func (h *Handler) GetProfileIncomingInterests(c *Context) {
 		profileID, userID,
 	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
+		respondInternal(c)
 		return
 	}
 	result, err := pgx.CollectRows(rows, pgx.RowToStructByNameLax[IncomingInterestResponse])
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
+		respondInternal(c)
 		return
 	}
 	for i := range result {
@@ -259,12 +257,11 @@ func (h *Handler) GetProfileOutgoingInterests(c *Context) {
 	userID := middleware.MustUserID(c)
 	profileID := c.Param("profileId")
 
-	if err := h.RequireRole(c.Request.Context(), userID, "tenant"); err != nil {
-		respondForbidden(c, err)
+	if !h.requireRole(c, userID, "tenant") {
 		return
 	}
 	if err := h.assertProfileOwner(c, profileID, userID); err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "profile not found", "code": "not_found"})
+		respondNotFound(c, "profile not found")
 		return
 	}
 
@@ -309,12 +306,12 @@ func (h *Handler) GetProfileOutgoingInterests(c *Context) {
 		profileID, userID,
 	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
+		respondInternal(c)
 		return
 	}
 	result, err := pgx.CollectRows(rows, pgx.RowToStructByNameLax[OutgoingInterestResponse])
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
+		respondInternal(c)
 		return
 	}
 	for i := range result {
@@ -368,12 +365,12 @@ func (h *Handler) GetAllMutualMatches(c *Context) {
 		userID,
 	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
+		respondInternal(c)
 		return
 	}
 	result, err := pgx.CollectRows(rows, pgx.RowToStructByNameLax[MutualMatchResponse])
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
+		respondInternal(c)
 		return
 	}
 	for i := range result {
@@ -434,12 +431,12 @@ func (h *Handler) GetAllIncomingInterests(c *Context) {
 		userID,
 	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
+		respondInternal(c)
 		return
 	}
 	result, err := pgx.CollectRows(rows, pgx.RowToStructByNameLax[IncomingInterestResponse])
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
+		respondInternal(c)
 		return
 	}
 	for i := range result {
@@ -497,12 +494,12 @@ func (h *Handler) GetAllOutgoingInterests(c *Context) {
 		userID,
 	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
+		respondInternal(c)
 		return
 	}
 	result, err := pgx.CollectRows(rows, pgx.RowToStructByNameLax[OutgoingInterestResponse])
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
+		respondInternal(c)
 		return
 	}
 	for i := range result {

@@ -21,7 +21,10 @@ func NewContextTransformer() *ContextTransformer {
 	return &ContextTransformer{}
 }
 
-func (transformer *ContextTransformer) Public(fn HandlerFunc) gin.HandlerFunc {
+// WithAppContext adapts a HandlerFunc to a gin.HandlerFunc by boxing the request
+// *gin.Context into the app's *Context wrapper (whose JSON() captures caller file:line
+// for logging). Used by every route, authed or not.
+func (transformer *ContextTransformer) WithAppContext(fn HandlerFunc) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		fn(&Context{Context: c})
 	}

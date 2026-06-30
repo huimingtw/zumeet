@@ -44,7 +44,7 @@ type AppConfig struct {
 	StorageSecretKey string
 	StorageUseSSL    bool
 
-	ResendAPIKey  string
+	ResendAPIKey   string
 	AdminFromEmail string
 
 	GoogleMapsAPIKey string
@@ -66,12 +66,9 @@ func Load() *AppConfig {
 		GoogleRedirectURL:  getEnv("GOOGLE_REDIRECT_URL", "http://localhost:8080/api/v1/auth/google/callback"),
 		GoogleTokenURL:     getEnv("GOOGLE_TOKEN_URL", "https://oauth2.googleapis.com/token"),
 
-		FrontendURL: func() string {
-			if v, ok := os.LookupEnv("FRONTEND_URL"); ok {
-				return v
-			}
-			return "http://localhost:3000"
-		}(),
+		// FrontendURL allows an explicit empty value (same-origin redirects behind a
+		// proxy), so it must distinguish "unset" from "set to empty" — getEnvAllowEmpty.
+		FrontendURL: getEnvAllowEmpty("FRONTEND_URL", "http://localhost:3000"),
 
 		AdminFrontendURL: getEnv("ADMIN_FRONTEND_URL", "http://localhost:3001"),
 
@@ -91,6 +88,15 @@ func Load() *AppConfig {
 
 func getEnv(key, defaultVal string) string {
 	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return defaultVal
+}
+
+// getEnvAllowEmpty returns the env value if the key is set (even to ""), else default.
+// Unlike getEnv, an explicitly-empty value is preserved rather than replaced.
+func getEnvAllowEmpty(key, defaultVal string) string {
+	if v, ok := os.LookupEnv(key); ok {
 		return v
 	}
 	return defaultVal

@@ -77,3 +77,15 @@ func (h *Handler) RequireRole(ctx context.Context, userID string, role string) e
 	}
 	return nil
 }
+
+// requireRole is the guard form of RequireRole: it checks the DB and, on failure,
+// writes the forbidden/500 response and returns false. Call sites collapse to
+//
+//	if !h.requireRole(c, userID, "landlord") { return }
+func (h *Handler) requireRole(c *Context, userID, role string) bool {
+	if err := h.RequireRole(c.Request.Context(), userID, role); err != nil {
+		respondForbidden(c, err)
+		return false
+	}
+	return true
+}

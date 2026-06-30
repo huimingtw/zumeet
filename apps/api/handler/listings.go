@@ -55,29 +55,29 @@ type ListingRequest struct {
 // UpdateListingRequest is used for PUT (update). contact_info is optional —
 // omitting or sending empty string keeps the existing stored value.
 type UpdateListingRequest struct {
-	City                       string    `json:"city" binding:"required"`
-	District                   string    `json:"district" binding:"required"`
-	Address                    string    `json:"address"`
-	Name                       string    `json:"name"`
-	Rent                       int       `json:"rent" binding:"required,min=1"`
-	ManagementFee              int       `json:"management_fee"`
-	RoomType                   string    `json:"room_type" binding:"required"`
-	AreaPing                   float64   `json:"area_ping" binding:"required,min=1"`
-	NumBedrooms                *int      `json:"num_bedrooms"`
-	NumLivingRooms             *int      `json:"num_living_rooms"`
-	NumBathrooms               *int      `json:"num_bathrooms"`
-	NumBalconies               *int      `json:"num_balconies"`
-	AvailableFrom              time.Time `json:"available_from" binding:"required"`
-	MinLeaseMonths             int       `json:"min_lease_months" binding:"required,min=1"`
-	AllowPets                  bool      `json:"allow_pets"`
-	AllowSubsidy               bool      `json:"allow_subsidy"`
-	AllowTaxReceipt            bool      `json:"allow_tax_receipt"`
-	AllowHouseholdRegistration bool      `json:"allow_household_registration"`
-	AllowCooking               bool      `json:"allow_cooking"`
-	HasParking                 bool      `json:"has_parking"`
-	AllowSmoking               bool      `json:"allow_smoking"`
-	Description                string    `json:"description"`
-	ContactInfo                string    `json:"contact_info"`
+	City                       string         `json:"city" binding:"required"`
+	District                   string         `json:"district" binding:"required"`
+	Address                    string         `json:"address"`
+	Name                       string         `json:"name"`
+	Rent                       int            `json:"rent" binding:"required,min=1"`
+	ManagementFee              int            `json:"management_fee"`
+	RoomType                   string         `json:"room_type" binding:"required"`
+	AreaPing                   float64        `json:"area_ping" binding:"required,min=1"`
+	NumBedrooms                *int           `json:"num_bedrooms"`
+	NumLivingRooms             *int           `json:"num_living_rooms"`
+	NumBathrooms               *int           `json:"num_bathrooms"`
+	NumBalconies               *int           `json:"num_balconies"`
+	AvailableFrom              time.Time      `json:"available_from" binding:"required"`
+	MinLeaseMonths             int            `json:"min_lease_months" binding:"required,min=1"`
+	AllowPets                  bool           `json:"allow_pets"`
+	AllowSubsidy               bool           `json:"allow_subsidy"`
+	AllowTaxReceipt            bool           `json:"allow_tax_receipt"`
+	AllowHouseholdRegistration bool           `json:"allow_household_registration"`
+	AllowCooking               bool           `json:"allow_cooking"`
+	HasParking                 bool           `json:"has_parking"`
+	AllowSmoking               bool           `json:"allow_smoking"`
+	Description                string         `json:"description"`
+	ContactInfo                string         `json:"contact_info"`
 	Attributes                 map[string]any `json:"attributes"`
 }
 
@@ -88,51 +88,46 @@ type PhotoDetail struct {
 }
 
 type ListingResponse struct {
-	ID                         string        `json:"id"`
-	LandlordID                 string        `json:"landlord_id"`
-	LocationID                 string        `json:"location_id"`
-	Address                    string        `json:"address"`
-	Name                       string        `json:"name"`
-	Rent                       int           `json:"rent"`
-	ManagementFee              int           `json:"management_fee"`
-	RoomType                   string        `json:"room_type"`
-	AreaPing                   float64       `json:"area_ping"`
-	NumBedrooms                *int          `json:"num_bedrooms"`
-	NumLivingRooms             *int          `json:"num_living_rooms"`
-	NumBathrooms               *int          `json:"num_bathrooms"`
-	NumBalconies               *int          `json:"num_balconies"`
-	AvailableFrom              time.Time     `json:"available_from"`
-	MinLeaseMonths             int           `json:"min_lease_months"`
-	AllowPets                  bool          `json:"allow_pets"`
-	AllowSubsidy               bool          `json:"allow_subsidy"`
-	AllowTaxReceipt            bool          `json:"allow_tax_receipt"`
-	AllowHouseholdRegistration bool          `json:"allow_household_registration"`
-	AllowCooking               bool          `json:"allow_cooking"`
-	HasParking                 bool          `json:"has_parking"`
-	AllowSmoking               bool          `json:"allow_smoking"`
-	Description                string        `json:"description"`
+	ID                         string    `json:"id"`
+	LandlordID                 string    `json:"landlord_id"`
+	LocationID                 string    `json:"location_id"`
+	Address                    string    `json:"address"`
+	Name                       string    `json:"name"`
+	Rent                       int       `json:"rent"`
+	ManagementFee              int       `json:"management_fee"`
+	RoomType                   string    `json:"room_type"`
+	AreaPing                   float64   `json:"area_ping"`
+	NumBedrooms                *int      `json:"num_bedrooms"`
+	NumLivingRooms             *int      `json:"num_living_rooms"`
+	NumBathrooms               *int      `json:"num_bathrooms"`
+	NumBalconies               *int      `json:"num_balconies"`
+	AvailableFrom              time.Time `json:"available_from"`
+	MinLeaseMonths             int       `json:"min_lease_months"`
+	AllowPets                  bool      `json:"allow_pets"`
+	AllowSubsidy               bool      `json:"allow_subsidy"`
+	AllowTaxReceipt            bool      `json:"allow_tax_receipt"`
+	AllowHouseholdRegistration bool      `json:"allow_household_registration"`
+	AllowCooking               bool      `json:"allow_cooking"`
+	HasParking                 bool      `json:"has_parking"`
+	AllowSmoking               bool      `json:"allow_smoking"`
+	Description                string    `json:"description"`
 	// ContactInfo is the owner's own data. fetchListingResponse is only used by
 	// owner-scoped handlers (create/get/update/status/photo, all gated on
 	// landlord_id == userID). Never reuse this struct for browse/match views.
-	ContactInfo                string        `json:"contact_info"`
-	Status                     string        `json:"status"`
-	Photos                     []string      `json:"photos" db:"-"`
-	PhotoList                  []PhotoDetail `json:"photo_list" db:"-"`
-	Lat                        *float64      `json:"lat"`
-	Lng                        *float64      `json:"lng"`
-	CreatedAt                  time.Time     `json:"created_at"`
-	UpdatedAt                  time.Time     `json:"updated_at"`
+	ContactInfo string        `json:"contact_info"`
+	Status      string        `json:"status"`
+	Photos      []string      `json:"photos" db:"-"`
+	PhotoList   []PhotoDetail `json:"photo_list" db:"-"`
+	Lat         *float64      `json:"lat"`
+	Lng         *float64      `json:"lng"`
+	CreatedAt   time.Time     `json:"created_at"`
+	UpdatedAt   time.Time     `json:"updated_at"`
 }
 
 // CreateListing handles POST /api/v1/listings
 func (h *Handler) CreateListing(c *Context) {
 	userID := middleware.MustUserID(c)
-	if err := h.RequireRole(c.Request.Context(), userID, "landlord"); err != nil {
-		if errors.Is(err, ErrForbidden) {
-			respondForbidden(c, err)
-			return
-		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
+	if !h.requireRole(c, userID, "landlord") {
 		return
 	}
 
@@ -215,7 +210,7 @@ func (h *Handler) CreateListing(c *Context) {
 	)
 	if err != nil {
 		log.Printf("CreateListing db error: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create listing", "code": "internal"})
+		respondInternal(c)
 		return
 	}
 
@@ -223,13 +218,13 @@ func (h *Handler) CreateListing(c *Context) {
 	// ponytail: separate write, not in a tx with the insert — worst case the listing
 	// exists with the user's prior contact; re-saving fixes it. Wrap in a tx if this matters.
 	if err := setUserContactInfo(c.Request.Context(), h.db, userID, req.ContactInfo); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create listing", "code": "internal"})
+		respondInternal(c)
 		return
 	}
 
 	resp, err := h.fetchListingResponse(c, id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch listing", "code": "internal"})
+		respondInternal(c)
 		return
 	}
 	c.JSON(http.StatusCreated, resp)
@@ -243,14 +238,14 @@ func (h *Handler) GetListing(c *Context) {
 	resp, err := h.fetchListingResponse(c, listingID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "listing not found", "code": "not_found"})
+			respondNotFound(c, "listing not found")
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
+		respondInternal(c)
 		return
 	}
 	if resp.LandlordID != userID {
-		c.JSON(http.StatusNotFound, gin.H{"error": "listing not found", "code": "not_found"})
+		respondNotFound(c, "listing not found")
 		return
 	}
 	c.JSON(http.StatusOK, resp)
@@ -261,22 +256,17 @@ func (h *Handler) UpdateListing(c *Context) {
 	userID := middleware.MustUserID(c)
 	listingID := c.Param("listingId")
 
-	if err := h.RequireRole(c.Request.Context(), userID, "landlord"); err != nil {
-		if errors.Is(err, ErrForbidden) {
-			respondForbidden(c, ErrForbidden)
-			return
-		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
+	if !h.requireRole(c, userID, "landlord") {
 		return
 	}
 
 	ownerID, err := h.listingOwner(c, listingID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "listing not found", "code": "not_found"})
+			respondNotFound(c, "listing not found")
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
+		respondInternal(c)
 		return
 	}
 	if ownerID != userID {
@@ -345,19 +335,19 @@ func (h *Handler) UpdateListing(c *Context) {
 		req.Description, latPtr, lngPtr, listingID,
 	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update listing", "code": "internal"})
+		respondInternal(c)
 		return
 	}
 
 	// contact_info is user-level: keep existing when the request sends it empty.
 	if err := setUserContactInfo(c.Request.Context(), h.db, userID, req.ContactInfo); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update listing", "code": "internal"})
+		respondInternal(c)
 		return
 	}
 
 	resp, err := h.fetchListingResponse(c, listingID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch listing", "code": "internal"})
+		respondInternal(c)
 		return
 	}
 	c.JSON(http.StatusOK, resp)
@@ -368,22 +358,17 @@ func (h *Handler) UpdateListingStatus(c *Context) {
 	userID := middleware.MustUserID(c)
 	listingID := c.Param("listingId")
 
-	if err := h.RequireRole(c.Request.Context(), userID, "landlord"); err != nil {
-		if errors.Is(err, ErrForbidden) {
-			respondForbidden(c, ErrForbidden)
-			return
-		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
+	if !h.requireRole(c, userID, "landlord") {
 		return
 	}
 
 	ownerID, err := h.listingOwner(c, listingID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "listing not found", "code": "not_found"})
+			respondNotFound(c, "listing not found")
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
+		respondInternal(c)
 		return
 	}
 	if ownerID != userID {
@@ -411,7 +396,7 @@ func (h *Handler) UpdateListingStatus(c *Context) {
 			listingID,
 		).Scan(&photoCount, &complianceOK)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
+			respondInternal(c)
 			return
 		}
 		if photoCount == 0 {
@@ -425,7 +410,7 @@ func (h *Handler) UpdateListingStatus(c *Context) {
 		_, err = h.db.Exec(c.Request.Context(),
 			`UPDATE listings SET status='active', updated_at=NOW() WHERE id=$1 AND deleted_at IS NULL`, listingID)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update status", "code": "internal"})
+			respondInternal(c)
 			return
 		}
 
@@ -433,14 +418,14 @@ func (h *Handler) UpdateListingStatus(c *Context) {
 		_, err = h.db.Exec(c.Request.Context(),
 			`UPDATE listings SET status='paused', updated_at=NOW() WHERE id=$1 AND deleted_at IS NULL`, listingID)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update status", "code": "internal"})
+			respondInternal(c)
 			return
 		}
 
 	case "rented":
 		tx, err := h.db.Begin(c.Request.Context())
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
+			respondInternal(c)
 			return
 		}
 		defer tx.Rollback(c.Request.Context())
@@ -448,7 +433,7 @@ func (h *Handler) UpdateListingStatus(c *Context) {
 		if _, err = tx.Exec(c.Request.Context(),
 			`UPDATE listings SET status='rented', updated_at=NOW() WHERE id=$1 AND deleted_at IS NULL`, listingID,
 		); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update status", "code": "internal"})
+			respondInternal(c)
 			return
 		}
 		// cascade: mark all active matches for this listing as listing_rented
@@ -456,7 +441,7 @@ func (h *Handler) UpdateListingStatus(c *Context) {
 			`UPDATE matches SET status='listing_rented', updated_at=NOW()
 			 WHERE listing_id=$1 AND status='active' AND deleted_at IS NULL`, listingID,
 		); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update matches", "code": "internal"})
+			respondInternal(c)
 			return
 		}
 		// cascade: cancel any still-confirmed viewings for this listing
@@ -464,11 +449,11 @@ func (h *Handler) UpdateListingStatus(c *Context) {
 			`UPDATE viewings SET status='cancelled_landlord', updated_at=NOW()
 			 WHERE listing_id=$1 AND status='confirmed' AND deleted_at IS NULL`, listingID,
 		); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update viewings", "code": "internal"})
+			respondInternal(c)
 			return
 		}
 		if err = tx.Commit(c.Request.Context()); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
+			respondInternal(c)
 			return
 		}
 
@@ -479,7 +464,7 @@ func (h *Handler) UpdateListingStatus(c *Context) {
 
 	resp, err := h.fetchListingResponse(c, listingID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch listing", "code": "internal"})
+		respondInternal(c)
 		return
 	}
 	c.JSON(http.StatusOK, resp)
@@ -490,22 +475,17 @@ func (h *Handler) DeleteListing(c *Context) {
 	userID := middleware.MustUserID(c)
 	listingID := c.Param("listingId")
 
-	if err := h.RequireRole(c.Request.Context(), userID, "landlord"); err != nil {
-		if errors.Is(err, ErrForbidden) {
-			respondForbidden(c, ErrForbidden)
-			return
-		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
+	if !h.requireRole(c, userID, "landlord") {
 		return
 	}
 
 	ownerID, err := h.listingOwner(c, listingID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "listing not found", "code": "not_found"})
+			respondNotFound(c, "listing not found")
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
+		respondInternal(c)
 		return
 	}
 	if ownerID != userID {
@@ -516,7 +496,7 @@ func (h *Handler) DeleteListing(c *Context) {
 	_, err = h.db.Exec(c.Request.Context(),
 		`UPDATE listings SET deleted_at=NOW() WHERE id=$1 AND deleted_at IS NULL`, listingID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete listing", "code": "internal"})
+		respondInternal(c)
 		return
 	}
 	c.Status(http.StatusNoContent)
@@ -527,22 +507,17 @@ func (h *Handler) UploadListingPhoto(c *Context) {
 	userID := middleware.MustUserID(c)
 	listingID := c.Param("listingId")
 
-	if err := h.RequireRole(c.Request.Context(), userID, "landlord"); err != nil {
-		if errors.Is(err, ErrForbidden) {
-			respondForbidden(c, ErrForbidden)
-			return
-		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
+	if !h.requireRole(c, userID, "landlord") {
 		return
 	}
 
 	ownerID, err := h.listingOwner(c, listingID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "listing not found", "code": "not_found"})
+			respondNotFound(c, "listing not found")
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
+		respondInternal(c)
 		return
 	}
 	if ownerID != userID {
@@ -555,7 +530,7 @@ func (h *Handler) UploadListingPhoto(c *Context) {
 	if err := h.db.QueryRow(c.Request.Context(),
 		`SELECT COUNT(*) FROM listing_photos WHERE listing_id=$1 AND deleted_at IS NULL`, listingID,
 	).Scan(&photoCount); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
+		respondInternal(c)
 		return
 	}
 	if photoCount >= maxListingPhotos {
@@ -591,14 +566,14 @@ func (h *Handler) UploadListingPhoto(c *Context) {
 		`SELECT COALESCE(MAX(position),0)+1 FROM listing_photos WHERE listing_id=$1 AND deleted_at IS NULL`,
 		listingID,
 	).Scan(&position); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
+		respondInternal(c)
 		return
 	}
 
 	key := fmt.Sprintf("listings/%s/%d_%s", listingID, time.Now().UnixMilli(), sanitizeFilename(header.Filename))
 	publicURL, err := h.storage.Upload(c.Request.Context(), key, file, header.Size, contentType)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to upload photo", "code": "upload_failed"})
+		respondInternal(c)
 		return
 	}
 
@@ -608,7 +583,7 @@ func (h *Handler) UploadListingPhoto(c *Context) {
 		 VALUES ($1,$2,$3,$4,$5)`,
 		photoID, listingID, key, publicURL, position,
 	); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save photo", "code": "internal"})
+		respondInternal(c)
 		return
 	}
 
@@ -625,22 +600,17 @@ func (h *Handler) DeleteListingPhoto(c *Context) {
 	listingID := c.Param("listingId")
 	photoID := c.Param("photoId")
 
-	if err := h.RequireRole(c.Request.Context(), userID, "landlord"); err != nil {
-		if errors.Is(err, ErrForbidden) {
-			respondForbidden(c, ErrForbidden)
-			return
-		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
+	if !h.requireRole(c, userID, "landlord") {
 		return
 	}
 
 	ownerID, err := h.listingOwner(c, listingID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "listing not found", "code": "not_found"})
+			respondNotFound(c, "listing not found")
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
+		respondInternal(c)
 		return
 	}
 	if ownerID != userID {
@@ -656,10 +626,10 @@ func (h *Handler) DeleteListingPhoto(c *Context) {
 	).Scan(&storageKey)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "photo not found", "code": "not_found"})
+			respondNotFound(c, "photo not found")
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
+		respondInternal(c)
 		return
 	}
 
@@ -667,7 +637,7 @@ func (h *Handler) DeleteListingPhoto(c *Context) {
 	if _, err = h.db.Exec(c.Request.Context(),
 		`UPDATE listing_photos SET deleted_at=NOW() WHERE id=$1`, photoID,
 	); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
+		respondInternal(c)
 		return
 	}
 
@@ -683,22 +653,17 @@ func (h *Handler) ReorderListingPhotos(c *Context) {
 	userID := middleware.MustUserID(c)
 	listingID := c.Param("listingId")
 
-	if err := h.RequireRole(c.Request.Context(), userID, "landlord"); err != nil {
-		if errors.Is(err, ErrForbidden) {
-			respondForbidden(c, ErrForbidden)
-			return
-		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
+	if !h.requireRole(c, userID, "landlord") {
 		return
 	}
 
 	ownerID, err := h.listingOwner(c, listingID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "listing not found", "code": "not_found"})
+			respondNotFound(c, "listing not found")
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
+		respondInternal(c)
 		return
 	}
 	if ownerID != userID {
@@ -728,12 +693,12 @@ func (h *Handler) ReorderListingPhotos(c *Context) {
 		listingID,
 	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
+		respondInternal(c)
 		return
 	}
 	existing, err := pgx.CollectRows(rows, pgx.RowTo[string])
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
+		respondInternal(c)
 		return
 	}
 	if len(existing) != len(req.PhotoIDs) {
@@ -749,7 +714,7 @@ func (h *Handler) ReorderListingPhotos(c *Context) {
 
 	tx, err := h.db.Begin(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
+		respondInternal(c)
 		return
 	}
 	defer tx.Rollback(c.Request.Context())
@@ -761,7 +726,7 @@ func (h *Handler) ReorderListingPhotos(c *Context) {
 		 WHERE listing_id=$1 AND deleted_at IS NULL`,
 		listingID,
 	); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
+		respondInternal(c)
 		return
 	}
 	positions := make([]int32, len(req.PhotoIDs))
@@ -775,11 +740,11 @@ func (h *Handler) ReorderListingPhotos(c *Context) {
 		 WHERE lp.id = v.id AND lp.listing_id = $1 AND lp.deleted_at IS NULL`,
 		listingID, req.PhotoIDs, positions,
 	); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
+		respondInternal(c)
 		return
 	}
 	if err := tx.Commit(c.Request.Context()); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
+		respondInternal(c)
 		return
 	}
 	c.Status(http.StatusNoContent)
@@ -789,37 +754,90 @@ func (h *Handler) ReorderListingPhotos(c *Context) {
 func (h *Handler) ListLandlordListings(c *Context) {
 	userID := middleware.MustUserID(c)
 
-	if err := h.RequireRole(c.Request.Context(), userID, "landlord"); err != nil {
-		if errors.Is(err, ErrForbidden) {
-			respondForbidden(c, ErrForbidden)
-			return
-		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
+	if !h.requireRole(c, userID, "landlord") {
 		return
 	}
 
-	rows, err := h.db.Query(c.Request.Context(),
-		`SELECT id FROM listings WHERE landlord_id = $1 AND deleted_at IS NULL ORDER BY created_at DESC`,
+	rows, err := h.db.Query(c.Request.Context(), `
+		SELECT id, landlord_id, location_id, COALESCE(address, ''), COALESCE(name, ''),
+		       rent, management_fee, room_type::text, area_ping,
+		       num_bedrooms, num_living_rooms, num_bathrooms, num_balconies,
+		       available_from, min_lease_months,
+		       allow_pets, allow_subsidy, allow_tax_receipt,
+		       allow_household_registration, allow_cooking, has_parking, allow_smoking,
+		       COALESCE(description, ''), COALESCE((SELECT contact_info FROM users WHERE id = listings.landlord_id), ''), status::text, lat, lng, created_at, updated_at
+		FROM listings
+		WHERE landlord_id = $1 AND deleted_at IS NULL
+		ORDER BY created_at DESC`,
 		userID,
 	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
+		respondInternal(c)
 		return
 	}
-	ids, err := pgx.CollectRows(rows, pgx.RowTo[string])
+	defer rows.Close()
+
+	result := make([]ListingResponse, 0)
+	byID := make(map[string]*ListingResponse)
+	for rows.Next() {
+		var r ListingResponse
+		if err := rows.Scan(
+			&r.ID, &r.LandlordID, &r.LocationID, &r.Address, &r.Name,
+			&r.Rent, &r.ManagementFee, &r.RoomType, &r.AreaPing,
+			&r.NumBedrooms, &r.NumLivingRooms, &r.NumBathrooms, &r.NumBalconies,
+			&r.AvailableFrom, &r.MinLeaseMonths,
+			&r.AllowPets, &r.AllowSubsidy, &r.AllowTaxReceipt,
+			&r.AllowHouseholdRegistration, &r.AllowCooking, &r.HasParking, &r.AllowSmoking,
+			&r.Description, &r.ContactInfo, &r.Status, &r.Lat, &r.Lng, &r.CreatedAt, &r.UpdatedAt,
+		); err != nil {
+			respondInternal(c)
+			return
+		}
+		r.Photos = []string{}
+		r.PhotoList = []PhotoDetail{}
+		result = append(result, r)
+	}
+	if err := rows.Err(); err != nil {
+		respondInternal(c)
+		return
+	}
+	for i := range result {
+		byID[result[i].ID] = &result[i]
+	}
+
+	ids := make([]string, len(result))
+	for i := range result {
+		ids[i] = result[i].ID
+	}
+
+	// Batch all photos in one query (avoids N+1 over listings).
+	photoRows, err := h.db.Query(c.Request.Context(),
+		`SELECT listing_id, id, public_url, position FROM listing_photos
+		 WHERE listing_id = ANY($1) AND deleted_at IS NULL ORDER BY position`,
+		ids,
+	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
+		respondInternal(c)
+		return
+	}
+	defer photoRows.Close()
+	for photoRows.Next() {
+		var listingID string
+		var p PhotoDetail
+		if err := photoRows.Scan(&listingID, &p.ID, &p.PublicURL, &p.Position); err != nil {
+			respondInternal(c)
+			return
+		}
+		if l := byID[listingID]; l != nil {
+			l.PhotoList = append(l.PhotoList, p)
+			l.Photos = append(l.Photos, p.PublicURL)
+		}
+	}
+	if err := photoRows.Err(); err != nil {
+		respondInternal(c)
 		return
 	}
 
-	result := make([]ListingResponse, 0, len(ids))
-	for _, id := range ids {
-		resp, err := h.fetchListingResponse(c, id)
-		if err != nil {
-			continue
-		}
-		result = append(result, *resp)
-	}
 	c.JSON(http.StatusOK, result)
 }
 

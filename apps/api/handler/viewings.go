@@ -216,17 +216,16 @@ func claimSlot(ctx context.Context, tx dbConn, listingID string, slotStart time.
 func (h *Handler) GetViewingAvailability(c *Context) {
 	userID := middleware.MustUserID(c)
 	listingID := c.Param("listingId")
-	if err := h.RequireRole(c.Request.Context(), userID, "landlord"); err != nil {
-		respondForbidden(c, err)
+	if !h.requireRole(c, userID, "landlord") {
 		return
 	}
 	owner, err := h.listingOwner(c, listingID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "listing not found", "code": "not_found"})
+			respondNotFound(c, "listing not found")
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
+		respondInternal(c)
 		return
 	}
 	if owner != userID {
@@ -235,7 +234,7 @@ func (h *Handler) GetViewingAvailability(c *Context) {
 	}
 	av, err := loadAvailability(c.Request.Context(), h.db, listingID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
+		respondInternal(c)
 		return
 	}
 	c.JSON(http.StatusOK, av)
@@ -245,17 +244,16 @@ func (h *Handler) GetViewingAvailability(c *Context) {
 func (h *Handler) UpdateViewingAvailability(c *Context) {
 	userID := middleware.MustUserID(c)
 	listingID := c.Param("listingId")
-	if err := h.RequireRole(c.Request.Context(), userID, "landlord"); err != nil {
-		respondForbidden(c, err)
+	if !h.requireRole(c, userID, "landlord") {
 		return
 	}
 	owner, err := h.listingOwner(c, listingID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "listing not found", "code": "not_found"})
+			respondNotFound(c, "listing not found")
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
+		respondInternal(c)
 		return
 	}
 	if owner != userID {
@@ -277,14 +275,14 @@ func (h *Handler) UpdateViewingAvailability(c *Context) {
 	}
 	clean, err := json.Marshal(av)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
+		respondInternal(c)
 		return
 	}
 	if _, err := h.db.Exec(c.Request.Context(),
 		`UPDATE listings SET viewing_availability=$1, updated_at=NOW() WHERE id=$2 AND deleted_at IS NULL`,
 		clean, listingID,
 	); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
+		respondInternal(c)
 		return
 	}
 	c.JSON(http.StatusOK, av)
@@ -301,20 +299,20 @@ func (h *Handler) GetViewingSlots(c *Context) {
 	).Scan(&listingActive)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "listing not found", "code": "not_found"})
+			respondNotFound(c, "listing not found")
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
+		respondInternal(c)
 		return
 	}
 	av, err := loadAvailability(c.Request.Context(), h.db, listingID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
+		respondInternal(c)
 		return
 	}
 	booked, err := bookedStarts(c.Request.Context(), h.db, listingID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
+		respondInternal(c)
 		return
 	}
 	slots := computeOpenSlots(av, time.Now(), booked)
@@ -340,7 +338,7 @@ func (h *Handler) BookViewing(c *Context) {
 	ctx := c.Request.Context()
 	tx, err := h.db.Begin(ctx)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
+		respondInternal(c)
 		return
 	}
 	defer tx.Rollback(ctx)
@@ -354,10 +352,10 @@ func (h *Handler) BookViewing(c *Context) {
 	).Scan(&tenantID, &profileID, &landlordID, &listingID, &matchStatus)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "match not found", "code": "not_found"})
+			respondNotFound(c, "match not found")
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
+		respondInternal(c)
 		return
 	}
 	if tenantID != userID {
@@ -371,7 +369,7 @@ func (h *Handler) BookViewing(c *Context) {
 
 	end, ok, err := claimSlot(ctx, tx, listingID, body.StartsAt)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
+		respondInternal(c)
 		return
 	}
 	if !ok {
@@ -390,7 +388,7 @@ func (h *Handler) BookViewing(c *Context) {
 		viewingID, tenantID, profileID, landlordID, listingID, body.MatchID, body.StartsAt, end,
 	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
+		respondInternal(c)
 		return
 	}
 	if tag.RowsAffected() == 0 {
@@ -398,7 +396,7 @@ func (h *Handler) BookViewing(c *Context) {
 		return
 	}
 	if err := tx.Commit(ctx); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
+		respondInternal(c)
 		return
 	}
 	c.JSON(http.StatusCreated, gin.H{"id": viewingID, "starts_at": body.StartsAt, "ends_at": end})
@@ -425,24 +423,24 @@ type ViewingResponse struct {
 	Rent            int       `json:"rent" db:"rent"`
 	RoomType        string    `json:"room_type" db:"room_type"`
 	// Listing detail fields (tenant-facing; no contact_info here)
-	AreaPing                   float64  `json:"area_ping" db:"area_ping"`
-	ManagementFee              int      `json:"management_fee" db:"management_fee"`
+	AreaPing                   float64   `json:"area_ping" db:"area_ping"`
+	ManagementFee              int       `json:"management_fee" db:"management_fee"`
 	AvailableFrom              time.Time `json:"available_from" db:"available_from"`
-	AllowPets                  bool     `json:"allow_pets" db:"allow_pets"`
-	AllowSubsidy               bool     `json:"allow_subsidy" db:"allow_subsidy"`
-	AllowTaxReceipt            bool     `json:"allow_tax_receipt" db:"allow_tax_receipt"`
-	AllowHouseholdRegistration bool     `json:"allow_household_registration" db:"allow_household_registration"`
-	AllowCooking               bool     `json:"allow_cooking" db:"allow_cooking"`
-	HasParking                 bool     `json:"has_parking" db:"has_parking"`
-	AllowSmoking               bool     `json:"allow_smoking" db:"allow_smoking"`
-	NumBedrooms                *int16   `json:"num_bedrooms" db:"num_bedrooms"`
-	NumLivingRooms             *int16   `json:"num_living_rooms" db:"num_living_rooms"`
-	NumBathrooms               *int16   `json:"num_bathrooms" db:"num_bathrooms"`
-	NumBalconies               *int16   `json:"num_balconies" db:"num_balconies"`
-	Description                string   `json:"description" db:"description"`
-	Lat                        *float64 `json:"lat" db:"lat"`
-	Lng                        *float64 `json:"lng" db:"lng"`
-	Photos                     []string `json:"photos" db:"photos"`
+	AllowPets                  bool      `json:"allow_pets" db:"allow_pets"`
+	AllowSubsidy               bool      `json:"allow_subsidy" db:"allow_subsidy"`
+	AllowTaxReceipt            bool      `json:"allow_tax_receipt" db:"allow_tax_receipt"`
+	AllowHouseholdRegistration bool      `json:"allow_household_registration" db:"allow_household_registration"`
+	AllowCooking               bool      `json:"allow_cooking" db:"allow_cooking"`
+	HasParking                 bool      `json:"has_parking" db:"has_parking"`
+	AllowSmoking               bool      `json:"allow_smoking" db:"allow_smoking"`
+	NumBedrooms                *int16    `json:"num_bedrooms" db:"num_bedrooms"`
+	NumLivingRooms             *int16    `json:"num_living_rooms" db:"num_living_rooms"`
+	NumBathrooms               *int16    `json:"num_bathrooms" db:"num_bathrooms"`
+	NumBalconies               *int16    `json:"num_balconies" db:"num_balconies"`
+	Description                string    `json:"description" db:"description"`
+	Lat                        *float64  `json:"lat" db:"lat"`
+	Lng                        *float64  `json:"lng" db:"lng"`
+	Photos                     []string  `json:"photos" db:"photos"`
 }
 
 // ListViewings handles GET /api/v1/viewings?role=&status=
@@ -508,12 +506,12 @@ func (h *Handler) ListViewings(c *Context) {
 		args...,
 	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
+		respondInternal(c)
 		return
 	}
 	result, err := pgx.CollectRows(rows, pgx.RowToStructByNameLax[ViewingResponse])
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
+		respondInternal(c)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"items": result, "next_cursor": ""})
@@ -523,8 +521,7 @@ func (h *Handler) ListViewings(c *Context) {
 func (h *Handler) SetViewingAttendance(c *Context) {
 	userID := middleware.MustUserID(c)
 	viewingID := c.Param("viewingId")
-	if err := h.RequireRole(c.Request.Context(), userID, "landlord"); err != nil {
-		respondForbidden(c, err)
+	if !h.requireRole(c, userID, "landlord") {
 		return
 	}
 	var body struct {
@@ -543,11 +540,11 @@ func (h *Handler) SetViewingAttendance(c *Context) {
 		body.Attendance, viewingID, userID,
 	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
+		respondInternal(c)
 		return
 	}
 	if tag.RowsAffected() == 0 {
-		c.JSON(http.StatusNotFound, gin.H{"error": "viewing not found or not updatable", "code": "not_found"})
+		respondNotFound(c, "viewing not found or not updatable")
 		return
 	}
 	c.Status(http.StatusNoContent)
@@ -565,10 +562,10 @@ func (h *Handler) CancelViewing(c *Context) {
 	).Scan(&tenantID, &landlordID, &status)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "viewing not found", "code": "not_found"})
+			respondNotFound(c, "viewing not found")
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
+		respondInternal(c)
 		return
 	}
 	if userID != tenantID && userID != landlordID {
@@ -587,7 +584,7 @@ func (h *Handler) CancelViewing(c *Context) {
 		`UPDATE viewings SET status=$1::viewing_status, updated_at=NOW() WHERE id=$2 AND deleted_at IS NULL`,
 		newStatus, viewingID,
 	); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
+		respondInternal(c)
 		return
 	}
 	c.Status(http.StatusNoContent)
@@ -607,7 +604,7 @@ func (h *Handler) RescheduleViewing(c *Context) {
 
 	tx, err := h.db.Begin(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
+		respondInternal(c)
 		return
 	}
 	defer tx.Rollback(c.Request.Context())
@@ -620,10 +617,10 @@ func (h *Handler) RescheduleViewing(c *Context) {
 	).Scan(&tenantID, &landlordID, &listingID, &status)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "viewing not found", "code": "not_found"})
+			respondNotFound(c, "viewing not found")
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
+		respondInternal(c)
 		return
 	}
 	if userID != tenantID && userID != landlordID {
@@ -637,7 +634,7 @@ func (h *Handler) RescheduleViewing(c *Context) {
 
 	end, ok, err := claimSlot(c.Request.Context(), tx, listingID, body.StartsAt)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
+		respondInternal(c)
 		return
 	}
 	if !ok {
@@ -648,11 +645,11 @@ func (h *Handler) RescheduleViewing(c *Context) {
 		`UPDATE viewings SET starts_at=$1, ends_at=$2, updated_at=NOW() WHERE id=$3 AND deleted_at IS NULL`,
 		body.StartsAt, end, viewingID,
 	); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
+		respondInternal(c)
 		return
 	}
 	if err := tx.Commit(c.Request.Context()); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
+		respondInternal(c)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"id": viewingID, "starts_at": body.StartsAt, "ends_at": end})

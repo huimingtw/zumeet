@@ -148,6 +148,16 @@ func respondBindError(c *Context, err error) {
 	c.JSON(http.StatusBadRequest, gin.H{"error": "資料格式錯誤", "code": CodeInvalidFormat})
 }
 
+// respondInternal writes the standard 500 response. Never leaks the underlying error.
+func respondInternal(c *Context) {
+	c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "INTERNAL_ERROR"})
+}
+
+// respondNotFound writes the standard 404 response with a caller-supplied message.
+func respondNotFound(c *Context, msg string) {
+	c.JSON(http.StatusNotFound, gin.H{"error": msg, "code": "NOT_FOUND"})
+}
+
 // respondFieldError writes a single-field validation error response. Use for
 // custom validators that run after bindJSON succeeds.
 func respondFieldError(c *Context, field, message string) {
@@ -172,4 +182,3 @@ func respondFieldErrors(c *Context, fields []FieldError) {
 		"fields": fields,
 	})
 }
-

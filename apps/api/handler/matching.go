@@ -65,13 +65,62 @@ type MatchedTenantProfileCard struct {
 const defaultPageSize = 20
 const maxPageSize = 100
 
+// matchPredicateSQL is the single shared hard-condition predicate for both browse
+// directions (tenant→listings and landlord→tenant profiles). It references only
+// tp.* and l.* columns, so it interpolates verbatim into either query. Per CLAUDE.md
+// this MUST stay the single source of truth — never inline a second copy. The cursor
+// clause differs per direction (l.id vs tp.id) and so is appended by each caller.
+const matchPredicateSQL = `
+			l.rent BETWEEN tp.budget_min AND tp.budget_max
+			AND EXISTS (
+				SELECT 1 FROM tenant_profile_locations tpl
+				WHERE tpl.tenant_profile_id = tp.id
+				  AND tpl.location_id = l.location_id
+				  AND tpl.deleted_at IS NULL
+			)
+			AND l.room_type = ANY(tp.preferred_room_types)
+			AND ABS(
+				EXTRACT(EPOCH FROM date_trunc('day', l.available_from))
+				- EXTRACT(EPOCH FROM date_trunc('day', tp.available_from))
+			) <= 604800  -- 7 days in seconds
+			AND (tp.min_area_ping IS NULL OR l.area_ping >= tp.min_area_ping)
+			AND (tp.has_pets = false OR l.allow_pets = true)
+			AND (tp.needs_subsidy = false OR l.allow_subsidy = true)
+			AND (tp.needs_tax_receipt = false OR l.allow_tax_receipt = true)
+			AND (tp.needs_household_registration = false OR l.allow_household_registration = true)
+			AND (tp.needs_cooking = false OR l.allow_cooking = true)
+			AND (tp.needs_parking = false OR l.has_parking = true)
+			AND (tp.smoking = false OR l.allow_smoking = true)
+			-- status guards
+			AND tp.is_active = true
+			AND tp.deleted_at IS NULL
+			AND l.status = 'active'
+			AND l.deleted_at IS NULL
+			AND l.admin_removed_at IS NULL
+			-- suspension guards (deleted users already excluded by entity soft-delete guards above)
+			AND NOT EXISTS (SELECT 1 FROM users lu WHERE lu.id = l.landlord_id AND lu.suspended_at IS NOT NULL AND lu.deleted_at IS NULL)
+			AND NOT EXISTS (SELECT 1 FROM users tu WHERE tu.id = tp.tenant_id    AND tu.suspended_at IS NOT NULL AND tu.deleted_at IS NULL)
+			-- self-exclusion: never surface a user's own counterpart
+			AND l.landlord_id != tp.tenant_id
+			-- block exclusion (user-level, both directions)
+			AND l.landlord_id NOT IN (
+				SELECT blocked_id FROM blocks WHERE blocker_id = tp.tenant_id AND deleted_at IS NULL
+				UNION ALL
+				SELECT blocker_id FROM blocks WHERE blocked_id = tp.tenant_id AND deleted_at IS NULL
+			)
+			-- already matched pairs live in the match list, not browse
+			AND NOT EXISTS (
+				SELECT 1 FROM matches m
+				WHERE m.tenant_profile_id = tp.id AND m.listing_id = l.id
+				  AND m.status = 'active' AND m.deleted_at IS NULL
+			)`
+
 // BrowseListingsForProfile handles GET /api/v1/tenant-profiles/:profileId/listings
 func (h *Handler) BrowseListingsForProfile(c *Context) {
 	userID := middleware.MustUserID(c)
 	profileID := c.Param("profileId")
 
-	if err := h.RequireRole(c.Request.Context(), userID, "tenant"); err != nil {
-		respondForbidden(c, err)
+	if !h.requireRole(c, userID, "tenant") {
 		return
 	}
 
@@ -84,10 +133,10 @@ func (h *Handler) BrowseListingsForProfile(c *Context) {
 	).Scan(&tenantOwnerID, &isActive)
 	if err != nil {
 		if err == pgx.ErrNoRows {
-			c.JSON(http.StatusNotFound, gin.H{"error": "profile not found", "code": "not_found"})
+			respondNotFound(c, "profile not found")
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
+		respondInternal(c)
 		return
 	}
 	if tenantOwnerID != userID {
@@ -123,50 +172,7 @@ func (h *Handler) BrowseListingsForProfile(c *Context) {
 			) AS interest_sent
 		FROM listings l
 		JOIN tenant_profiles tp ON tp.id = $1
-		WHERE
-			-- matching predicate
-			l.rent BETWEEN tp.budget_min AND tp.budget_max
-			AND EXISTS (
-				SELECT 1 FROM tenant_profile_locations tpl
-				WHERE tpl.tenant_profile_id = tp.id
-				  AND tpl.location_id = l.location_id
-				  AND tpl.deleted_at IS NULL
-			)
-			AND l.room_type = ANY(tp.preferred_room_types)
-			AND ABS(
-				EXTRACT(EPOCH FROM date_trunc('day', l.available_from))
-				- EXTRACT(EPOCH FROM date_trunc('day', tp.available_from))
-			) <= 604800  -- 7 days in seconds
-			AND (tp.min_area_ping IS NULL OR l.area_ping >= tp.min_area_ping)
-			AND (tp.has_pets = false OR l.allow_pets = true)
-			AND (tp.needs_subsidy = false OR l.allow_subsidy = true)
-			AND (tp.needs_tax_receipt = false OR l.allow_tax_receipt = true)
-			AND (tp.needs_household_registration = false OR l.allow_household_registration = true)
-			AND (tp.needs_cooking = false OR l.allow_cooking = true)
-			AND (tp.needs_parking = false OR l.has_parking = true)
-			AND (tp.smoking = false OR l.allow_smoking = true)
-			-- status guards
-			AND tp.is_active = true
-			AND l.status = 'active'
-			AND l.deleted_at IS NULL
-			AND l.admin_removed_at IS NULL
-			-- suspension guards
-			AND NOT EXISTS (SELECT 1 FROM users lu WHERE lu.id = l.landlord_id AND lu.suspended_at IS NOT NULL AND lu.deleted_at IS NULL)
-			AND NOT EXISTS (SELECT 1 FROM users tu WHERE tu.id = tp.tenant_id    AND tu.suspended_at IS NOT NULL AND tu.deleted_at IS NULL)
-			-- self-exclusion: tenant must not see their own listings
-			AND l.landlord_id != tp.tenant_id
-			-- block exclusion (user-level, both directions)
-			AND l.landlord_id NOT IN (
-				SELECT blocked_id  FROM blocks WHERE blocker_id = tp.tenant_id   AND deleted_at IS NULL
-				UNION ALL
-				SELECT blocker_id  FROM blocks WHERE blocked_id  = tp.tenant_id  AND deleted_at IS NULL
-			)
-			-- already matched pairs live in the match list, not browse
-			AND NOT EXISTS (
-				SELECT 1 FROM matches m
-				WHERE m.tenant_profile_id = tp.id AND m.listing_id = l.id
-				  AND m.status = 'active' AND m.deleted_at IS NULL
-			)
+		WHERE` + matchPredicateSQL + `
 			-- cursor pagination
 			AND ($2::text = '' OR l.id < $2)
 		ORDER BY l.id DESC
@@ -174,12 +180,12 @@ func (h *Handler) BrowseListingsForProfile(c *Context) {
 
 	rows, err := h.db.Query(c.Request.Context(), query, profileID, cursor, limit+1)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
+		respondInternal(c)
 		return
 	}
 	cards, err := pgx.CollectRows(rows, pgx.RowToStructByNameLax[MatchedListingCard])
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
+		respondInternal(c)
 		return
 	}
 
@@ -204,8 +210,7 @@ func (h *Handler) BrowseTenantProfilesForListing(c *Context) {
 	userID := middleware.MustUserID(c)
 	listingID := c.Param("listingId")
 
-	if err := h.RequireRole(c.Request.Context(), userID, "landlord"); err != nil {
-		respondForbidden(c, err)
+	if !h.requireRole(c, userID, "landlord") {
 		return
 	}
 
@@ -217,10 +222,10 @@ func (h *Handler) BrowseTenantProfilesForListing(c *Context) {
 	).Scan(&landlordOwnerID, &listingStatus)
 	if err != nil {
 		if err == pgx.ErrNoRows {
-			c.JSON(http.StatusNotFound, gin.H{"error": "listing not found", "code": "not_found"})
+			respondNotFound(c, "listing not found")
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
+		respondInternal(c)
 		return
 	}
 	if landlordOwnerID != userID {
@@ -252,51 +257,7 @@ func (h *Handler) BrowseTenantProfilesForListing(c *Context) {
 			) AS interest_sent
 		FROM tenant_profiles tp
 		JOIN listings l ON l.id = $1
-		WHERE
-			-- matching predicate
-			l.rent BETWEEN tp.budget_min AND tp.budget_max
-			AND EXISTS (
-				SELECT 1 FROM tenant_profile_locations tpl
-				WHERE tpl.tenant_profile_id = tp.id
-				  AND tpl.location_id = l.location_id
-				  AND tpl.deleted_at IS NULL
-			)
-			AND l.room_type = ANY(tp.preferred_room_types)
-			AND ABS(
-				EXTRACT(EPOCH FROM date_trunc('day', l.available_from))
-				- EXTRACT(EPOCH FROM date_trunc('day', tp.available_from))
-			) <= 604800
-			AND (tp.min_area_ping IS NULL OR l.area_ping >= tp.min_area_ping)
-			AND (tp.has_pets = false OR l.allow_pets = true)
-			AND (tp.needs_subsidy = false OR l.allow_subsidy = true)
-			AND (tp.needs_tax_receipt = false OR l.allow_tax_receipt = true)
-			AND (tp.needs_household_registration = false OR l.allow_household_registration = true)
-			AND (tp.needs_cooking = false OR l.allow_cooking = true)
-			AND (tp.needs_parking = false OR l.has_parking = true)
-			AND (tp.smoking = false OR l.allow_smoking = true)
-			-- status guards
-			AND tp.is_active = true
-			AND l.status = 'active'
-			AND l.deleted_at IS NULL
-			AND l.admin_removed_at IS NULL
-			AND tp.deleted_at IS NULL
-			-- suspension guards
-			AND NOT EXISTS (SELECT 1 FROM users lu WHERE lu.id = l.landlord_id AND lu.suspended_at IS NOT NULL AND lu.deleted_at IS NULL)
-			AND NOT EXISTS (SELECT 1 FROM users tu WHERE tu.id = tp.tenant_id    AND tu.suspended_at IS NOT NULL AND tu.deleted_at IS NULL)
-			-- self-exclusion: landlord must not see their own tenant profiles
-			AND tp.tenant_id != l.landlord_id
-			-- block exclusion
-			AND tp.tenant_id NOT IN (
-				SELECT blocked_id  FROM blocks WHERE blocker_id = l.landlord_id AND deleted_at IS NULL
-				UNION ALL
-				SELECT blocker_id  FROM blocks WHERE blocked_id  = l.landlord_id AND deleted_at IS NULL
-			)
-			-- already matched pairs live in the match list, not browse
-			AND NOT EXISTS (
-				SELECT 1 FROM matches m
-				WHERE m.tenant_profile_id = tp.id AND m.listing_id = $1
-				  AND m.status = 'active' AND m.deleted_at IS NULL
-			)
+		WHERE` + matchPredicateSQL + `
 			-- cursor pagination
 			AND ($2::text = '' OR tp.id < $2)
 		ORDER BY tp.id DESC
@@ -321,12 +282,12 @@ func (h *Handler) BrowseTenantProfilesForListing(c *Context) {
 	}
 	queryRows, err := h.db.Query(c.Request.Context(), query, listingID, cursor, limit+1)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
+		respondInternal(c)
 		return
 	}
 	rows, err := pgx.CollectRows(queryRows, pgx.RowToStructByNameLax[matchedTenantProfileRow])
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "internal"})
+		respondInternal(c)
 		return
 	}
 	cards := make([]MatchedTenantProfileCard, 0, len(rows))
