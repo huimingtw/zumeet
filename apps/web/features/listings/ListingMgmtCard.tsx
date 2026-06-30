@@ -112,7 +112,7 @@ export function ListingMgmtCard({
               onClick={() => changeStatus.mutate("active")}
               className="bg-success-600 hover:bg-success-700 rounded-lg px-3 py-1.5 text-xs font-medium text-white transition"
             >
-              重新上架
+              發布上架
             </button>
           )}
 
