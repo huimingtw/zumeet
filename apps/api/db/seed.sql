@@ -422,3 +422,285 @@ INSERT INTO locations (id, city, district, slug) VALUES
 INSERT INTO admins (id, email, level) VALUES
   ('01JZDEV0000000000000000001', 'hero19931012@gmail.com', 'super_admin')
 ON CONFLICT (email) DO NOTHING;
+
+-- Dev demo users and matching data.
+-- These records keep every main web page populated after a fresh local DB init.
+-- Login locally with:
+--   demo.tenant@zumeet.dev
+--   demo.landlord@zumeet.dev
+
+INSERT INTO admins (id, email, level) VALUES
+  ('01JZDEV0000000000000000001', 'hero19931012@gmail.com', 'super_admin')
+ON CONFLICT (email) DO UPDATE SET level = EXCLUDED.level;
+
+INSERT INTO users (id, email, name, avatar_url, contact_info, is_verified) VALUES
+  ('DEMO_TENANT_MAIN',   'demo.tenant@zumeet.dev',        'Demo Tenant',        '', 'Line: demo_tenant', true),
+  ('DEMO_LANDLORD_MAIN', 'demo.landlord@zumeet.dev',      'Demo Landlord',      '', 'Line: demo_landlord', true),
+  ('DEMO_TENANT_A',      'demo.tenant.a@zumeet.dev',      'Anna Chen',          '', 'Line: tenant_anna', true),
+  ('DEMO_TENANT_B',      'demo.tenant.b@zumeet.dev',      'Ben Lin',            '', 'Line: tenant_ben', true),
+  ('DEMO_TENANT_C',      'demo.tenant.c@zumeet.dev',      'Cara Wu',            '', 'Line: tenant_cara', true),
+  ('DEMO_TENANT_D',      'demo.tenant.d@zumeet.dev',      'David Hsu',          '', 'Line: tenant_david', true),
+  ('DEMO_TENANT_E',      'demo.tenant.e@zumeet.dev',      'Eva Tsai',           '', 'Line: tenant_eva', true),
+  ('DEMO_TENANT_F',      'demo.tenant.f@zumeet.dev',      'Frank Ho',           '', 'Line: tenant_frank', true),
+  ('DEMO_LANDLORD_A',    'demo.landlord.a@zumeet.dev',    'Apt Owner A',        '', 'Line: landlord_a', true),
+  ('DEMO_LANDLORD_B',    'demo.landlord.b@zumeet.dev',    'Apt Owner B',        '', 'Line: landlord_b', true),
+  ('DEMO_LANDLORD_C',    'demo.landlord.c@zumeet.dev',    'Apt Owner C',        '', 'Line: landlord_c', true),
+  ('DEMO_LANDLORD_D',    'demo.landlord.d@zumeet.dev',    'Apt Owner D',        '', 'Line: landlord_d', true),
+  ('DEMO_LANDLORD_E',    'demo.landlord.e@zumeet.dev',    'Apt Owner E',        '', 'Line: landlord_e', true),
+  ('DEMO_LANDLORD_F',    'demo.landlord.f@zumeet.dev',    'Apt Owner F',        '', 'Line: landlord_f', true)
+ON CONFLICT (id) DO UPDATE SET
+  email = EXCLUDED.email,
+  name = EXCLUDED.name,
+  avatar_url = EXCLUDED.avatar_url,
+  contact_info = EXCLUDED.contact_info,
+  is_verified = EXCLUDED.is_verified,
+  suspended_at = NULL,
+  deleted_at = NULL;
+
+INSERT INTO user_roles (user_id, role) VALUES
+  ('DEMO_TENANT_MAIN', 'tenant'),
+  ('DEMO_TENANT_A', 'tenant'),
+  ('DEMO_TENANT_B', 'tenant'),
+  ('DEMO_TENANT_C', 'tenant'),
+  ('DEMO_TENANT_D', 'tenant'),
+  ('DEMO_TENANT_E', 'tenant'),
+  ('DEMO_TENANT_F', 'tenant'),
+  ('DEMO_LANDLORD_MAIN', 'landlord'),
+  ('DEMO_LANDLORD_A', 'landlord'),
+  ('DEMO_LANDLORD_B', 'landlord'),
+  ('DEMO_LANDLORD_C', 'landlord'),
+  ('DEMO_LANDLORD_D', 'landlord'),
+  ('DEMO_LANDLORD_E', 'landlord'),
+  ('DEMO_LANDLORD_F', 'landlord')
+ON CONFLICT (user_id, role) DO UPDATE SET deleted_at = NULL;
+
+INSERT INTO auth_identities (id, user_id, provider, provider_uid) VALUES
+  ('DEMO_AUTH_TENANT_MAIN', 'DEMO_TENANT_MAIN', 'google', 'google-demo-tenant-main'),
+  ('DEMO_AUTH_LANDLORD_MAIN', 'DEMO_LANDLORD_MAIN', 'google', 'google-demo-landlord-main')
+ON CONFLICT (provider, provider_uid) DO UPDATE SET
+  user_id = EXCLUDED.user_id,
+  deleted_at = NULL;
+
+INSERT INTO tenant_profiles (
+  id, tenant_id, name, budget_min, budget_max, preferred_room_types,
+  available_from, min_lease_months, min_area_ping, has_pets, pet_description,
+  needs_subsidy, needs_tax_receipt, needs_household_registration,
+  needs_cooking, needs_parking, smoking, occupation, age, description,
+  preferences, is_active, notification_enabled
+) VALUES
+  ('DEMO_TP_MAIN_DAAN', 'DEMO_TENANT_MAIN', '大安通勤需求', 18000, 34000, ARRAY['suite','whole_floor']::room_type[], CURRENT_DATE + INTERVAL '14 days', 12, 10.00, false, '', true, true, true, true, false, false, '產品經理', 31, '希望交通方便，可自行確認屋況與租約條件。', '{}'::jsonb, true, true),
+  ('DEMO_TP_MAIN_SHILIN', 'DEMO_TENANT_MAIN', '士林北投套房', 15000, 26000, ARRAY['suite']::room_type[], CURRENT_DATE + INTERVAL '10 days', 12, 8.00, false, '', false, true, false, true, false, false, '軟體工程師', 29, '偏好安靜生活機能，資料由租客自行填寫。', '{}'::jsonb, true, true),
+  ('DEMO_TP_MAIN_HSINCHU', 'DEMO_TENANT_MAIN', '新竹工作租屋', 16000, 28000, ARRAY['suite']::room_type[], CURRENT_DATE + INTERVAL '20 days', 6, 8.00, false, '', false, false, false, true, true, false, '硬體工程師', 34, '短期工作調動，接受可開伙與停車條件。', '{}'::jsonb, true, true),
+  ('DEMO_TP_A_DAAN', 'DEMO_TENANT_A', '大安套房需求', 20000, 28000, ARRAY['suite']::room_type[], CURRENT_DATE + INTERVAL '14 days', 12, 10.00, false, '', true, true, false, true, false, false, '設計師', 27, '想找捷運附近套房。', '{}'::jsonb, true, true),
+  ('DEMO_TP_B_SHILIN', 'DEMO_TENANT_B', '士林套房需求', 16000, 24000, ARRAY['suite']::room_type[], CURRENT_DATE + INTERVAL '10 days', 12, 8.00, false, '', false, true, false, true, false, false, '護理師', 30, '輪班工作，重視生活機能。', '{}'::jsonb, true, true),
+  ('DEMO_TP_C_DAAN', 'DEMO_TENANT_C', '大安近捷運需求', 19000, 27000, ARRAY['suite']::room_type[], CURRENT_DATE + INTERVAL '13 days', 12, 9.00, false, '', false, false, false, true, false, false, '行銷專員', 28, '希望可開伙，通勤時間短。', '{}'::jsonb, true, true),
+  ('DEMO_TP_D_SHILIN', 'DEMO_TENANT_D', '士林長租需求', 17000, 25000, ARRAY['suite']::room_type[], CURRENT_DATE + INTERVAL '11 days', 12, 8.00, false, '', false, true, false, true, false, false, '教師', 35, '需要穩定長租環境。', '{}'::jsonb, true, true),
+  ('DEMO_TP_E_DAAN', 'DEMO_TENANT_E', '大安整層需求', 26000, 36000, ARRAY['whole_floor']::room_type[], CURRENT_DATE + INTERVAL '15 days', 12, 20.00, false, '', true, true, true, true, false, false, '研究員', 33, '需要整層住家與可申請租金補貼。', '{}'::jsonb, true, true),
+  ('DEMO_TP_F_DAAN', 'DEMO_TENANT_F', '大安套房找房', 21000, 30000, ARRAY['suite']::room_type[], CURRENT_DATE + INTERVAL '14 days', 12, 10.00, false, '', false, true, false, true, false, false, '財務分析師', 32, '偏好生活機能完整區域。', '{}'::jsonb, true, true)
+ON CONFLICT (id) DO UPDATE SET
+  tenant_id = EXCLUDED.tenant_id,
+  name = EXCLUDED.name,
+  budget_min = EXCLUDED.budget_min,
+  budget_max = EXCLUDED.budget_max,
+  preferred_room_types = EXCLUDED.preferred_room_types,
+  available_from = EXCLUDED.available_from,
+  min_lease_months = EXCLUDED.min_lease_months,
+  min_area_ping = EXCLUDED.min_area_ping,
+  has_pets = EXCLUDED.has_pets,
+  pet_description = EXCLUDED.pet_description,
+  needs_subsidy = EXCLUDED.needs_subsidy,
+  needs_tax_receipt = EXCLUDED.needs_tax_receipt,
+  needs_household_registration = EXCLUDED.needs_household_registration,
+  needs_cooking = EXCLUDED.needs_cooking,
+  needs_parking = EXCLUDED.needs_parking,
+  smoking = EXCLUDED.smoking,
+  occupation = EXCLUDED.occupation,
+  age = EXCLUDED.age,
+  description = EXCLUDED.description,
+  preferences = EXCLUDED.preferences,
+  is_active = EXCLUDED.is_active,
+  notification_enabled = EXCLUDED.notification_enabled,
+  updated_at = NOW(),
+  deleted_at = NULL;
+
+INSERT INTO tenant_profile_locations (tenant_profile_id, location_id) VALUES
+  ('DEMO_TP_MAIN_DAAN', '01-0102'),
+  ('DEMO_TP_MAIN_DAAN', '01-0110'),
+  ('DEMO_TP_MAIN_SHILIN', '01-0115'),
+  ('DEMO_TP_MAIN_SHILIN', '01-0116'),
+  ('DEMO_TP_MAIN_HSINCHU', '12-1201'),
+  ('DEMO_TP_MAIN_HSINCHU', '33-3305'),
+  ('DEMO_TP_A_DAAN', '01-0102'),
+  ('DEMO_TP_B_SHILIN', '01-0115'),
+  ('DEMO_TP_C_DAAN', '01-0102'),
+  ('DEMO_TP_D_SHILIN', '01-0115'),
+  ('DEMO_TP_E_DAAN', '01-0102'),
+  ('DEMO_TP_F_DAAN', '01-0102')
+ON CONFLICT (tenant_profile_id, location_id) DO UPDATE SET deleted_at = NULL;
+
+INSERT INTO listings (
+  id, landlord_id, location_id, name, address, rent, management_fee, room_type,
+  area_ping, num_bedrooms, num_living_rooms, num_bathrooms, num_balconies,
+  available_from, min_lease_months, allow_pets, allow_subsidy, allow_tax_receipt,
+  allow_household_registration, allow_cooking, has_parking, allow_smoking,
+  description, attributes, lat, lng, compliance_confirmed_at, status,
+  viewing_availability
+) VALUES
+  ('DEMO_LS_MAIN_DAAN1', 'DEMO_LANDLORD_MAIN', '01-0102', '大安和平東路套房', '台北市大安區和平東路一段 100 號', 24000, 1500, 'suite', 14.50, NULL, NULL, NULL, NULL, CURRENT_DATE + INTERVAL '14 days', 12, false, true, true, false, true, false, false, '房東自填屋況與設備，實際條件由雙方自行確認。', '{}'::jsonb, 25.0267, 121.5322, NOW(), 'active', '{"enabled":true,"slot_minutes":60,"slot_capacity":3,"weekly":{"0":[["10:00","12:00"],["14:00","17:00"]],"1":[["10:00","12:00"],["14:00","17:00"]],"2":[["10:00","12:00"],["14:00","17:00"]],"3":[["10:00","12:00"],["14:00","17:00"]],"4":[["10:00","12:00"],["14:00","17:00"]],"5":[["10:00","12:00"],["14:00","17:00"]],"6":[["10:00","12:00"],["14:00","17:00"]]},"booking_range_days":30,"exceptions":[]}'::jsonb),
+  ('DEMO_LS_MAIN_DAAN2', 'DEMO_LANDLORD_MAIN', '01-0102', '大安師大商圈整層', '台北市大安區師大路 66 號', 31500, 2000, 'whole_floor', 28.00, 2, 1, 1, 1, CURRENT_DATE + INTERVAL '15 days', 12, false, true, true, true, true, false, false, '整層住家，格局與設備為房東自填資訊。', '{}'::jsonb, 25.0232, 121.5294, NOW(), 'active', '{"enabled":true,"slot_minutes":60,"slot_capacity":2,"weekly":{"0":[["13:00","17:00"]],"2":[["13:00","17:00"]],"4":[["13:00","17:00"]],"6":[["13:00","17:00"]]},"booking_range_days":30,"exceptions":[]}'::jsonb),
+  ('DEMO_LS_MAIN_SHILIN', 'DEMO_LANDLORD_MAIN', '01-0115', '士林文林路套房', '台北市士林區文林路 120 號', 20500, 1200, 'suite', 13.00, NULL, NULL, NULL, NULL, CURRENT_DATE + INTERVAL '10 days', 12, false, false, true, false, true, false, false, '近生活商圈，資訊由房東自行填寫。', '{}'::jsonb, 25.0898, 121.5250, NOW(), 'active', '{"enabled":true,"slot_minutes":60,"slot_capacity":2,"weekly":{"1":[["10:00","13:00"]],"3":[["10:00","13:00"]],"5":[["10:00","13:00"]],"6":[["14:00","17:00"]]},"booking_range_days":30,"exceptions":[]}'::jsonb),
+  ('DEMO_LS_MAIN_PAUSED', 'DEMO_LANDLORD_MAIN', '01-0102', '大安暫停刊登套房', '台北市大安區復興南路一段 88 號', 22500, 1000, 'suite', 12.00, NULL, NULL, NULL, NULL, CURRENT_DATE + INTERVAL '14 days', 12, false, false, true, false, true, false, false, '暫停刊登範例。', '{}'::jsonb, 25.0422, 121.5435, NOW(), 'paused', '{}'::jsonb),
+  ('DEMO_LS_MAIN_DRAFT', 'DEMO_LANDLORD_MAIN', '01-0115', '士林草稿房源', '台北市士林區中正路 200 號', 18000, 800, 'suite', 10.00, NULL, NULL, NULL, NULL, CURRENT_DATE + INTERVAL '16 days', 12, false, false, true, false, true, false, false, '草稿範例。', '{}'::jsonb, 25.0940, 121.5260, NOW(), 'draft', '{}'::jsonb),
+  ('DEMO_LS_MAIN_RENTED', 'DEMO_LANDLORD_MAIN', '01-0102', '大安已出租範例', '台北市大安區信義路三段 50 號', 25000, 1500, 'suite', 15.00, NULL, NULL, NULL, NULL, CURRENT_DATE + INTERVAL '12 days', 12, false, true, true, false, true, false, false, '已出租狀態範例。', '{}'::jsonb, 25.0330, 121.5390, NOW(), 'rented', '{}'::jsonb),
+  ('DEMO_LS_A_DAAN', 'DEMO_LANDLORD_A', '01-0102', '大安信義路套房', '台北市大安區信義路二段 88 號', 23000, 1200, 'suite', 13.50, NULL, NULL, NULL, NULL, CURRENT_DATE + INTERVAL '14 days', 12, false, true, true, false, true, false, false, '適合通勤族，自填設備與條件。', '{}'::jsonb, 25.0339, 121.5288, NOW(), 'active', '{"enabled":true,"slot_minutes":60,"slot_capacity":2,"weekly":{"0":[["10:00","12:00"]],"2":[["10:00","12:00"]],"4":[["10:00","12:00"]],"6":[["14:00","17:00"]]},"booking_range_days":30,"exceptions":[]}'::jsonb),
+  ('DEMO_LS_B_DAAN', 'DEMO_LANDLORD_B', '01-0102', '大安金山南路整層', '台北市大安區金山南路二段 60 號', 32000, 1800, 'whole_floor', 26.00, 2, 1, 1, 1, CURRENT_DATE + INTERVAL '15 days', 12, false, true, true, true, true, false, false, '整層住家，租賃細節由雙方自行確認。', '{}'::jsonb, 25.0315, 121.5271, NOW(), 'active', '{}'::jsonb),
+  ('DEMO_LS_C_SHILIN', 'DEMO_LANDLORD_C', '01-0115', '士林中正路套房', '台北市士林區中正路 320 號', 19000, 1000, 'suite', 11.50, NULL, NULL, NULL, NULL, CURRENT_DATE + INTERVAL '10 days', 12, false, false, true, false, true, false, false, '靠近士林生活圈，自填房源資訊。', '{}'::jsonb, 25.0947, 121.5197, NOW(), 'active', '{"enabled":true,"slot_minutes":60,"slot_capacity":2,"weekly":{"1":[["14:00","18:00"]],"3":[["14:00","18:00"]],"5":[["14:00","18:00"]]},"booking_range_days":30,"exceptions":[]}'::jsonb),
+  ('DEMO_LS_D_SHILIN', 'DEMO_LANDLORD_D', '01-0115', '士林福林路套房', '台北市士林區福林路 120 號', 22000, 1200, 'suite', 14.00, NULL, NULL, NULL, NULL, CURRENT_DATE + INTERVAL '11 days', 12, false, true, true, false, true, false, false, '房東自填可開伙與稅籍條件。', '{}'::jsonb, 25.0968, 121.5311, NOW(), 'active', '{}'::jsonb),
+  ('DEMO_LS_E_DAAN', 'DEMO_LANDLORD_E', '01-0110', '中山南京東路套房', '台北市中山區南京東路二段 168 號', 26000, 1500, 'suite', 15.00, NULL, NULL, NULL, NULL, CURRENT_DATE + INTERVAL '14 days', 12, false, true, true, false, true, false, false, '中山區套房範例，條件媒合用資料。', '{}'::jsonb, 25.0525, 121.5344, NOW(), 'active', '{}'::jsonb),
+  ('DEMO_LS_F_HSINCHU', 'DEMO_LANDLORD_F', '12-1201', '新竹東區套房', '新竹市東區光復路一段 200 號', 21000, 1000, 'suite', 12.50, NULL, NULL, NULL, NULL, CURRENT_DATE + INTERVAL '20 days', 6, false, false, false, false, true, true, false, '新竹工作租屋範例。', '{}'::jsonb, 24.7822, 121.0056, NOW(), 'active', '{}'::jsonb)
+ON CONFLICT (id) DO UPDATE SET
+  landlord_id = EXCLUDED.landlord_id,
+  location_id = EXCLUDED.location_id,
+  name = EXCLUDED.name,
+  address = EXCLUDED.address,
+  rent = EXCLUDED.rent,
+  management_fee = EXCLUDED.management_fee,
+  room_type = EXCLUDED.room_type,
+  area_ping = EXCLUDED.area_ping,
+  num_bedrooms = EXCLUDED.num_bedrooms,
+  num_living_rooms = EXCLUDED.num_living_rooms,
+  num_bathrooms = EXCLUDED.num_bathrooms,
+  num_balconies = EXCLUDED.num_balconies,
+  available_from = EXCLUDED.available_from,
+  min_lease_months = EXCLUDED.min_lease_months,
+  allow_pets = EXCLUDED.allow_pets,
+  allow_subsidy = EXCLUDED.allow_subsidy,
+  allow_tax_receipt = EXCLUDED.allow_tax_receipt,
+  allow_household_registration = EXCLUDED.allow_household_registration,
+  allow_cooking = EXCLUDED.allow_cooking,
+  has_parking = EXCLUDED.has_parking,
+  allow_smoking = EXCLUDED.allow_smoking,
+  description = EXCLUDED.description,
+  attributes = EXCLUDED.attributes,
+  lat = EXCLUDED.lat,
+  lng = EXCLUDED.lng,
+  compliance_confirmed_at = EXCLUDED.compliance_confirmed_at,
+  status = EXCLUDED.status,
+  viewing_availability = EXCLUDED.viewing_availability,
+  admin_removed_at = NULL,
+  updated_at = NOW(),
+  deleted_at = NULL;
+
+INSERT INTO listing_photos (id, listing_id, storage_key, public_url, position)
+SELECT
+  'DEMO_PH_' || listing_id || '_' || pos,
+  listing_id,
+  'demo/' || lower(listing_id) || '/' || pos || '.jpg',
+  'https://picsum.photos/seed/' || lower(listing_id) || '-' || pos || '/1200/800',
+  pos
+FROM (
+  VALUES
+    ('DEMO_LS_MAIN_DAAN1', 3),
+    ('DEMO_LS_MAIN_DAAN2', 3),
+    ('DEMO_LS_MAIN_SHILIN', 3),
+    ('DEMO_LS_MAIN_PAUSED', 2),
+    ('DEMO_LS_MAIN_RENTED', 2),
+    ('DEMO_LS_A_DAAN', 3),
+    ('DEMO_LS_B_DAAN', 3),
+    ('DEMO_LS_C_SHILIN', 3),
+    ('DEMO_LS_D_SHILIN', 3),
+    ('DEMO_LS_E_DAAN', 3),
+    ('DEMO_LS_F_HSINCHU', 3)
+) AS photo_sets(listing_id, photo_count)
+CROSS JOIN generate_series(1, photo_count) AS pos
+ON CONFLICT (id) DO UPDATE SET
+  listing_id = EXCLUDED.listing_id,
+  storage_key = EXCLUDED.storage_key,
+  public_url = EXCLUDED.public_url,
+  position = EXCLUDED.position,
+  deleted_at = NULL;
+
+INSERT INTO interests (id, tenant_profile_id, listing_id, actor_role, status) VALUES
+  ('DEMO_I_TENANT_MATCH_1', 'DEMO_TP_MAIN_DAAN', 'DEMO_LS_A_DAAN', 'tenant', 'active'),
+  ('DEMO_I_LANDLORD_MATCH_1', 'DEMO_TP_MAIN_DAAN', 'DEMO_LS_A_DAAN', 'landlord', 'active'),
+  ('DEMO_I_TENANT_MATCH_2', 'DEMO_TP_MAIN_SHILIN', 'DEMO_LS_C_SHILIN', 'tenant', 'active'),
+  ('DEMO_I_LANDLORD_MATCH_2', 'DEMO_TP_MAIN_SHILIN', 'DEMO_LS_C_SHILIN', 'landlord', 'active'),
+  ('DEMO_I_TENANT_OUT_1', 'DEMO_TP_MAIN_DAAN', 'DEMO_LS_E_DAAN', 'tenant', 'active'),
+  ('DEMO_I_TENANT_OUT_2', 'DEMO_TP_MAIN_HSINCHU', 'DEMO_LS_F_HSINCHU', 'tenant', 'active'),
+  ('DEMO_I_TENANT_IN_1', 'DEMO_TP_MAIN_DAAN', 'DEMO_LS_B_DAAN', 'landlord', 'active'),
+  ('DEMO_I_TENANT_IN_2', 'DEMO_TP_MAIN_SHILIN', 'DEMO_LS_D_SHILIN', 'landlord', 'active'),
+  ('DEMO_I_LL_MATCH_1_T', 'DEMO_TP_A_DAAN', 'DEMO_LS_MAIN_DAAN1', 'tenant', 'active'),
+  ('DEMO_I_LL_MATCH_1_L', 'DEMO_TP_A_DAAN', 'DEMO_LS_MAIN_DAAN1', 'landlord', 'active'),
+  ('DEMO_I_LL_MATCH_2_T', 'DEMO_TP_B_SHILIN', 'DEMO_LS_MAIN_SHILIN', 'tenant', 'active'),
+  ('DEMO_I_LL_MATCH_2_L', 'DEMO_TP_B_SHILIN', 'DEMO_LS_MAIN_SHILIN', 'landlord', 'active'),
+  ('DEMO_I_LL_IN_1', 'DEMO_TP_C_DAAN', 'DEMO_LS_MAIN_DAAN1', 'tenant', 'active'),
+  ('DEMO_I_LL_IN_2', 'DEMO_TP_D_SHILIN', 'DEMO_LS_MAIN_SHILIN', 'tenant', 'active'),
+  ('DEMO_I_LL_OUT_1', 'DEMO_TP_E_DAAN', 'DEMO_LS_MAIN_DAAN2', 'landlord', 'active'),
+  ('DEMO_I_LL_OUT_2', 'DEMO_TP_F_DAAN', 'DEMO_LS_MAIN_DAAN1', 'landlord', 'active')
+ON CONFLICT (tenant_profile_id, listing_id, actor_role) DO UPDATE SET
+  id = EXCLUDED.id,
+  status = EXCLUDED.status,
+  withdrawn_at = NULL,
+  updated_at = NOW(),
+  deleted_at = NULL;
+
+INSERT INTO matches (id, tenant_id, tenant_profile_id, landlord_id, listing_id, matched_at, status) VALUES
+  ('DEMO_M_TENANT_1', 'DEMO_TENANT_MAIN', 'DEMO_TP_MAIN_DAAN', 'DEMO_LANDLORD_A', 'DEMO_LS_A_DAAN', NOW() - INTERVAL '4 days', 'active'),
+  ('DEMO_M_TENANT_2', 'DEMO_TENANT_MAIN', 'DEMO_TP_MAIN_SHILIN', 'DEMO_LANDLORD_C', 'DEMO_LS_C_SHILIN', NOW() - INTERVAL '3 days', 'active'),
+  ('DEMO_M_LANDLORD_1', 'DEMO_TENANT_A', 'DEMO_TP_A_DAAN', 'DEMO_LANDLORD_MAIN', 'DEMO_LS_MAIN_DAAN1', NOW() - INTERVAL '2 days', 'active'),
+  ('DEMO_M_LANDLORD_2', 'DEMO_TENANT_B', 'DEMO_TP_B_SHILIN', 'DEMO_LANDLORD_MAIN', 'DEMO_LS_MAIN_SHILIN', NOW() - INTERVAL '1 day', 'active')
+ON CONFLICT (tenant_profile_id, listing_id) DO UPDATE SET
+  id = EXCLUDED.id,
+  tenant_id = EXCLUDED.tenant_id,
+  landlord_id = EXCLUDED.landlord_id,
+  matched_at = EXCLUDED.matched_at,
+  status = EXCLUDED.status,
+  updated_at = NOW(),
+  deleted_at = NULL;
+
+INSERT INTO viewings (
+  id, tenant_id, tenant_profile_id, landlord_id, listing_id, match_id,
+  starts_at, ends_at, status, attendance, landlord_notes
+) VALUES
+  ('DEMO_V_TENANT_CONFIRMED', 'DEMO_TENANT_MAIN', 'DEMO_TP_MAIN_DAAN', 'DEMO_LANDLORD_A', 'DEMO_LS_A_DAAN', 'DEMO_M_TENANT_1', CURRENT_DATE + INTERVAL '2 days' + INTERVAL '10 hours', CURRENT_DATE + INTERVAL '2 days' + INTERVAL '11 hours', 'confirmed', NULL, ''),
+  ('DEMO_V_TENANT_COMPLETED', 'DEMO_TENANT_MAIN', 'DEMO_TP_MAIN_SHILIN', 'DEMO_LANDLORD_C', 'DEMO_LS_C_SHILIN', 'DEMO_M_TENANT_2', CURRENT_DATE - INTERVAL '1 day' + INTERVAL '15 hours', CURRENT_DATE - INTERVAL '1 day' + INTERVAL '16 hours', 'completed', 'attended', '租客已到場'),
+  ('DEMO_V_LANDLORD_CONFIRMED', 'DEMO_TENANT_A', 'DEMO_TP_A_DAAN', 'DEMO_LANDLORD_MAIN', 'DEMO_LS_MAIN_DAAN1', 'DEMO_M_LANDLORD_1', CURRENT_DATE + INTERVAL '3 days' + INTERVAL '14 hours', CURRENT_DATE + INTERVAL '3 days' + INTERVAL '15 hours', 'confirmed', NULL, ''),
+  ('DEMO_V_LANDLORD_COMPLETED', 'DEMO_TENANT_B', 'DEMO_TP_B_SHILIN', 'DEMO_LANDLORD_MAIN', 'DEMO_LS_MAIN_SHILIN', 'DEMO_M_LANDLORD_2', CURRENT_DATE - INTERVAL '2 days' + INTERVAL '11 hours', CURRENT_DATE - INTERVAL '2 days' + INTERVAL '12 hours', 'completed', 'attended', '租客已到場')
+ON CONFLICT (id) DO UPDATE SET
+  tenant_id = EXCLUDED.tenant_id,
+  tenant_profile_id = EXCLUDED.tenant_profile_id,
+  landlord_id = EXCLUDED.landlord_id,
+  listing_id = EXCLUDED.listing_id,
+  match_id = EXCLUDED.match_id,
+  starts_at = EXCLUDED.starts_at,
+  ends_at = EXCLUDED.ends_at,
+  status = EXCLUDED.status,
+  attendance = EXCLUDED.attendance,
+  landlord_notes = EXCLUDED.landlord_notes,
+  updated_at = NOW(),
+  deleted_at = NULL;
+
+INSERT INTO reports (id, reporter_id, reported_id, listing_id, reason, status, handled_by, handled_at, resolution_note) VALUES
+  ('DEMO_R_PENDING_1', 'DEMO_TENANT_MAIN', 'DEMO_LANDLORD_B', 'DEMO_LS_B_DAAN', '房源描述與現場狀況需人工檢視。', 'pending', NULL, NULL, NULL),
+  ('DEMO_R_REVIEWING_1', 'DEMO_TENANT_C', 'DEMO_LANDLORD_MAIN', 'DEMO_LS_MAIN_DAAN1', '租客回報資料需要補充確認。', 'reviewing', NULL, NULL, NULL),
+  ('DEMO_R_RESOLVED_1', 'DEMO_LANDLORD_MAIN', 'DEMO_TENANT_D', NULL, '訊息互動後由管理員結案。', 'resolved', (SELECT id FROM admins WHERE email = 'hero19931012@gmail.com'), NOW() - INTERVAL '1 day', '已人工檢視並結案。')
+ON CONFLICT (id) DO UPDATE SET
+  reporter_id = EXCLUDED.reporter_id,
+  reported_id = EXCLUDED.reported_id,
+  listing_id = EXCLUDED.listing_id,
+  reason = EXCLUDED.reason,
+  status = EXCLUDED.status,
+  handled_by = EXCLUDED.handled_by,
+  handled_at = EXCLUDED.handled_at,
+  resolution_note = EXCLUDED.resolution_note,
+  deleted_at = NULL;
+
+INSERT INTO admin_actions (id, admin_id, action, target_type, target_id, note) VALUES
+  ('DEMO_A_RESOLVE_REPORT', (SELECT id FROM admins WHERE email = 'hero19931012@gmail.com'), 'resolve_report', 'report', 'DEMO_R_RESOLVED_1', 'Demo resolved report action'),
+  ('DEMO_A_REMOVE_LISTING', (SELECT id FROM admins WHERE email = 'hero19931012@gmail.com'), 'remove_listing', 'listing', 'DEMO_LS_MAIN_RENTED', 'Demo audit row')
+ON CONFLICT (id) DO UPDATE SET
+  admin_id = EXCLUDED.admin_id,
+  action = EXCLUDED.action,
+  target_type = EXCLUDED.target_type,
+  target_id = EXCLUDED.target_id,
+  note = EXCLUDED.note;
