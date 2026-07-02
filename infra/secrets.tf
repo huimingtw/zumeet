@@ -13,7 +13,7 @@ locals {
 
 resource "google_secret_manager_secret" "secrets" {
   for_each  = toset(local.secret_names)
-  secret_id = each.value
+  secret_id = "${each.value}${local.suffix}"
 
   replication {
     auto {}

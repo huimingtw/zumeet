@@ -1,6 +1,6 @@
 resource "google_service_account" "cloud_run" {
-  account_id   = "zumeet-cloud-run"
-  display_name = "Zumeet Cloud Run Service Account"
+  account_id   = "zumeet-cloud-run${local.suffix}"
+  display_name = "Zumeet Cloud Run Service Account (${local.env})"
 }
 
 resource "google_project_iam_member" "cloud_run_log_writer" {
