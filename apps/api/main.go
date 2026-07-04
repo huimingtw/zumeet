@@ -51,6 +51,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("init logger: %v", err)
 	}
+	zap.ReplaceGlobals(logger)
 	defer logger.Sync()
 
 	pool, err := db.Connect(cfg.DatabaseURL, logger)
@@ -100,7 +101,7 @@ func main() {
 		geocoder = service.NoopGeocodingService{}
 	}
 
-	h := handler.New(pool, oauthSvc, storageSvc, emailSvc, geocoder, cfg)
+	h := handler.New(pool, oauthSvc, storageSvc, emailSvc, geocoder, cfg, logger)
 	r := router.New(h, cfg, logger)
 
 	srv := &http.Server{

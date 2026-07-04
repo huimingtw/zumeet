@@ -5,28 +5,29 @@ import (
 	"runtime"
 
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 )
 
 const HandlerCallerKey = "hcaller"
 
 type Context struct {
 	*gin.Context
+	logger *zap.Logger
 }
 
 type HandlerFunc func(*Context)
 
-type ContextTransformer struct{}
-
-func NewContextTransformer() *ContextTransformer {
-	return &ContextTransformer{}
+type ContextTransformer struct {
+	logger *zap.Logger
 }
 
-// WithAppContext adapts a HandlerFunc to a gin.HandlerFunc by boxing the request
-// *gin.Context into the app's *Context wrapper (whose JSON() captures caller file:line
-// for logging). Used by every route, authed or not.
+func NewContextTransformer(logger *zap.Logger) *ContextTransformer {
+	return &ContextTransformer{logger: logger}
+}
+
 func (transformer *ContextTransformer) WithAppContext(fn HandlerFunc) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		fn(&Context{Context: c})
+		fn(&Context{Context: c, logger: transformer.logger})
 	}
 }
 

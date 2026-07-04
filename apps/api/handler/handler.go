@@ -8,6 +8,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zumeet/api/config"
 	"github.com/zumeet/api/service"
+	"go.uber.org/zap"
 )
 
 // LocationInput is the city+district natural key used in create/update request bodies.
@@ -26,6 +27,7 @@ type Handler struct {
 	email    service.EmailService
 	geocoder service.GeocodingService
 	cfg      *config.AppConfig
+	logger   *zap.Logger
 }
 
 func New(
@@ -35,6 +37,7 @@ func New(
 	email service.EmailService,
 	geocoder service.GeocodingService,
 	cfg *config.AppConfig,
+	logger *zap.Logger,
 ) *Handler {
 	return &Handler{
 		db:       db,
@@ -43,6 +46,7 @@ func New(
 		email:    email,
 		geocoder: geocoder,
 		cfg:      cfg,
+		logger:   logger,
 	}
 }
 

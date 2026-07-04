@@ -10,6 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
 	"github.com/go-playground/validator/v10"
+	"go.uber.org/zap"
 )
 
 // Report validation failures by json tag (e.g. "contact_info") instead of the Go
@@ -148,8 +149,16 @@ func respondBindError(c *Context, err error) {
 	c.JSON(http.StatusBadRequest, gin.H{"error": "資料格式錯誤", "code": CodeInvalidFormat})
 }
 
-// respondInternal writes the standard 500 response. Never leaks the underlying error.
-func respondInternal(c *Context) {
+// respondInternal writes the standard 500 response. Never leaks the underlying error to the client.
+// Pass the error for server-side structured logging.
+func respondInternal(c *Context, errs ...error) {
+	if len(errs) > 0 && errs[0] != nil {
+		c.logger.Error("internal error",
+			zap.String("method", c.Request.Method),
+			zap.String("path", c.Request.URL.Path),
+			zap.Error(errs[0]),
+		)
+	}
 	c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "INTERNAL_ERROR"})
 }
 

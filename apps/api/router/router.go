@@ -17,7 +17,7 @@ func New(h *handler.Handler, cfg *config.AppConfig, logger *zap.Logger) *gin.Eng
 	r.Use(gin.Recovery())
 	r.Use(middleware.RequestID())
 	r.Use(middleware.Logger(logger))
-	t := handler.NewContextTransformer()
+	t := handler.NewContextTransformer(logger)
 
 	allowedOrigins := []string{"http://localhost:3000", "http://localhost:3001"}
 	if cfg.AppEnv == "production" {

@@ -573,7 +573,7 @@ func (h *Handler) UploadListingPhoto(c *Context) {
 	key := fmt.Sprintf("listings/%s/%d_%s", listingID, time.Now().UnixMilli(), sanitizeFilename(header.Filename))
 	publicURL, err := h.storage.Upload(c.Request.Context(), key, file, header.Size, contentType)
 	if err != nil {
-		respondInternal(c)
+		respondInternal(c, err)
 		return
 	}
 
