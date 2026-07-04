@@ -4,6 +4,9 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net/http"
+	"net/url"
+	"strings"
 
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
@@ -17,11 +20,45 @@ type MinioStorageService struct {
 	useSSL    bool
 }
 
+// pathPrefixTransport prepends a fixed path prefix to every S3 request.
+// Needed for S3-compatible APIs that serve under a subpath (e.g. Supabase: /storage/v1/s3).
+type pathPrefixTransport struct {
+	base   http.RoundTripper
+	prefix string
+}
+
+func (t *pathPrefixTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	req = req.Clone(req.Context())
+	req.URL.Path = t.prefix + req.URL.Path
+	if req.URL.RawPath != "" {
+		req.URL.RawPath = t.prefix + req.URL.RawPath
+	}
+	return t.base.RoundTrip(req)
+}
+
+// NewMinioStorageService accepts endpoint as either a bare host ("host:port")
+// or a full URL ("https://host/path/prefix"). In the latter case the path is
+// used as a prefix on every request so that Supabase-style endpoints work.
 func NewMinioStorageService(endpoint, publicURL, accessKey, secretKey, bucket string, useSSL bool) (*MinioStorageService, error) {
-	client, err := minio.New(endpoint, &minio.Options{
+	host := endpoint
+	opts := &minio.Options{
 		Creds:  credentials.NewStaticV4(accessKey, secretKey, ""),
 		Secure: useSSL,
-	})
+	}
+
+	if strings.HasPrefix(endpoint, "http://") || strings.HasPrefix(endpoint, "https://") {
+		u, err := url.Parse(endpoint)
+		if err != nil {
+			return nil, fmt.Errorf("minio client: invalid endpoint URL: %w", err)
+		}
+		host = u.Host
+		opts.Secure = u.Scheme == "https"
+		if prefix := strings.TrimRight(u.Path, "/"); prefix != "" {
+			opts.Transport = &pathPrefixTransport{base: http.DefaultTransport, prefix: prefix}
+		}
+	}
+
+	client, err := minio.New(host, opts)
 	if err != nil {
 		return nil, fmt.Errorf("minio client: %w", err)
 	}
