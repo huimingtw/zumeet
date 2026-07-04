@@ -13,3 +13,9 @@ variable "api_image" {
   description = "Full image path for the API service (e.g. asia-east1-docker.pkg.dev/PROJECT/zumeet/api:latest)"
   type        = string
 }
+
+variable "supabase_project_ref" {
+  description = "Supabase project reference ID (e.g. ykcfalimegljmeyqvhop)"
+  type        = string
+  default     = "ykcfalimegljmeyqvhop"
+}

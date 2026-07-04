@@ -44,6 +44,16 @@ resource "google_cloud_run_v2_service" "api" {
       }
 
       env {
+        name  = "STORAGE_ENDPOINT"
+        value = "https://${var.supabase_project_ref}.supabase.co/storage/v1/s3"
+      }
+
+      env {
+        name  = "STORAGE_BUCKET"
+        value = "zumeet"
+      }
+
+      env {
         name  = "GOOGLE_REDIRECT_URL"
         value = local.redirect_url
       }
