@@ -17,38 +17,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+
       - name: Run AI assessment
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          ISSUE_BODY: ${{ github.event.issue.body }}
-          ISSUE_NUMBER: ${{ github.event.issue.number }}
-        run: |
-          gh issue edit "$ISSUE_NUMBER" --remove-label "request ai review" || true
-
-          labels=$(gh issue view "$ISSUE_NUMBER" --json labels --jq '[.labels[].name] | join(" ")')
-          if echo "$labels" | grep -qw 'bug'; then
-            prompt_file="Prompts/bug-review.prompt.yml"
-          else
-            prompt_file="Prompts/feature-review.prompt.yml"
-          fi
-
-          payload=$(python3 - "$prompt_file" <<'PYEOF'
-import yaml, json, sys, os
-with open(sys.argv[1]) as f:
-    p = yaml.safe_load(f)
-system = p.get('system', '').strip()
-user = p.get('user', '').replace('{{issue_body}}', os.environ['ISSUE_BODY']).strip()
-print(json.dumps({
-    "model": "openai/gpt-4o-mini",
-    "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}]
-}))
-PYEOF
-)
-
-          response=$(curl -sf https://models.github.ai/inference/chat/completions \
-            -H "Authorization: Bearer $GH_TOKEN" \
-            -H "Content-Type: application/json" \
-            -d "$payload")
-
-          comment=$(echo "$response" | jq -r '.choices[0].message.content')
-          gh issue comment "$ISSUE_NUMBER" --body "$comment"
+        id: ai-assessment
+        uses: github/ai-assessment-comment-labeler@main
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          issue_number: ${{ github.event.issue.number }}
+          issue_body: ${{ github.event.issue.body }}
+          repo_name: ${{ github.event.repository.name }}
+          owner: ${{ github.repository_owner }}
+          ai_review_label: request ai review
+          prompts_directory: ./Prompts
+          labels_to_prompts_mapping: bug,bug-review.prompt.yml,feature,feature-review.prompt.yml
