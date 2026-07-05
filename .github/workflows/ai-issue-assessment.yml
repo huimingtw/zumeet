@@ -20,12 +20,18 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
 
-      - name: Ensure classification label
+      - name: Ensure exactly one classification label
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           labels=$(gh issue view ${{ github.event.issue.number }} --json labels --jq '[.labels[].name] | join(" ")')
-          if ! echo "$labels" | grep -qE 'bug|enhancement'; then
+          has_bug=$(echo "$labels" | grep -cw 'bug' || true)
+          has_enh=$(echo "$labels" | grep -cw 'enhancement' || true)
+          if [ "$has_bug" -gt 0 ] && [ "$has_enh" -gt 0 ]; then
+            # both present: drop enhancement, keep bug
+            gh issue edit ${{ github.event.issue.number }} --remove-label enhancement
+          elif [ "$has_bug" -eq 0 ] && [ "$has_enh" -eq 0 ]; then
+            # neither: default to enhancement
             gh issue edit ${{ github.event.issue.number }} --add-label enhancement
           fi
 
