@@ -20,6 +20,15 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
 
+      - name: Ensure classification label
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          labels=$(gh issue view ${{ github.event.issue.number }} --json labels --jq '[.labels[].name] | join(" ")')
+          if ! echo "$labels" | grep -qE 'bug|enhancement'; then
+            gh issue edit ${{ github.event.issue.number }} --add-label enhancement
+          fi
+
       - name: Run AI assessment
         id: ai-assessment
         uses: github/ai-assessment-comment-labeler@main
