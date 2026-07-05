@@ -2,7 +2,7 @@
 import axios from "axios";
 
 export const adminApi = axios.create({
-  baseURL: "/admin-api",
+  baseURL: import.meta.env.VITE_ADMIN_API_BASE ?? "/admin-api",
   withCredentials: true,
 });
 

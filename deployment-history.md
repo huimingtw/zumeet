@@ -117,22 +117,27 @@
 
 **Issue fixed 2026-07-04:** Both vars were originally set to `https://zumeet-api-803504050180.asia-east1.run.app`. After `api.zumeet.tw` custom domain + TLS cert was ready, updated both to use the custom domain. Without this fix, auth cookies set on `api.zumeet.tw` were not sent to `*.run.app` (different domain), causing 401s after OAuth callback.
 
-### Missing env vars (not yet in Cloud Run)
+### Cloud Run Plain Env Vars (all set as of revision 00013)
 
-| Var | Value | Notes |
-|---|---|---|
-| `STORAGE_ENDPOINT` | `https://ykcfalimegljmeyqvhop.supabase.co/storage/v1/s3` | Supabase S3 endpoint |
-| `STORAGE_BUCKET` | TBD | Bucket name in Supabase Storage |
-| `GOOGLE_MAPS_API_KEY` | From GCP Console (server key `445a3402-...`) | Not in Terraform secrets — needs to be added |
+| Var | Value |
+|---|---|
+| `APP_ENV` | `production` |
+| `STORAGE_USE_SSL` | `true` |
+| `STORAGE_ENDPOINT` | `https://ykcfalimegljmeyqvhop.supabase.co/storage/v1/s3` |
+| `STORAGE_BUCKET` | `zumeet` |
+| `STORAGE_PUBLIC_URL` | `https://ykcfalimegljmeyqvhop.supabase.co/storage/v1/object/public` |
+| `GOOGLE_REDIRECT_URL` | `https://api.zumeet.tw/api/v1/auth/google/callback` |
+
+### Missing (not yet configured)
+
+| Item | Notes |
+|---|---|
+| `GOOGLE_MAPS_API_KEY` | Add to Secret Manager + Cloud Run for geocoding |
 
 ### Next Steps
 
-1. **Schema migration** — Connect to Supabase and apply `apps/api/db/schema.sql`
-2. **Storage config** — Add `STORAGE_ENDPOINT` and `STORAGE_BUCKET` env vars to Cloud Run
-3. **GOOGLE_MAPS_API_KEY** — Add to Secret Manager and Cloud Run
-4. **Supabase Storage bucket** — Create bucket in Supabase Storage dashboard
-5. **End-to-end OAuth test** — In progress (schema migrated, env vars fixed, testing login flow)
-6. **CI/CD** — Create GitHub Actions SA key, set `GCP_SA_KEY` + `GCP_PROJECT_ID` secrets, enable `build-api` / `deploy` jobs
+1. **GOOGLE_MAPS_API_KEY** — Add to Secret Manager and Cloud Run when geocoding is needed
+2. **CI/CD validation** — Verify GitHub Actions build-api + deploy jobs fire on next push to main
 
 ### DNS Configuration
 
@@ -155,6 +160,51 @@
 #### Cloud Run cert mismatch
 - `*.run.app` cert does not cover `api.zumeet.tw`
 - Fix: Cloud Run domain mapping → `ghs.googlehosted.com` CNAME
+
+### Storage Issues (resolved 2026-07-04)
+
+#### MinIO SDK rejects path-based endpoints
+- Error: `minio client: Endpoint url cannot have fully qualified paths`
+- Root cause: Supabase S3 endpoint includes path (`/storage/v1/s3`); MinIO SDK forbids path in endpoint
+- First fix attempt: custom `pathPrefixTransport` to strip prefix before MinIO, re-add before sending
+- This failed because AWS V4 signature is computed over the canonical URI — MinIO signed `/zumeet/key` but actual request path was `/storage/v1/s3/zumeet/key` → `SignatureDoesNotMatch`
+
+#### AWS V4 signature mismatch
+- Error in Cloud Run logs: `The request signature we calculated does not match the signature you provided`
+- Root cause: pathPrefixTransport approach signs with wrong path
+- Fix: replaced MinIO SDK entirely with AWS SDK Go v2 (`aws-sdk-go-v2/service/s3`)
+  - `BaseEndpoint = aws.String(endpointURL)` — tells SDK the base path, included in canonical URI
+  - `UsePathStyle = true` — uses `endpoint/bucket/key` path style
+  - AWS SDK correctly signs the full path including the Supabase prefix
+
+#### Supabase MakeBucket not supported
+- Error: S3 `CreateBucket` API returns 501 / not implemented
+- Root cause: Supabase Storage is S3-compatible but does not expose bucket management via API
+- Fix: removed auto-bucket-creation from code; created `zumeet` bucket manually in Supabase dashboard
+
+### OAuth / Domain Issues (resolved 2026-07-04)
+
+#### `--set-env-vars` wiped all Cloud Run env vars
+- Critical: `--set-env-vars` REPLACES all env vars; subsequent revisions had no `APP_ENV`, `GOOGLE_REDIRECT_URL`, etc.
+- Result: `frontendURL()` fell back to `localhost:3000`; OAuth callback redirected to localhost
+- Fix: always use `--update-env-vars` for partial updates; had to manually re-add all plain env vars
+
+#### Frontend calling raw Cloud Run URL
+- Auth cookies are scoped to `api.zumeet.tw`; requests to `*.run.app` were rejected (different domain, 401)
+- Fix: updated Vercel env vars `API_UPSTREAM` and `NEXT_PUBLIC_API_URL` from `*.run.app` to `https://api.zumeet.tw`
+
+#### Schema migration: `db.*.supabase.co` deprecated
+- `psql` could not resolve `db.ykcfalimegljmeyqvhop.supabase.co` — Supabase deprecated direct DB hostnames
+- Fix: use pooler host `aws-0-ap-northeast-1.pooler.supabase.com:5432`
+
+### Structured Error Logging (2026-07-04)
+
+Previously `log.Printf` was used for storage errors (leaks nothing to client but unstructured).  
+Now uses kadokado-goapi pattern:
+- `handler.Context` wraps `*gin.Context` + `*zap.Logger` (per-request, injected by `ContextTransformer`)
+- `respondInternal(c *Context, errs ...error)` calls `c.logger.Error(...)` with method, path, and error
+- `zap.ReplaceGlobals(logger)` in `main.go` ensures `zap.L()` works as global fallback
+- Error detail is never exposed to the client — only logged server-side
 
 ### Commands Reference
 
