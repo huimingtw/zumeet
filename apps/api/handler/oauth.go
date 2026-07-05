@@ -17,6 +17,7 @@ import (
 )
 
 const oauthStateMaxAge = 10 * time.Minute
+const oauthCSRFCookie = "oauth_csrf"
 
 // oauthStateClaims is the payload carried in the signed state parameter.
 type oauthStateClaims struct {
@@ -75,17 +76,41 @@ func (h *Handler) GoogleOAuthRedirect(c *Context) {
 		return
 	}
 	nonce := base64.RawURLEncoding.EncodeToString(b)
+
+	// ponytail: store nonce in cookie so callback can verify the state param (CSRF protection)
+	secure := h.cfg.AppEnv == "production"
+	http.SetCookie(c.Writer, &http.Cookie{
+		Name:     oauthCSRFCookie,
+		Value:    nonce,
+		Path:     "/",
+		MaxAge:   int(oauthStateMaxAge.Seconds()),
+		HttpOnly: true,
+		Secure:   secure,
+		SameSite: http.SameSiteLaxMode, // Lax required: Google redirects back via GET (cross-site)
+	})
+
 	c.Redirect(http.StatusFound, h.oauth.GetAuthorizationURL(nonce))
 }
 
 // GoogleOAuthCallback handles the Google OAuth callback.
 //
 // Flow:
-//  1. Exchange code → OAuthUser (Google uid + email)
-//  2. Lookup auth_identities (google, sub) → existing user → issue tokens
-//  3. Lookup users.email (auto-link) → add identity → issue tokens
-//  4. New user → sign short-lived state → redirect to onboarding
+//  1. Validate state param against CSRF cookie (CSRF protection)
+//  2. Exchange code → OAuthUser (Google uid + email)
+//  3. Lookup auth_identities (google, sub) → existing user → issue tokens
+//  4. Lookup users.email (auto-link) → add identity → issue tokens
+//  5. New user → sign short-lived state → redirect to onboarding
 func (h *Handler) GoogleOAuthCallback(c *Context) {
+	// Validate CSRF state: compare query param against the cookie nonce set in GoogleOAuthRedirect
+	state := c.Query("state")
+	cookieNonce, err := c.Cookie(oauthCSRFCookie)
+	if err != nil || state == "" || !hmac.Equal([]byte(state), []byte(cookieNonce)) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid oauth state", "code": "STATE_INVALID"})
+		return
+	}
+	// Consume the CSRF cookie
+	http.SetCookie(c.Writer, &http.Cookie{Name: oauthCSRFCookie, Value: "", Path: "/", MaxAge: -1})
+
 	code := c.Query("code")
 	if code == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "missing code", "code": "BAD_REQUEST"})
@@ -150,7 +175,7 @@ func (h *Handler) GoogleOAuthCallback(c *Context) {
 	}
 
 	// 3. New user — carry identity in signed state, redirect to onboarding
-	state, err := h.signOAuthState(oauthStateClaims{
+	onboardingState, err := h.signOAuthState(oauthStateClaims{
 		ProviderUID: oauthUser.ProviderUID,
 		Email:       oauthUser.Email,
 		Name:        oauthUser.Name,
@@ -161,7 +186,7 @@ func (h *Handler) GoogleOAuthCallback(c *Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "INTERNAL_ERROR"})
 		return
 	}
-	c.Redirect(http.StatusFound, h.frontendURL("/onboarding?state="+url.QueryEscape(state)))
+	c.Redirect(http.StatusFound, h.frontendURL("/onboarding?state="+url.QueryEscape(onboardingState)))
 }
 
 // OnboardingRequest is the body for POST /api/v1/auth/onboarding.

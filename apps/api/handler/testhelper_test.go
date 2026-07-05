@@ -50,7 +50,7 @@ func TestMain(m *testing.M) {
 	}
 	defer testPool.Close()
 
-	testH = handler.New(testPool, &handler.MockOAuthService{}, &noopStorage{}, &noopEmail{}, service.NoopGeocodingService{}, testCfg)
+	testH = handler.New(testPool, &handler.MockOAuthService{}, &noopStorage{}, &noopEmail{}, service.NoopGeocodingService{}, testCfg, zap.NewNop())
 	testR = router.New(testH, testCfg, zap.NewNop())
 
 	if err := appdb.TruncateTables(testPool); err != nil {

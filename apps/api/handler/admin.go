@@ -141,12 +141,13 @@ func (h *Handler) AdminAuthCallback(c *Context) {
 		return
 	}
 
+	secure := h.cfg.AppEnv == "production"
 	http.SetCookie(c.Writer, &http.Cookie{
 		Name:     middleware.AdminTokenCookie,
 		Value:    token,
 		Path:     "/",
 		HttpOnly: true,
-		Secure:   true,
+		Secure:   secure,
 		SameSite: http.SameSiteStrictMode,
 	})
 
@@ -155,13 +156,14 @@ func (h *Handler) AdminAuthCallback(c *Context) {
 
 // AdminLogout handles POST /logout
 func (h *Handler) AdminLogout(c *Context) {
+	secure := h.cfg.AppEnv == "production"
 	http.SetCookie(c.Writer, &http.Cookie{
 		Name:     middleware.AdminTokenCookie,
 		Value:    "",
 		Path:     "/",
 		MaxAge:   -1,
 		HttpOnly: true,
-		Secure:   true,
+		Secure:   secure,
 		SameSite: http.SameSiteStrictMode,
 	})
 	c.JSON(http.StatusOK, gin.H{"message": "logged out"})
@@ -229,7 +231,7 @@ func (h *Handler) AdminResolveReport(c *Context) {
 		Note   string `json:"note"`
 	}
 	if err := c.ShouldBind(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request", "code": "BAD_REQUEST"})
 		return
 	}
 	if req.Status != "resolved" && req.Status != "dismissed" {
