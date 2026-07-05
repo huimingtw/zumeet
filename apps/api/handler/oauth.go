@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -133,6 +134,10 @@ func (h *Handler) GoogleOAuthCallback(c *Context) {
 	if err == nil {
 		// Existing Google user — issue tokens and redirect
 		if err := h.loginUser(c, userID); err != nil {
+			if errors.Is(err, errAccountSuspended) {
+				c.Redirect(http.StatusFound, h.frontendURL("/?error=account_suspended"))
+				return
+			}
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "INTERNAL_ERROR"})
 			return
 		}
@@ -167,6 +172,10 @@ func (h *Handler) GoogleOAuthCallback(c *Context) {
 			existingUserID, oauthUser.Name, oauthUser.AvatarURL,
 		)
 		if err := h.loginUser(c, existingUserID); err != nil {
+			if errors.Is(err, errAccountSuspended) {
+				c.Redirect(http.StatusFound, h.frontendURL("/?error=account_suspended"))
+				return
+			}
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "INTERNAL_ERROR"})
 			return
 		}
@@ -227,6 +236,10 @@ func (h *Handler) Onboarding(c *Context) {
 	if err == nil {
 		// Already registered — just issue tokens
 		if err := h.loginUser(c, existing); err != nil {
+			if errors.Is(err, errAccountSuspended) {
+				c.JSON(http.StatusForbidden, gin.H{"error": "account suspended", "code": "ACCOUNT_SUSPENDED"})
+				return
+			}
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "code": "INTERNAL_ERROR"})
 			return
 		}
@@ -282,14 +295,19 @@ func (h *Handler) Onboarding(c *Context) {
 	c.JSON(http.StatusOK, gin.H{"status": "ok"})
 }
 
-// loginUser loads user info, builds JWT roles, and issues a token pair.
+// loginUser loads user info, checks suspension, builds JWT roles, and issues a token pair.
+// Returns errAccountSuspended if the account is suspended.
 func (h *Handler) loginUser(c *Context, userID string) error {
 	var email string
+	var suspendedAt *time.Time
 	if err := h.db.QueryRow(c.Request.Context(),
-		`SELECT email FROM users WHERE id = $1 AND deleted_at IS NULL`,
+		`SELECT email, suspended_at FROM users WHERE id = $1 AND deleted_at IS NULL`,
 		userID,
-	).Scan(&email); err != nil {
+	).Scan(&email, &suspendedAt); err != nil {
 		return err
+	}
+	if suspendedAt != nil {
+		return errAccountSuspended
 	}
 
 	roles, err := h.userRoles(c.Request.Context(), userID)
@@ -299,6 +317,9 @@ func (h *Handler) loginUser(c *Context, userID string) error {
 
 	return h.IssueTokenPair(c, userID, email, roles)
 }
+
+// errAccountSuspended is returned by loginUser when the account is suspended.
+var errAccountSuspended = errors.New("account_suspended")
 
 func (h *Handler) frontendURL(path string) string {
 	if h.cfg.AppEnv == "production" {

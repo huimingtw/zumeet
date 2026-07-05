@@ -319,6 +319,7 @@ export function TenantMatchedTab() {
     contactInfo: string;
   } | null>(null);
   const [bookFor, setBookFor] = useState<MatchItem | null>(null);
+  const [bookError, setBookError] = useState<string | null>(null);
   const [reportTarget, setReportTarget] = useState<{ reportedId: string; listingId: string } | null>(null);
 
   const book = useMutation({
@@ -327,6 +328,17 @@ export function TenantMatchedTab() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: qk.viewings() });
       qc.invalidateQueries({ queryKey: qk.viewingSlots() });
+      setBookFor(null);
+      setBookError(null);
+    },
+    onError: (err: unknown) => {
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      const code = (err as { response?: { data?: { code?: string } } })?.response?.data?.code;
+      if (status === 409 && code === "already_booked") {
+        setBookError("此媒合已有預約看房，請前往「帶看」頁面查看或改期。");
+      } else {
+        setBookError("預約失敗，請稍後再試。");
+      }
     },
   });
 
@@ -389,6 +401,7 @@ export function TenantMatchedTab() {
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
+                      setBookError(null);
                       setBookFor(m);
                     }}
                     className="bg-primary-600 hover:bg-primary-500 rounded-lg px-3 py-1.5 text-xs font-medium text-white transition"
@@ -412,13 +425,12 @@ export function TenantMatchedTab() {
         <BookViewingModal
           match={bookFor}
           pending={book.isPending}
-          onClose={() => setBookFor(null)}
-          onSubmit={(startsAt) =>
-            book.mutate(
-              { matchId: bookFor.match_id, startsAt },
-              { onSuccess: () => setBookFor(null) }
-            )
-          }
+          onClose={() => { setBookFor(null); setBookError(null); }}
+          onSubmit={(startsAt) => {
+            setBookError(null);
+            book.mutate({ matchId: bookFor.match_id, startsAt });
+          }}
+          error={bookError}
         />
       )}
       {reportTarget && (
