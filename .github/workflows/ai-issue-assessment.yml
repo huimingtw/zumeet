@@ -31,5 +31,5 @@ jobs:
           owner: ${{ github.repository_owner }}
           ai_review_label: request ai review
           prompts_directory: ./Prompts
-          labels_to_prompts_mapping: bug,bug-review.prompt.yml,feature,feature-review.prompt.yml
+          labels_to_prompts_mapping: bug,bug-review.prompt.yml,enhancement,feature-review.prompt.yml
           model: openai/gpt-4o-mini
