@@ -258,21 +258,15 @@ function AvailabilityEditor() {
                   <input
                     type="date"
                     value={newException}
-                    onChange={(e) => setNewException(e.target.value)}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val && !exceptions.includes(val)) {
+                        setExceptions((p) => [...p, val].sort());
+                      }
+                      setNewException("");
+                    }}
                     className="input flex-1"
                   />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (newException && !exceptions.includes(newException)) {
-                        setExceptions((p) => [...p, newException].sort());
-                        setNewException("");
-                      }
-                    }}
-                    className="flex-shrink-0 rounded-lg border border-gray-200 px-4 text-sm text-gray-700 hover:bg-gray-50"
-                  >
-                    新增
-                  </button>
                 </div>
               </div>
             </>

@@ -33,6 +33,7 @@ export function LandlordBrowseTab({
   const qc = useQueryClient();
   const { data, isLoading } = useProfilesBrowse(currentId ?? "");
   const [reportTarget, setReportTarget] = useState<string | null>(null);
+  const [filter, setFilter] = useState<"all" | "open" | "sent">("all");
 
   const expressInterest = useMutation({
     mutationFn: (profileId: string) =>
@@ -50,6 +51,14 @@ export function LandlordBrowseTab({
       />
     );
   }
+
+  const allItems = data?.items ?? [];
+  const items =
+    filter === "sent"
+      ? allItems.filter((p) => p.interest_sent)
+      : filter === "open"
+        ? allItems.filter((p) => !p.interest_sent)
+        : allItems;
 
   return (
     <div>
@@ -70,6 +79,29 @@ export function LandlordBrowseTab({
         </div>
       </div>
 
+      <div className="mb-4 flex gap-1.5">
+        {(
+          [
+            ["all", "全部"],
+            ["open", "有興趣"],
+            ["sent", "已送出"],
+          ] as const
+        ).map(([key, label]) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => setFilter(key)}
+            className={`rounded-full px-3 py-1 text-xs font-medium transition ${
+              filter === key
+                ? "bg-gray-900 text-white"
+                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
       {isLoading && (
         <div className="space-y-3">
           {[0, 1, 2].map((i) => (
@@ -77,15 +109,18 @@ export function LandlordBrowseTab({
           ))}
         </div>
       )}
-      {!isLoading && (data?.items ?? []).length === 0 && (
+      {!isLoading && allItems.length === 0 && (
         <EmptyState
           icon={<SearchX size={32} strokeWidth={1.5} className="text-gray-300" />}
           title="目前無符合條件的租客需求卡"
           description="符合條件的租客尚未刊登需求，可稍後再查看"
         />
       )}
+      {!isLoading && allItems.length > 0 && items.length === 0 && (
+        <p className="py-8 text-center text-sm text-gray-400">此分類沒有需求卡</p>
+      )}
       <div className="space-y-3">
-        {(data?.items ?? []).map((profile) => (
+        {items.map((profile) => (
           <TenantProfileCard
             key={profile.id}
             profile={profile}

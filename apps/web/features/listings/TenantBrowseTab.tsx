@@ -105,7 +105,7 @@ export function TenantBrowseTab({
         {(
           [
             ["all", "全部"],
-            ["open", "有興趣"],
+            ["open", "未送出"],
             ["sent", "已送出"],
           ] as const
         ).map(([key, label]) => (

@@ -263,6 +263,13 @@ func (h *Handler) BrowseTenantProfilesForListing(c *Context) {
 		JOIN listings l ON l.id = $1
 		JOIN users tu ON tu.id = tp.tenant_id
 		WHERE` + matchPredicateSQL + `
+			-- exclude tenants this landlord has previously reported
+			AND NOT EXISTS (
+				SELECT 1 FROM reports r
+				WHERE r.reporter_id = $4
+				  AND r.reported_id = tp.tenant_id
+				  AND r.deleted_at IS NULL
+			)
 			-- cursor pagination
 			AND ($2::text = '' OR tp.id < $2)
 		ORDER BY tp.id DESC
@@ -288,7 +295,7 @@ func (h *Handler) BrowseTenantProfilesForListing(c *Context) {
 		Description                string    `db:"description"`
 		InterestSent               bool      `db:"interest_sent"`
 	}
-	queryRows, err := h.db.Query(c.Request.Context(), query, listingID, cursor, limit+1)
+	queryRows, err := h.db.Query(c.Request.Context(), query, listingID, cursor, limit+1, userID)
 	if err != nil {
 		respondInternal(c)
 		return

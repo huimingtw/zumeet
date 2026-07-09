@@ -1,15 +1,24 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 import { useRouter } from "next/navigation";
 
 import { api } from "@/lib/api";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "";
+const ADMIN_EMAIL = "support@zumeet.tw";
 
 export default function LoginPage() {
   const router = useRouter();
+  const [suspendedError, setSuspendedError] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("error") === "account_suspended") {
+      setSuspendedError(true);
+    }
+  }, []);
 
   useEffect(() => {
     api
@@ -40,6 +49,21 @@ export default function LoginPage() {
           <p className="mb-6 text-sm text-gray-500">
             目前僅支援 Google 登入。首次登入後需完成個人設定。
           </p>
+
+          {suspendedError && (
+            <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3">
+              <p className="text-sm font-medium text-red-800">帳號已被停用</p>
+              <p className="mt-1 text-xs text-red-600">
+                您的帳號目前無法登入。如有疑問，請聯繫管理員：
+                <a
+                  href={`mailto:${ADMIN_EMAIL}`}
+                  className="ml-1 underline hover:text-red-800"
+                >
+                  {ADMIN_EMAIL}
+                </a>
+              </p>
+            </div>
+          )}
 
           <a
             href={`${API_BASE}/api/v1/auth/google`}

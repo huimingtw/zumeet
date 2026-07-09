@@ -540,11 +540,13 @@ export function BookViewingModal({
   pending,
   onClose,
   onSubmit,
+  error,
 }: {
   match: MatchItem;
   pending: boolean;
   onClose: () => void;
   onSubmit: (startsAt: string) => void;
+  error?: string | null;
 }) {
   const [slot, setSlot] = useState("");
   return (
@@ -561,6 +563,9 @@ export function BookViewingModal({
         {match.listing_name || "此房源"}｜選擇房東開放的帶看時段。
       </p>
       <SlotPicker listingId={match.listing_id} value={slot} onChange={setSlot} />
+      {error && (
+        <p className="mt-3 text-sm text-red-600">{error}</p>
+      )}
       <div className="mt-4 flex gap-2">
         <button
           type="button"
